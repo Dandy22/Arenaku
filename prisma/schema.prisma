@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  CUSTOMER
+  VENDOR
+  ADMIN
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String
+  password  String
+  role      Role     @default(CUSTOMER)
+  createdAt DateTime @default(now())
+
+  vendorProfile VendorProfile?
+  bookings      Booking[]
+}
+
+model VendorProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  user   User   @relation(fields: [userId], references: [id])
+  venues Venue[]
+}
+
+model Venue {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  city        String
+  vendorId    String
+
+  vendor VendorProfile @relation(fields: [vendorId], references: [id])
+  fields Field[]
+}
+
+model Field {
+  id       String @id @default(cuid())
+  name     String
+  type     String
+  price    Int
+  venueId  String
+
+  venue    Venue @relation(fields: [venueId], references: [id])
+  bookings Booking[]
+}
+
+model Booking {
+  id        String   @id @default(cuid())
+  userId    String
+  fieldId   String
+  date      DateTime
+  startHour Int
+  endHour   Int
+  status    String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  field Field @relation(fields: [fieldId], references: [id])
+}
