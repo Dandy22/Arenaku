@@ -23,7 +23,12 @@ model User {
 
   vendorProfile VendorProfile?
   bookings      Booking[]
+  eventJoins    EventParticipant[]
+  events        Event[]
 }
+
+
+
 
 model VendorProfile {
   id     String @id @default(cuid())
@@ -68,3 +73,36 @@ model Booking {
   user  User  @relation(fields: [userId], references: [id])
   field Field @relation(fields: [fieldId], references: [id])
 }
+
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  location    String
+  date        DateTime
+  startHour   Int
+  endHour     Int
+  ticketPrice Int
+  capacity    Int
+
+  creatorId   String
+  createdAt   DateTime @default(now())
+
+  creator     User @relation(fields: [creatorId], references: [id])
+  participants EventParticipant[]
+}
+
+
+model EventParticipant {
+  id      String @id @default(cuid())
+  eventId String
+  userId  String
+
+  event Event @relation(fields: [eventId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@unique([eventId, userId])
+}
+
+
