@@ -1,95 +1,69 @@
-import { prisma } from "@/lib/prisma";
+// ============================================================
+// app/api/bookings/route.ts
+// ------------------------------------------------------------
+//
+// Endpoint ini menangani dua method:
+//   - POST : Membuat booking baru (hanya CUSTOMER)
+//   - GET  : Melihat riwayat booking milik user yang login
+//
+// Semua logika bisnis ada di bookingService.
+// Autentikasi dicek di awal via getUserFromToken.
+// ============================================================
+
+import { NextResponse } from "next/server";
 import { getUserFromToken } from "@/lib/auth";
-// Route handler for creating a new booking and fetching user's bookings
+import { bookingService } from "@/lib/services/booking.service";
+
+// POST /api/bookings
+// Header: Authorization: Bearer <token>
+// Body: { fieldId, date, startHour, endHour }
+// Response: data booking yang baru dibuat
 export async function POST(req: Request) {
   try {
+    // Autentikasi: ambil data user dari JWT token
+    // Akan throw error jika token tidak ada atau tidak valid
     const user = await getUserFromToken(req);
-
-    // only customers can book fields
-    if (user.role !== "CUSTOMER") {
-      return Response.json(
-        { error: "Only customer can book field" },
-        { status: 403 }
-      );
-    }
-
     const body = await req.json();
-    const { fieldId, date, startHour, endHour } = body;
 
-    // cek konflik jadwal booking
-    const existingBooking = await prisma.booking.findFirst({
-        where: {
-            fieldId,
-            date: new Date(date),
-            AND: [
-                {
-                    startHour: {
-                        lt: endHour,
-                    },
-                },
-                {
-                    endHour: {
-                        gt: startHour,
-                    },
-                },
-            ],  
-        }
-    })
-
-    if(existingBooking) {
-        return Response.json(
-            { error: "Time slot is already booked" },
-            { status: 400 }
-        );
-    }
-
-    // create booking
-    const booking = await prisma.booking.create({
-      data: {
-        userId: user.userId,
-        fieldId,
-        date: new Date(date),
-        startHour,
-        endHour,
-        status: "PENDING",
-      },
-    });
-
-    return Response.json(booking);
-  } catch (error) {
-    return Response.json(
-      { error: "Failed to create booking" },
-      { status: 500 }
+    // Serahkan seluruh logika pembuatan booking ke service
+    const booking = await bookingService.createBooking(
+      user.userId,
+      user.role,
+      {
+        fieldId: body.fieldId,
+        date: body.date,
+        startHour: body.startHour,
+        endHour: body.endHour,
+      }
     );
+
+    return NextResponse.json(booking, { status: 201 });
+  } catch (error: any) {
+    // Tentukan status code berdasarkan jenis error
+    if (error.message.includes("token")) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    if (error.message.includes("Only customers")) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
 
+// GET /api/bookings
+// Header: Authorization: Bearer <token>
+// Response: array semua booking milik user yang sedang login
 export async function GET(req: Request) {
   try {
+    // Autentikasi: harus login untuk lihat riwayat booking
     const user = await getUserFromToken(req);
 
-    // Only customers can view their bookings
-    const bookings = await prisma.booking.findMany({
-      where: {
-        userId: user.userId,
-      },
-      include: {
-        field: {
-          include: {
-            venue: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    return Response.json(bookings);
-  } catch (error) {
-    return Response.json(
-      { error: "Failed to fetch bookings" },
-      { status: 500 }
-    );
+    const bookings = await bookingService.getUserBookings(user.userId);
+    return NextResponse.json(bookings, { status: 200 });
+  } catch (error: any) {
+    if (error.message.includes("token")) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    return NextResponse.json({ error: "Failed to fetch bookings" }, { status: 500 });
   }
 }

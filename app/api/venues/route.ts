@@ -1,37 +1,67 @@
+// ============================================================
+// app/api/venues/route.ts
+// ------------------------------------------------------------
+// TIER 1 — Presentation Layer: Venue Endpoints
+//
+//   - POST : Membuat venue baru (hanya VENDOR)
+//   - GET  : Melihat semua venue (publik) atau venue milik vendor
+// ============================================================
+
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { verifyToken } from "@/lib/auth";
-// Vendor can create venue
+import { getUserFromToken } from "@/lib/auth";
+import { venueService } from "@/lib/services/venue.service";
+
+// POST /api/venues
+// Header: Authorization: Bearer <token> (harus VENDOR)
+// Body: { name, description, city }
+// Response: data venue yang baru dibuat
 export async function POST(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1];
+  try {
+    // Harus login sebagai VENDOR
+    const user = await getUserFromToken(req);
+    const body = await req.json();
 
-  const decoded = verifyToken(token!) as any;
-
-  if (!decoded) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  if (decoded.role !== "VENDOR") {
-    return NextResponse.json(
-      { error: "Only vendor can create venue" },
-      { status: 403 }
-    );
-  }
-
-  const body = await req.json();
-  const vendorProfile = await prisma.vendorProfile.findUnique({
-    where: { userId: decoded.userId },
-  });
-
-  const venue = await prisma.venue.create({
-    data: {
+    const venue = await venueService.createVenue(user.userId, user.role, {
       name: body.name,
       description: body.description,
       city: body.city,
-      vendorId: vendorProfile!.id,
-    },
-  });
+    });
 
-  return NextResponse.json(venue);
+    return NextResponse.json(venue, { status: 201 });
+  } catch (error: any) {
+    if (error.message.includes("token")) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    if (error.message.includes("Only vendors")) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+}
+
+// GET /api/venues
+// Publik (tanpa token) → kembalikan semua venue
+// Dengan token VENDOR   → kembalikan venue milik vendor tsb
+export async function GET(req: Request) {
+  try {
+    // Coba ambil token — jika ada dan valid, kembalikan venue milik vendor itu
+    // Jika tidak ada token, kembalikan semua venue (mode publik)
+    try {
+      const user = await getUserFromToken(req);
+
+      if (user.role === "VENDOR") {
+        // Vendor melihat venue miliknya sendiri (dashboard vendor)
+        const myVenues = await venueService.getVendorVenues(user.userId, user.role);
+        return NextResponse.json(myVenues, { status: 200 });
+      }
+    } catch {
+      // Tidak ada token / token tidak valid → lanjut ke mode publik
+    }
+
+    // Mode publik: kembalikan semua venue yang tersedia
+    const allVenues = await venueService.getAllVenues();
+    return NextResponse.json(allVenues, { status: 200 });
+  } catch (error: any) {
+    return NextResponse.json({ error: "Failed to fetch venues" }, { status: 500 });
+  }
 }

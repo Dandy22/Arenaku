@@ -1,36 +1,38 @@
+// ============================================================
+// app/api/auth/login/route.ts
+// ------------------------------------------------------------
+// TIER 1 — Presentation Layer: Login Endpoint
+//
+// Endpoint ini HANYA bertugas:
+//   1. Menerima request HTTP (POST)
+//   2. Meneruskan data ke service layer
+//   3. Mengembalikan response HTTP yang sesuai
+//
+// ============================================================
+
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-// Route handler for user login
+import { authService } from "@/lib/services/auth.service";
+
+// POST /api/auth/login
+// Body: { email: string, password: string }
+// Response: { token: string, user: { id, name, email, role } }
 export async function POST(req: Request) {
-  const body = await req.json();
+  try {
+    const body = await req.json();
+    const { email, password } = body;
 
-  const user = await prisma.user.findUnique({
-    where: { email: body.email },
-  });
+    // Serahkan semua logika ke service layer
+    const result = await authService.login(email, password);
 
-  if (!user) {
-    return NextResponse.json(
-      { error: "User not found" },
-      { status: 404 }
-    );
+    return NextResponse.json(result, { status: 200 });
+  } catch (error: any) {
+    // Tentukan HTTP status code berdasarkan jenis error
+    const status =
+      error.message === "User not found" ||
+      error.message === "Invalid email or password"
+        ? 401
+        : 400;
+
+    return NextResponse.json({ error: error.message }, { status });
   }
-
-  const isValid = await bcrypt.compare(body.password, user.password);
-
-  if (!isValid) {
-    return NextResponse.json(
-      { error: "Invalid password" },
-      { status: 401 }
-    );
-  }
-
-  const token = jwt.sign(
-    { userId: user.id, role: user.role },
-    "SECRET_KEY",
-    { expiresIn: "7d" }
-  );
-
-  return NextResponse.json({ token });
 }

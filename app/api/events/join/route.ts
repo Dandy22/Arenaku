@@ -1,61 +1,44 @@
+// ============================================================
+// app/api/events/join/route.ts
+// ------------------------------------------------------------
+// TIER 1 — Presentation Layer: Join Event Endpoint
+//
+//   - POST : Mendaftarkan user yang login ke sebuah event
+//
+// Validasi (event ada, kapasitas, duplikat) semua ada di eventService.
+// ============================================================
+
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getUserFromToken } from "@/lib/auth";
+import { eventService } from "@/lib/services/event.service";
 
-// Route handler for fetching events
-export async function POST(req: Request){
-    try {
-        const user = await getUserFromToken(req);
-        const body = await req.json();
-        const { eventId } = body;
+// POST /api/events/join
+// Header: Authorization: Bearer <token>
+// Body: { eventId: string }
+// Response: data EventParticipant yang baru dibuat
+export async function POST(req: Request) {
+  try {
+    // Harus login untuk join event
+    const user = await getUserFromToken(req);
+    const body = await req.json();
 
-        // check if event exists
-        const event = await prisma.event.findUnique({
-            where: { id: eventId },
-            include: {participants: true}
-        });
-        if (!event) {
-        return NextResponse.json(
-            { error: "Event not found" },
-            { status: 404 }
-        );
+    const { eventId } = body;
+
+    if (!eventId) {
+      return NextResponse.json({ error: "eventId is required" }, { status: 400 });
     }
 
-    // check event capacity
-    if (event.participants.length >= event.capacity) {
-        return NextResponse.json(
-            { error: "Event is full" },
-            { status: 400 }
-        );
-    }
-    // check if user already joined
-    const alreadyJoined = await prisma.eventParticipant.findFirst({
-        where: {
-            eventId,
-            userId: user.userId,
-        },
-    });
+    // Serahkan logika join ke service (cek kapasitas, duplikat, dll)
+    const result = await eventService.joinEvent(user.userId, eventId);
 
-    if (alreadyJoined) {
-        return NextResponse.json(
-            { error: "User already joined this event" },
-            { status: 400 }
-        );
+    return NextResponse.json(result, { status: 201 });
+  } catch (error: any) {
+    if (error.message.includes("token")) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
-
-    // join event
-    const join = await prisma.eventParticipant.create({
-        data: {
-            eventId,
-            userId: user.userId,
-        },
-    });
-
-    return NextResponse.json(join);
-    }   catch (error) {
-        return NextResponse.json(
-            { error: "Failed to join event" },
-            { status: 500 }
-        );
+    if (error.message === "Event not found") {
+      return NextResponse.json({ error: error.message }, { status: 404 });
     }
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
 }
