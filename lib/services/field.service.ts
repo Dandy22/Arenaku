@@ -42,6 +42,8 @@ export const fieldService = {
       throw new Error("Only vendors can create a field");
     }
 
+    
+
     // Rule 2: Validasi data lapangan
     if (!data.name || !data.type || !data.venueId) {
       throw new Error("Name, type, and venueId are required");
@@ -58,6 +60,9 @@ export const fieldService = {
       throw new Error("Vendor profile not found");
     }
 
+    if (vendorProfile.status !== "VERIFIED") {
+    throw new Error("Your vendor account is not verified yet. Please wait for admin approval.");
+    }
     // Rule 5: Cari venue yang dimaksud — pastikan venue ada
     const venue = await venueRepository.findById(data.venueId);
     if (!venue) {

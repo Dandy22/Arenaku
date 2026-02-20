@@ -12,6 +12,25 @@ enum Role {
   ADMIN
 }
 
+enum VendorStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  EXPIRED
+}
+
 model User {
   id        String   @id @default(cuid())
   name      String
@@ -22,24 +41,28 @@ model User {
   createdAt DateTime @default(now())
 
   vendorProfile VendorProfile?
-  bookings      Booking[]
+  cartItems     CartItem[]
+  orders        Order[]
   eventJoins    EventParticipant[]
   events        Event[]
 }
 
 model VendorProfile {
-  id     String @id @default(cuid())
-  userId String @unique
+  id     String       @id @default(cuid())
+  userId String       @unique
+  status VendorStatus @default(PENDING)
 
-  user   User   @relation(fields: [userId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
   venues Venue[]
 }
 
 model Venue {
-  id          String   @id @default(cuid())
+  id          String @id @default(cuid())
   name        String
   description String
   city        String
+  address     String @default("")
+  imageUrl    String @default("")
   vendorId    String
 
   vendor VendorProfile @relation(fields: [vendorId], references: [id])
@@ -52,25 +75,68 @@ model Field {
   type     String
   price    Int
   venueId  String
+  imageUrl String @default("")
 
-  venue    Venue @relation(fields: [venueId], references: [id])
-  bookings Booking[]
+  venue      Venue       @relation(fields: [venueId], references: [id])
+  cartItems  CartItem[]
+  orderItems OrderItem[]
 }
 
-model Booking {
+model CartItem {
   id        String   @id @default(cuid())
   userId    String
   fieldId   String
   date      DateTime
   startHour Int
   endHour   Int
-  status    String
   createdAt DateTime @default(now())
 
   user  User  @relation(fields: [userId], references: [id])
   field Field @relation(fields: [fieldId], references: [id])
 }
 
+model Order {
+  id            String      @id @default(cuid())
+  userId        String
+  totalAmount   Int
+  status        OrderStatus @default(PENDING)
+  customerName  String      @default("")
+  customerPhone String      @default("")
+  customerEmail String      @default("")
+  notes         String      @default("")
+  createdAt     DateTime    @default(now())
+
+  user    User        @relation(fields: [userId], references: [id])
+  items   OrderItem[]
+  payment Payment?
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  fieldId   String
+  date      DateTime
+  startHour Int
+  endHour   Int
+  price     Int
+
+  order Order @relation(fields: [orderId], references: [id])
+  field Field @relation(fields: [fieldId], references: [id])
+}
+
+model Payment {
+  id        String        @id @default(cuid())
+  orderId   String        @unique
+  amount    Int
+  method    String
+  status    PaymentStatus @default(PENDING)
+  qrCode    String        @default("")
+  expiredAt DateTime
+  paidAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+}
 
 model Event {
   id          String   @id @default(cuid())
@@ -82,14 +148,12 @@ model Event {
   endHour     Int
   ticketPrice Int
   capacity    Int
-
   creatorId   String
   createdAt   DateTime @default(now())
 
-  creator     User @relation(fields: [creatorId], references: [id])
+  creator      User               @relation(fields: [creatorId], references: [id])
   participants EventParticipant[]
 }
-
 
 model EventParticipant {
   id      String @id @default(cuid())
@@ -101,5 +165,3 @@ model EventParticipant {
 
   @@unique([eventId, userId])
 }
-
-
