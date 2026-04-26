@@ -7,7 +7,6 @@
 //
 // Validasi (event ada, kapasitas, duplikat) semua ada di eventService.
 // ============================================================
-
 import { NextResponse } from "next/server";
 import { getUserFromToken } from "@/lib/auth";
 import { eventService } from "@/lib/services/event.service";
@@ -15,22 +14,16 @@ import { eventService } from "@/lib/services/event.service";
 // POST /api/events/join
 // Header: Authorization: Bearer <token>
 // Body: { eventId: string }
-// Response: data EventParticipant yang baru dibuat
 export async function POST(req: Request) {
   try {
-    // Harus login untuk join event
     const user = await getUserFromToken(req);
     const body = await req.json();
 
-    const { eventId } = body;
-
-    if (!eventId) {
+    if (!body.eventId) {
       return NextResponse.json({ error: "eventId is required" }, { status: 400 });
     }
 
-    // Serahkan logika join ke service (cek kapasitas, duplikat, dll)
-    const result = await eventService.joinEvent(user.userId, eventId);
-
+    const result = await eventService.joinEvent(user.userId, body.eventId);
     return NextResponse.json(result, { status: 201 });
   } catch (error: any) {
     if (error.message.includes("token")) {

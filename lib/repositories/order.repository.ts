@@ -10,11 +10,19 @@
 import { prisma } from "@/lib/prisma";
 
 export const orderRepository = {
-  // ----------------------------------------------------------
-  // create
-  // Buat order baru sekaligus dengan semua OrderItem-nya.
-  // Menggunakan nested create Prisma (satu query, atomic).
-  // ----------------------------------------------------------
+  findConflict: (fieldId: string, date: Date, startHour: number, endHour: number) =>
+    prisma.orderItem.findFirst({
+      where: {
+        fieldId,
+        date,
+        order: { status: "PAID" },
+        AND: [
+          { startHour: { lt: endHour } },
+          { endHour: { gt: startHour } },
+        ],
+      },
+    }),
+
   create: (data: {
     userId: string;
     totalAmount: number;
@@ -27,7 +35,7 @@ export const orderRepository = {
       date: Date;
       startHour: number;
       endHour: number;
-      price: number; // snapshot harga saat order — tidak berubah walau vendor ubah harga
+      price: number;
     }[];
   }) =>
     prisma.order.create({
@@ -38,7 +46,6 @@ export const orderRepository = {
         customerPhone: data.customerPhone,
         customerEmail: data.customerEmail,
         notes: data.notes,
-        // Buat semua OrderItem sekaligus dalam satu query
         items: {
           create: data.items.map((item) => ({
             fieldId: item.fieldId,
@@ -58,11 +65,6 @@ export const orderRepository = {
       },
     }),
 
-  // ----------------------------------------------------------
-  // findById
-  // Ambil detail order lengkap beserta item dan payment-nya.
-  // Dipakai untuk halaman "Periksa Pesanan" dan "Payment".
-  // ----------------------------------------------------------
   findById: (id: string) =>
     prisma.order.findUnique({
       where: { id },
@@ -72,15 +74,10 @@ export const orderRepository = {
             field: { include: { venue: true } },
           },
         },
-        payment: true, // sertakan data payment jika sudah ada
+        payment: true,
       },
     }),
 
-  // ----------------------------------------------------------
-  // findByUserId
-  // Ambil semua order milik user tertentu.
-  // Dipakai untuk riwayat pemesanan (kalau nanti dibutuhkan).
-  // ----------------------------------------------------------
   findByUserId: (userId: string) =>
     prisma.order.findMany({
       where: { userId },
@@ -95,11 +92,6 @@ export const orderRepository = {
       orderBy: { createdAt: "desc" },
     }),
 
-  // ----------------------------------------------------------
-  // updateStatus
-  // Update status order (PENDING → PAID / CANCELLED).
-  // Dipanggil oleh payment service saat status payment berubah.
-  // ----------------------------------------------------------
   updateStatus: (id: string, status: "PENDING" | "PAID" | "CANCELLED") =>
     prisma.order.update({
       where: { id },

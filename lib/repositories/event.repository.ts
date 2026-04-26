@@ -10,82 +10,112 @@
 import { prisma } from "@/lib/prisma";
 
 export const eventRepository = {
-  // ----------------------------------------------------------
-  // create
-  // Membuat event baru. creatorId adalah userId yang membuat event.
-  // ----------------------------------------------------------
   create: (data: {
     title: string;
     description: string;
     location: string;
+    city: string;
+    category: string;
+    imageUrl: string;
     date: Date;
     startHour: number;
     endHour: number;
     ticketPrice: number;
-    capacity: number;   // kapasitas maksimal peserta
-    creatorId: string;  // userId pembuat event
+    capacity: number;
+    creatorId: string;
+    additionalInfo: string;
+    termsConditions: string;
+    contactName: string;
+    contactEmail: string;
+    contactPhone: string;
+    latitude?: number;
+    longitude?: number;
   }) =>
     prisma.event.create({
       data: {
         title: data.title,
         description: data.description,
         location: data.location,
+        city: data.city,
+        category: data.category,
+        imageUrl: data.imageUrl,
         date: data.date,
         startHour: data.startHour,
         endHour: data.endHour,
         ticketPrice: data.ticketPrice,
         capacity: data.capacity,
         creatorId: data.creatorId,
+        additionalInfo: data.additionalInfo,
+        termsConditions: data.termsConditions,
+        contactName: data.contactName,
+        contactEmail: data.contactEmail,
+        contactPhone: data.contactPhone,
+        latitude: data.latitude,
+        longitude: data.longitude,
+      },
+      include: {
+        participants: true,
+        creator: { select: { id: true, name: true, email: true } },
       },
     }),
 
-  // ----------------------------------------------------------
-  // findById
-  // Mencari satu event beserta daftar peserta yang sudah join.
-  // Jumlah peserta dipakai untuk cek kapasitas di service layer.
-  // ----------------------------------------------------------
   findById: (id: string) =>
     prisma.event.findUnique({
       where: { id },
       include: {
-        participants: true, // perlu untuk ngecek kapasitas dan duplikat
-        creator: {
-          select: { id: true, name: true, email: true }, // info pembuat event
-        },
-      },
-    }),
-
-  // ----------------------------------------------------------
-  // findAll
-  // Mengambil semua event yang tersedia (untuk halaman publik).
-  // Menyertakan jumlah peserta agar frontend bisa tampilkan sisa slot.
-  // ----------------------------------------------------------
-  findAll: () =>
-    prisma.event.findMany({
-      include: {
         participants: true,
-        creator: {
-          select: { id: true, name: true },
-        },
+        creator: { select: { id: true, name: true, email: true } },
       },
-      orderBy: { date: "asc" }, // urutkan dari yang paling dekat tanggalnya
     }),
 
-  // ----------------------------------------------------------
-  // findParticipant
-  // Mengecek apakah user sudah pernah join event ini sebelumnya.
-  // Dipakai untuk mencegah user mendaftar dua kali ke event yang sama.
-  // ----------------------------------------------------------
+  findAll: async (params: {
+    category?: string;
+    city?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const page = params.page || 1;
+    const limit = params.limit || 8;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (params.category) {
+      where.category = { contains: params.category, mode: "insensitive" };
+    }
+    if (params.city) {
+      where.city = { contains: params.city, mode: "insensitive" };
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.event.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          participants: true,
+          creator: { select: { id: true, name: true } },
+        },
+        orderBy: { date: "asc" },
+      }),
+      prisma.event.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  },
+
   findParticipant: (eventId: string, userId: string) =>
     prisma.eventParticipant.findFirst({
       where: { eventId, userId },
     }),
 
-  // ----------------------------------------------------------
-  // addParticipant
-  // Mendaftarkan user ke sebuah event.
-  // Dipanggil hanya setelah semua validasi lolos di service layer.
-  // ----------------------------------------------------------
   addParticipant: (eventId: string, userId: string) =>
     prisma.eventParticipant.create({
       data: { eventId, userId },

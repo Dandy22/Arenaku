@@ -7,11 +7,6 @@
 import { prisma } from "@/lib/prisma";
 
 export const cartRepository = {
-  // ----------------------------------------------------------
-  // findByUserId
-  // Ambil semua item cart milik user tertentu.
-  // Sertakan data field + venue agar frontend bisa tampilkan detail.
-  // ----------------------------------------------------------
   findByUserId: (userId: string) =>
     prisma.cartItem.findMany({
       where: { userId },
@@ -23,22 +18,12 @@ export const cartRepository = {
       orderBy: { createdAt: "asc" },
     }),
 
-  // ----------------------------------------------------------
-  // findById
-  // Ambil satu cart item berdasarkan ID.
-  // Dipakai untuk verifikasi kepemilikan sebelum hapus.
-  // ----------------------------------------------------------
   findById: (id: string) =>
     prisma.cartItem.findUnique({
       where: { id },
       include: { field: true },
     }),
 
-  // ----------------------------------------------------------
-  // findConflict
-  // Cek apakah lapangan di jam yang sama sudah ada di cart user ini.
-  // Mencegah user menambah item yang sama dua kali ke cart.
-  // ----------------------------------------------------------
   findConflict: (userId: string, fieldId: string, date: Date, startHour: number, endHour: number) =>
     prisma.cartItem.findFirst({
       where: {
@@ -52,10 +37,20 @@ export const cartRepository = {
       },
     }),
 
-  // ----------------------------------------------------------
-  // create
-  // Tambah item baru ke cart.
-  // ----------------------------------------------------------
+  // Cek konflik dengan order PAID orang lain
+  findBookingConflict: (fieldId: string, date: Date, startHour: number, endHour: number) =>
+    prisma.orderItem.findFirst({
+      where: {
+        fieldId,
+        date,
+        order: { status: "PAID" },
+        AND: [
+          { startHour: { lt: endHour } },
+          { endHour: { gt: startHour } },
+        ],
+      },
+    }),
+
   create: (data: {
     userId: string;
     fieldId: string;
@@ -65,18 +60,9 @@ export const cartRepository = {
   }) =>
     prisma.cartItem.create({ data }),
 
-  // ----------------------------------------------------------
-  // deleteById
-  // Hapus satu item dari cart (user klik tombol hapus di cart).
-  // ----------------------------------------------------------
   deleteById: (id: string) =>
     prisma.cartItem.delete({ where: { id } }),
 
-  // ----------------------------------------------------------
-  // deleteByUserId
-  // Hapus SEMUA item cart milik user.
-  // Dipanggil setelah checkout berhasil — cart dikosongkan.
-  // ----------------------------------------------------------
   deleteByUserId: (userId: string) =>
     prisma.cartItem.deleteMany({ where: { userId } }),
 };

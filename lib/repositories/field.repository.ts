@@ -6,51 +6,117 @@
 // Operasi database untuk tabel "Field".
 // Field adalah lapangan olahraga di dalam sebuah Venue.
 // ============================================================
-
 import { prisma } from "@/lib/prisma";
 
 export const fieldRepository = {
-  // ----------------------------------------------------------
-  // create
-  // Membuat lapangan baru di dalam sebuah venue.
-  // Validasi kepemilikan venue dilakukan di service layer sebelum masuk sini.
-  // ----------------------------------------------------------
   create: (data: {
     name: string;
-    type: string;    // contoh: "FUTSAL", "BADMINTON", "BASKETBALL"
-    price: number;   // harga per jam dalam rupiah
-    venueId: string; // venue tempat lapangan ini berada
+    type: string;
+    floorType: string;
+    length: number;
+    width: number;
+    price: number;
+    description: string;
+    venueId: string;
   }) =>
     prisma.field.create({
       data: {
         name: data.name,
         type: data.type,
+        floorType: data.floorType,
+        length: data.length,
+        width: data.width,
         price: data.price,
+        description: data.description,
         venueId: data.venueId,
       },
+      include: { images: true, contacts: true },
     }),
 
-  // ----------------------------------------------------------
-  // findById
-  // Mencari satu lapangan beserta data venue-nya.
-  // Dipakai untuk verifikasi sebelum booking dan tampilan detail.
-  // ----------------------------------------------------------
+  update: (id: string, data: {
+    name?: string;
+    type?: string;
+    floorType?: string;
+    length?: number;
+    width?: number;
+    price?: number;
+    description?: string;
+  }) =>
+    prisma.field.update({
+      where: { id },
+      data,
+      include: { images: true, contacts: true },
+    }),
+
+  deleteById: (id: string) =>
+    prisma.field.delete({
+      where: { id },
+    }),
+
   findById: (id: string) =>
     prisma.field.findUnique({
       where: { id },
       include: {
-        venue: true, // sertakan data venue induk
+        venue: true,
+        images: true,
+        contacts: true,
       },
     }),
 
-  // ----------------------------------------------------------
-  // findByVenueId
-  // Mengambil semua lapangan dalam satu venue tertentu.
-  // Dipakai untuk menampilkan daftar lapangan di halaman venue.
-  // ----------------------------------------------------------
   findByVenueId: (venueId: string) =>
     prisma.field.findMany({
       where: { venueId },
-      orderBy: { name: "asc" }, // urutkan berdasarkan nama lapangan
+      include: {
+        images: true,
+        contacts: true,
+      },
+      orderBy: { name: "asc" },
+    }),
+
+  // Images
+  addImage: (fieldId: string, url: string) =>
+    prisma.fieldImage.create({
+      data: { fieldId, url },
+    }),
+
+  deleteImage: (imageId: string) =>
+    prisma.fieldImage.delete({
+      where: { id: imageId },
+    }),
+
+  // Contacts
+  addContact: (fieldId: string, data: {
+    name: string;
+    email?: string;
+    phone?: string;
+  }) =>
+    prisma.fieldContact.create({
+      data: {
+        fieldId,
+        name: data.name,
+        email: data.email || "",
+        phone: data.phone || "",
+      },
+    }),
+
+  updateContact: (contactId: string, data: {
+    name?: string;
+    email?: string;
+    phone?: string;
+  }) =>
+    prisma.fieldContact.update({
+      where: { id: contactId },
+      data,
+    }),
+
+  deleteContact: (contactId: string) =>
+    prisma.fieldContact.delete({
+      where: { id: contactId },
+    }),
+
+  findContact: (contactId: string) =>
+    prisma.fieldContact.findUnique({
+      where: { id: contactId },
+      include: { field: true },
     }),
 };

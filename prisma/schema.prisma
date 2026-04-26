@@ -32,19 +32,21 @@ enum PaymentStatus {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  phone     String
-  password  String
-  role      Role     @default(CUSTOMER)
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  phone       String
+  password    String
+  role        Role     @default(CUSTOMER)
+  isSuspended Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
   vendorProfile VendorProfile?
   cartItems     CartItem[]
   orders        Order[]
   eventJoins    EventParticipant[]
   events        Event[]
+  ratings       VenueRating[]
 }
 
 model VendorProfile {
@@ -52,34 +54,82 @@ model VendorProfile {
   userId String       @unique
   status VendorStatus @default(PENDING)
 
-  user   User    @relation(fields: [userId], references: [id])
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   venues Venue[]
 }
 
 model Venue {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   name        String
   description String
   city        String
-  address     String @default("")
-  imageUrl    String @default("")
+  address     String  @default("")
+  latitude    Float?
+  longitude   Float?
   vendorId    String
 
-  vendor VendorProfile @relation(fields: [vendorId], references: [id])
-  fields Field[]
+  vendor  VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  fields  Field[]
+  images  VenueImage[]
+  ratings VenueRating[]
+}
+
+model VenueRating {
+  id        String   @id @default(cuid())
+  venueId   String
+  userId    String
+  rating    Int      // 1-5
+  comment   String   @default("")
+  createdAt DateTime @default(now())
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, userId]) // satu user hanya bisa rating satu venue sekali
+}
+
+model VenueImage {
+  id      String @id @default(cuid())
+  venueId String
+  url     String
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
 }
 
 model Field {
-  id       String @id @default(cuid())
-  name     String
-  type     String
-  price    Int
-  venueId  String
-  imageUrl String @default("")
+  id          String @id @default(cuid())
+  name        String
+  type        String
+  floorType   String @default("")
+  length      Float  @default(0)
+  width       Float  @default(0)
+  price       Int
+  description String @default("")
+  venueId     String
 
-  venue      Venue       @relation(fields: [venueId], references: [id])
+  venue      Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
   cartItems  CartItem[]
   orderItems OrderItem[]
+  images     FieldImage[]
+  contacts   FieldContact[]
+}
+
+model FieldImage {
+  id      String @id @default(cuid())
+  fieldId String
+  url     String
+
+  field Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+}
+
+model FieldContact {
+  id      String @id @default(cuid())
+  fieldId String
+  name    String
+  email   String @default("")
+  phone   String @default("")
+
+  field Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)
 }
 
 model CartItem {
@@ -91,8 +141,8 @@ model CartItem {
   endHour   Int
   createdAt DateTime @default(now())
 
-  user  User  @relation(fields: [userId], references: [id])
-  field Field @relation(fields: [fieldId], references: [id])
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  field Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)
 }
 
 model Order {
@@ -106,7 +156,7 @@ model Order {
   notes         String      @default("")
   createdAt     DateTime    @default(now())
 
-  user    User        @relation(fields: [userId], references: [id])
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   items   OrderItem[]
   payment Payment?
 }
@@ -120,8 +170,8 @@ model OrderItem {
   endHour   Int
   price     Int
 
-  order Order @relation(fields: [orderId], references: [id])
-  field Field @relation(fields: [fieldId], references: [id])
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  field Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)
 }
 
 model Payment {
@@ -135,23 +185,34 @@ model Payment {
   paidAt    DateTime?
   createdAt DateTime      @default(now())
 
-  order Order @relation(fields: [orderId], references: [id])
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 model Event {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  location    String
-  date        DateTime
-  startHour   Int
-  endHour     Int
-  ticketPrice Int
-  capacity    Int
-  creatorId   String
-  createdAt   DateTime @default(now())
+  id               String   @id @default(cuid())
+  title            String
+  description      String
+  location         String
+  city             String   @default("")
+  category         String   @default("")
+  imageUrl         String   @default("")
+  date             DateTime
+  startHour        Int
+  endHour          Int
+  ticketPrice      Int
+  capacity         Int
+  creatorId        String
+  createdAt        DateTime @default(now())
 
-  creator      User               @relation(fields: [creatorId], references: [id])
+  additionalInfo   String   @default("")  // Informasi Tambahan
+  termsConditions  String   @default("")  // Syarat dan Ketentuan
+  contactName      String   @default("")  // Narahubung
+  contactEmail     String   @default("")
+  contactPhone     String   @default("")
+  latitude         Float?                 // koordinat peta
+  longitude        Float?
+
+  creator      User               @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   participants EventParticipant[]
 }
 
@@ -160,8 +221,8 @@ model EventParticipant {
   eventId String
   userId  String
 
-  event Event @relation(fields: [eventId], references: [id])
-  user  User  @relation(fields: [userId], references: [id])
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, userId])
 }

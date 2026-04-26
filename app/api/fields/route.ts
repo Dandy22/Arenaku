@@ -6,26 +6,24 @@
 //   - POST : Menambah lapangan baru ke venue milik vendor
 //   - GET  : Melihat lapangan berdasarkan venueId (publik)
 // ============================================================
-
 import { NextResponse } from "next/server";
 import { getUserFromToken } from "@/lib/auth";
 import { fieldService } from "@/lib/services/field.service";
 
 // POST /api/fields
-// Header: Authorization: Bearer <token> (harus VENDOR)
-// Body: { name, type, price, venueId }
-// Response: data lapangan yang baru dibuat
 export async function POST(req: Request) {
   try {
-    // Harus login sebagai VENDOR untuk menambah lapangan
     const user = await getUserFromToken(req);
     const body = await req.json();
 
-    // Service akan cek apakah vendor ini pemilik venue tersebut
     const field = await fieldService.createField(user.userId, user.role, {
       name: body.name,
       type: body.type,
+      floorType: body.floorType,
+      length: body.length,
+      width: body.width,
       price: body.price,
+      description: body.description,
       venueId: body.venueId,
     });
 
@@ -34,10 +32,7 @@ export async function POST(req: Request) {
     if (error.message.includes("token")) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
-    if (
-      error.message.includes("Only vendors") ||
-      error.message.includes("not authorized")
-    ) {
+    if (error.message.includes("Only vendors") || error.message.includes("not authorized") || error.message.includes("not verified")) {
       return NextResponse.json({ error: error.message }, { status: 403 });
     }
     return NextResponse.json({ error: error.message }, { status: 400 });
@@ -45,11 +40,8 @@ export async function POST(req: Request) {
 }
 
 // GET /api/fields?venueId=xxx
-// Publik — tidak perlu login
-// Response: array lapangan dalam venue tertentu
 export async function GET(req: Request) {
   try {
-    // Ambil venueId dari query parameter: /api/fields?venueId=xxx
     const { searchParams } = new URL(req.url);
     const venueId = searchParams.get("venueId");
 

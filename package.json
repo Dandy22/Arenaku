@@ -9,8 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.1.1",
+    "@hookform/resolvers": "^5.2.2",
     "@prisma/adapter-pg": "^7.4.0",
     "@prisma/client": "^7.4.0",
+    "antd": "^6.3.6",
+    "axios": "^1.15.2",
     "bcrypt": "^6.0.0",
     "dotenv": "^17.3.1",
     "jsonwebtoken": "^9.0.3",
@@ -18,7 +22,12 @@
     "pg": "^8.18.0",
     "prisma": "^7.4.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "react-hook-form": "^7.73.1",
+    "react-icons": "^5.6.0",
+    "recharts": "^3.8.1",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

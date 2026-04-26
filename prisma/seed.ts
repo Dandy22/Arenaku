@@ -1,13 +1,5 @@
 // ============================================================
 // prisma/seed.ts
-// ------------------------------------------------------------
-// Script untuk mengisi database dengan data awal (seed data).
-//
-// PENTING: Harus pakai adapter pg agar kompatibel dengan
-// Prisma v7 + @prisma/adapter-pg yang dipakai project ini.
-// Tanpa adapter, akan muncul error PrismaClientInitializationError.
-//
-// Jalankan dengan: npx prisma db seed
 // ============================================================
 
 import { PrismaClient, Role } from "@prisma/client";
@@ -15,93 +7,138 @@ import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcrypt";
 
-// Wajib pakai adapter pg — sama persis seperti di lib/prisma.ts
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log("🌱 Starting database seeding...");
 
-  // Hash semua password sebelum disimpan ke database
-  // JANGAN simpan plain text — selalu hash dengan bcrypt!
   const customerPassword = await bcrypt.hash("123456", 10);
   const vendorPassword = await bcrypt.hash("123456", 10);
   const adminPassword = await bcrypt.hash("admin123", 10);
 
   // ----------------------------------------------------------
-  // Buat user CUSTOMER sebagai demo
-  // upsert = insert jika belum ada, skip jika sudah ada
+  // CUSTOMER
   // ----------------------------------------------------------
   const customer = await prisma.user.upsert({
-    where: { email: "customer@mail.com" },
+    where: { email: "customer@arenaku.com" },
     update: {},
     create: {
-      name: "Customer Demo",
-      email: "customer@mail.com",
+      name: "Budi Santoso",
+      email: "customer@arenaku.com",
       phone: "08123456789",
       password: customerPassword,
       role: Role.CUSTOMER,
     },
   });
-  console.log("✅ Customer created:", customer.email);
-
   // ----------------------------------------------------------
-  // Buat user ADMIN sebagai demo
+  // ADMIN
   // ----------------------------------------------------------
-  const admin = await prisma.user.upsert({
-    where: { email: "admin@mail.com" },
+ const admin = await prisma.user.upsert({
+    where: { email: "admin@arenaku.com" },
     update: {},
     create: {
-      name: "Admin Demo",
-      email: "admin@mail.com",
+      name: "Super Admin",
+      email: "admin@arenaku.com",
       phone: "08100000000",
       password: adminPassword,
       role: Role.ADMIN,
     },
   });
-  console.log("✅ Admin created:", admin.email);
-
   // ----------------------------------------------------------
-  // Buat user VENDOR lengkap dengan VendorProfile, Venue, dan Field
-  // Semua dibuat sekaligus menggunakan nested create Prisma
+  // VENDOR + VendorProfile + Venue + Fields + Images + Contacts
   // ----------------------------------------------------------
   const vendor = await prisma.user.upsert({
-    where: { email: "vendor@mail.com" },
+    where: { email: "vendor@arenaku.com" },
     update: {},
     create: {
-      name: "Vendor Demo",
-      email: "vendor@mail.com",
+      name: "Vendor Jaya",
+      email: "vendor@arenaku.com",
       phone: "08123456780",
       password: vendorPassword,
       role: Role.VENDOR,
-
-      // VendorProfile dibuat otomatis saat role VENDOR
       vendorProfile: {
         create: {
+          status: "VERIFIED", // langsung verified untuk testing
           venues: {
             create: {
               name: "Futsal Arena Jakarta",
-              description: "Lapangan futsal indoor ber-AC dengan rumput sintetis berkualitas tinggi",
+              description: "Lapangan futsal indoor ber-AC dengan rumput sintetis berkualitas tinggi.",
               city: "Jakarta",
+              address: "Jl. Sudirman No. 10, Jakarta Pusat",
+              latitude: -6.2088,
+              longitude: 106.8456,
+              images: {
+                create: [
+                  { url: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=800" },
+                ],
+              },
               fields: {
                 create: [
                   {
                     name: "Lapangan A",
                     type: "FUTSAL",
-                    price: 100000, // Rp 100.000/jam
+                    floorType: "Rumput Sintetis",
+                    length: 40,
+                    width: 20,
+                    price: 100000,
+                    description: "Lapangan futsal indoor ber-AC.",
+                    images: {
+                      create: [
+                        { url: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800" },
+                      ],
+                    },
+                    contacts: {
+                      create: [
+                        {
+                          name: "Pak Budi",
+                          email: "budi@futsalarena.com",
+                          phone: "08111222333",
+                        },
+                      ],
+                    },
                   },
                   {
                     name: "Lapangan B",
                     type: "FUTSAL",
-                    price: 120000, // Rp 120.000/jam
+                    floorType: "Vinyl",
+                    length: 40,
+                    width: 20,
+                    price: 120000,
+                    description: "Lapangan futsal dengan lantai vinyl premium.",
+                    images: {
+                      create: [
+                        { url: "https://images.unsplash.com/photo-1553778263-73a83bab9b0c?w=800" },
+                      ],
+                    },
+                    contacts: {
+                      create: [
+                        {
+                          name: "Pak Budi",
+                          email: "budi@futsalarena.com",
+                          phone: "08111222333",
+                        },
+                      ],
+                    },
                   },
                   {
                     name: "Court Badminton 1",
                     type: "BADMINTON",
-                    price: 75000, // Rp 75.000/jam
+                    floorType: "Kayu",
+                    length: 13,
+                    width: 6,
+                    price: 75000,
+                    description: "Court badminton standar BWF dengan lantai kayu.",
+                    contacts: {
+                      create: [
+                        {
+                          name: "Pak Budi",
+                          email: "budi@futsalarena.com",
+                          phone: "08111222333",
+                        },
+                      ],
+                    },
                   },
                 ],
               },
@@ -113,14 +150,12 @@ async function main() {
     include: {
       vendorProfile: {
         include: {
-          venues: {
-            include: { fields: true },
-          },
+          venues: { include: { fields: true } },
         },
       },
     },
   });
-  console.log("✅ Vendor created:", vendor.email);
+  console.log("✅ Vendor:", vendor.email);
   console.log("   Venues:", vendor.vendorProfile?.venues.length);
   console.log(
     "   Fields:",
@@ -128,8 +163,11 @@ async function main() {
   );
 
   // ----------------------------------------------------------
-  // Buat sample Event
+  // EVENT
   // ----------------------------------------------------------
+  const eventDate = new Date();
+  eventDate.setDate(eventDate.getDate() + 30);
+
   const sampleEvent = await prisma.event.upsert({
     where: { id: "sample-event-001" },
     update: {},
@@ -138,20 +176,30 @@ async function main() {
       title: "Turnamen Futsal Antar Komunitas",
       description: "Turnamen futsal seru untuk semua kalangan. Hadiah total Rp 5.000.000!",
       location: "Futsal Arena Jakarta",
-      date: new Date("2025-08-15"),
+      city: "Jakarta",
+      category: "FUTSAL",
+      imageUrl: "https://images.unsplash.com/photo-1553778263-73a83bab9b0c?w=800",
+      date: eventDate,
       startHour: 8,
       endHour: 20,
       ticketPrice: 50000,
       capacity: 16,
+      additionalInfo: "- Registrasi ulang 1 jam sebelum pertandingan\n- Bawa perlengkapan sendiri\n- Sistem gugur",
+      termsConditions: "- Biaya tidak dapat dikembalikan\n- Keputusan wasit bersifat final\n- Wajib sportivitas",
+      contactName: "Pak Budi",
+      contactEmail: "budi@futsalarena.com",
+      contactPhone: "08111222333",
+      latitude: -6.2088,
+      longitude: 106.8456,
       creatorId: admin.id,
     },
   });
-  console.log("✅ Sample event created:", sampleEvent.title);
+  console.log("✅ Event:", sampleEvent.title);
 
-  console.log("\n🎉 Seeding completed successfully!");
+  console.log("\n🎉 Seeding completed!");
   console.log("\n📋 Test credentials:");
   console.log("   Customer → customer@mail.com / 123456");
-  console.log("   Vendor   → vendor@mail.com   / 123456");
+  console.log("   Vendor   → vendor@mail.com   / 123456  (status: VERIFIED)");
   console.log("   Admin    → admin@mail.com     / admin123");
 }
 

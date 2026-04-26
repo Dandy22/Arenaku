@@ -11,21 +11,12 @@
 // ============================================================
 
 import { cartRepository } from "@/lib/repositories/cart.repository";
-import { bookingRepository } from "@/lib/repositories/booking.repository";
 
 export const cartService = {
-  // ----------------------------------------------------------
-  // getCart
-  // Ambil semua item cart milik user yang sedang login.
-  // ----------------------------------------------------------
   async getCart(userId: string) {
     return cartRepository.findByUserId(userId);
   },
 
-  // ----------------------------------------------------------
-  // addToCart
-  // Tambah lapangan ke cart dengan validasi lengkap.
-  // ----------------------------------------------------------
   async addToCart(
     userId: string,
     userRole: string,
@@ -36,12 +27,10 @@ export const cartService = {
       endHour: number;
     }
   ) {
-    // Rule 1: Hanya CUSTOMER yang bisa pakai cart
     if (userRole !== "CUSTOMER") {
       throw new Error("Only customers can add items to cart");
     }
 
-    // Rule 2: Validasi jam
     if (data.startHour >= data.endHour) {
       throw new Error("Start hour must be earlier than end hour");
     }
@@ -49,7 +38,6 @@ export const cartService = {
       throw new Error("Hour must be between 0 and 24");
     }
 
-    // Rule 3: Tanggal tidak boleh di masa lalu
     const bookingDate = new Date(data.date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -57,7 +45,6 @@ export const cartService = {
       throw new Error("Cannot add past dates to cart");
     }
 
-    // Rule 4: Cek apakah slot ini sudah ada di cart user ini
     const cartConflict = await cartRepository.findConflict(
       userId, data.fieldId, bookingDate, data.startHour, data.endHour
     );
@@ -65,8 +52,7 @@ export const cartService = {
       throw new Error("This time slot is already in your cart");
     }
 
-    // Rule 5: Cek apakah slot ini sudah dibooking orang lain
-    const bookingConflict = await bookingRepository.findConflict(
+    const bookingConflict = await cartRepository.findBookingConflict(
       data.fieldId, bookingDate, data.startHour, data.endHour
     );
     if (bookingConflict) {
@@ -82,21 +68,12 @@ export const cartService = {
     });
   },
 
-  // ----------------------------------------------------------
-  // removeFromCart
-  // Hapus satu item dari cart.
-  // User hanya bisa hapus item miliknya sendiri.
-  // ----------------------------------------------------------
   async removeFromCart(userId: string, cartItemId: string) {
     const item = await cartRepository.findById(cartItemId);
-
     if (!item) throw new Error("Cart item not found");
-
-    // Security: pastikan item ini milik user yang request
     if (item.userId !== userId) {
       throw new Error("You are not authorized to remove this item");
     }
-
     return cartRepository.deleteById(cartItemId);
   },
 };

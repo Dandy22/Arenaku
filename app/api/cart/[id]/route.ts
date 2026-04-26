@@ -15,11 +15,14 @@ import { cartService } from "@/lib/services/cart.service";
 // Response: item yang dihapus
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+
     const user = await getUserFromToken(req);
-    await cartService.removeFromCart(user.userId, params.id);
+    await cartService.removeFromCart(user.userId, id);
+
     return NextResponse.json({ message: "Item removed from cart" });
   } catch (error: any) {
     if (error.message.includes("token")) {
