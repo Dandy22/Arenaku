@@ -4,9 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { HiOutlineShoppingCart, HiOutlineUser } from "react-icons/hi2";
+import {
+  HiOutlineShoppingCart,
+  HiOutlineUser,
+  HiOutlineTrash,
+} from "react-icons/hi2";
 import { useAuthStore } from "@/lib/store/auth.store";
 import api from "@/lib/axios";
+import { Drawer, message } from "antd";
 
 export default function WebLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -14,6 +19,8 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
   const { user, clearAuth, initAuth } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   const [cartCount, setCartCount] = useState(0);
+  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
@@ -26,10 +33,49 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
     if (user.role === "CUSTOMER") {
       api
         .get("/cart")
-        .then((res) => setCartCount(res.data.length))
-        .catch(() => {});
+        .then((res) => {
+          const items = res.data || [];
+          setCartCount(items.length);
+          setCartItems(items);
+        })
+        .catch(() => {
+          setCartCount(0);
+          setCartItems([]);
+        });
     }
   }, [mounted, user]);
+
+  const handleCartClick = () => {
+    if (!user) {
+      message.warning("Silakan login terlebih dahulu");
+      router.push("/login");
+      return;
+    }
+    if (user.role !== "CUSTOMER") {
+      message.warning("Hanya customer yang dapat menggunakan keranjang");
+      return;
+    }
+    setCartDrawerOpen(true);
+  };
+
+  const handleRemoveFromCart = async (id: string) => {
+    try {
+      await api.delete(`/cart/${id}`);
+      message.success("Item dihapus");
+      // Refresh cart
+      const res = await api.get("/cart");
+      const items = res.data || [];
+      setCartCount(items.length);
+      setCartItems(items);
+    } catch {
+      message.error("Gagal menghapus item");
+    }
+  };
+
+  const cartTotal = cartItems.reduce((acc, item) => {
+    const hours = item.endHour - item.startHour;
+    return acc + (item.field?.price || 0) * hours;
+  }, 0);
 
   const handleLogout = () => {
     clearAuth();
@@ -109,8 +155,8 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
               <>
                 {/* Cart - only for CUSTOMER */}
                 {user.role === "CUSTOMER" && (
-                  <Link
-                    href="/cart"
+                  <button
+                    onClick={handleCartClick}
                     className="relative p-2 text-gray-600 hover:text-purple-700 transition">
                     <HiOutlineShoppingCart size={22} />
                     {cartCount > 0 && (
@@ -118,7 +164,7 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                         {cartCount}
                       </span>
                     )}
-                  </Link>
+                  </button>
                 )}
 
                 {/* Avatar + dropdown */}
@@ -147,11 +193,7 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                         </div>
                         {(user.role === "ADMIN" || user.role === "VENDOR") && (
                           <Link
-                            href={
-                              user.role === "ADMIN"
-                                ? "/dashboard/admin"
-                                : "/dashboard/vendor"
-                            }
+                            href={user.role === "ADMIN" ? "/admin" : "/vendor"}
                             className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
                             onClick={() => setDropdownOpen(false)}>
                             Dashboard
@@ -182,6 +224,97 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
 
       {/* Page content */}
       <main className="flex-1">{children}</main>
+
+      {/* Cart Drawer */}
+      <Drawer
+        title={
+          <div className="flex items-center gap-2">
+            <HiOutlineShoppingCart size={20} />
+            <span>Keranjang Saya</span>
+          </div>
+        }
+        placement="right"
+        onClose={() => setCartDrawerOpen(false)}
+        open={cartDrawerOpen}
+        width={400}>
+        {cartItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+            <HiOutlineShoppingCart size={48} className="mb-4 opacity-50" />
+            <p>Keranjang Anda kosong</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {cartItems.map((item) => (
+              <div
+                key={item.id}
+                className="flex gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <div className="w-16 h-16 rounded-lg bg-gray-200 overflow-hidden shrink-0">
+                  {item.field?.imageUrl ? (
+                    <img
+                      src={item.field.imageUrl}
+                      alt={item.field.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      🏟️
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">
+                    {item.field?.name || "Venue"}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(item.date).toLocaleDateString("id-ID", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {item.startHour}:00 - {item.endHour}:00
+                  </p>
+                  <p className="text-sm font-bold text-purple-600 mt-1">
+                    Rp{" "}
+                    {(
+                      item.field?.price *
+                      (item.endHour - item.startHour)
+                    )?.toLocaleString("id-ID")}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleRemoveFromCart(item.id)}
+                  className="self-start p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition">
+                  <HiOutlineTrash size={16} />
+                </button>
+              </div>
+            ))}
+
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm font-semibold text-gray-700">
+                  Total
+                </span>
+                <span className="text-lg font-bold text-purple-700">
+                  Rp {cartTotal.toLocaleString("id-ID")}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setCartDrawerOpen(false);
+                  router.push("/cart");
+                }}
+                className="w-full py-3 rounded-lg font-semibold text-white text-sm transition"
+                style={{
+                  background: "linear-gradient(135deg, #7C3AED, #9333EA)",
+                }}>
+                Lihat Keranjang Lengkap
+              </button>
+            </div>
+          </div>
+        )}
+      </Drawer>
 
       {/* Footer */}
       <footer

@@ -12,6 +12,7 @@ import {
   HiClipboard,
   HiArrowRightOnRectangle,
   HiOutlineChartBar,
+  HiOutlineHome,
 } from "react-icons/hi2";
 import { useAuthStore } from "@/lib/store/auth.store";
 
@@ -200,11 +201,17 @@ export default function DashboardLayout({
           ))}
         </nav>
 
-        {/* Bottom — Logout */}
+        {/* Bottom — Lainnya */}
         <div className="px-4 py-6 border-t border-purple-500/30">
           <p className="text-purple-300 text-xs font-semibold uppercase tracking-wider px-2 mb-2">
             Lainnya
           </p>
+          <Link
+            href="/"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-purple-200 hover:bg-white/10 hover:text-white transition w-full mb-2">
+            <HiOutlineHome size={18} />
+            Lihat Website
+          </Link>
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-purple-200 hover:bg-white/10 hover:text-white transition w-full">

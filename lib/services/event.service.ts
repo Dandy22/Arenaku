@@ -1,18 +1,9 @@
-// ============================================================
-// lib/services/event.service.ts
-// ------------------------------------------------------------
-// TIER 2 — Business Logic Layer: Event Service
-//
-// Logika bisnis untuk manajemen event/turnamen:
-//   - Validasi data event (tanggal, kapasitas, harga)
-//   - Cek kapasitas sebelum user join event
-//   - Cegah user yang sama join dua kali ke event yang sama
-// ============================================================
 import { eventRepository } from "@/lib/repositories/event.repository";
 
 export const eventService = {
   async createEvent(
     creatorId: string,
+    userRole: string,
     data: {
       title: string;
       description: string;
@@ -34,26 +25,41 @@ export const eventService = {
       longitude?: number;
     }
   ) {
+    // Hanya vendor yang boleh membuat event
+    if (userRole !== "VENDOR") {
+      throw new Error("Only vendors can create events");
+    }
+
+    // Validasi field wajib
     if (!data.title || !data.location || !data.date) {
       throw new Error("Title, location, and date are required");
     }
+
+    // Validasi kapasitas
     if (data.capacity <= 0) {
       throw new Error("Capacity must be greater than 0");
     }
+
+    // Validasi harga tiket
     if (data.ticketPrice < 0) {
       throw new Error("Ticket price cannot be negative");
     }
+
+    // Validasi jam event
     if (data.startHour >= data.endHour) {
       throw new Error("Start hour must be earlier than end hour");
     }
 
+    // Validasi tanggal event
     const eventDate = new Date(data.date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
     if (eventDate < today) {
       throw new Error("Event date cannot be in the past");
     }
 
+    // Simpan ke database
     return eventRepository.create({
       title: data.title,
       description: data.description,
@@ -78,24 +84,41 @@ export const eventService = {
   },
 
   async joinEvent(userId: string, eventId: string) {
+    // Cari event
     const event = await eventRepository.findById(eventId);
-    if (!event) throw new Error("Event not found");
 
+    if (!event) {
+      throw new Error("Event not found");
+    }
+
+    // Cek kapasitas penuh
     if (event.participants.length >= event.capacity) {
       throw new Error(
         `Event is full (${event.participants.length}/${event.capacity} participants)`
       );
     }
 
-    const alreadyJoined = await eventRepository.findParticipant(eventId, userId);
-    if (alreadyJoined) throw new Error("You have already joined this event");
+    // Cegah join dua kali
+    const alreadyJoined = await eventRepository.findParticipant(
+      eventId,
+      userId
+    );
 
+    if (alreadyJoined) {
+      throw new Error("You have already joined this event");
+    }
+
+    // Tambahkan participant
     return eventRepository.addParticipant(eventId, userId);
   },
 
   async getEventById(id: string) {
     const event = await eventRepository.findById(id);
-    if (!event) throw new Error("Event not found");
+
+    if (!event) {
+      throw new Error("Event not found");
+    }
+
     return event;
   },
 

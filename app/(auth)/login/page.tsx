@@ -6,6 +6,7 @@ import Link from "next/link";
 import api from "@/lib/axios";
 import { HiEye, HiEyeSlash } from "react-icons/hi2";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { message } from "antd";
 
 import Image from "next/image";
 export default function LoginPage() {
@@ -43,7 +44,9 @@ export default function LoginPage() {
       const errorMsg =
         err.response?.data?.error || "Login gagal. Periksa email dan password.";
 
-      setError(errorMsg);
+      // Tampilkan error dengan message API (tidak merefresh halaman)
+      message.error(errorMsg);
+      setError(""); // Clear inline error since we're using message notification
     } finally {
       setLoading(false);
     }

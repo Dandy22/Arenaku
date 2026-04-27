@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     const user = await getUserFromToken(req);
     const body = await req.json();
 
-    const event = await eventService.createEvent(user.userId, {
+    const event = await eventService.createEvent(user.userId, user.role, {
       title: body.title,
       description: body.description,
       location: body.location,
