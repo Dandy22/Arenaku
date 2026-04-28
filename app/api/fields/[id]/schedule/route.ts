@@ -62,7 +62,7 @@ export async function GET(
           const isBooked = bookedHours.has(h);
           const isPast =
             currentDate.toDateString() === now.toDateString()
-              ? h < now.getHours()
+              ? h <= now.getHours()
               : currentDate < new Date(now.toDateString());
 
           slots.push({
@@ -116,7 +116,7 @@ export async function GET(
       const isBooked = bookedHours.has(h);
       const isPast =
         date.toDateString() === now.toDateString()
-          ? h < now.getHours()
+          ? h <= now.getHours()
           : date < new Date(now.toDateString());
 
       slots.push({

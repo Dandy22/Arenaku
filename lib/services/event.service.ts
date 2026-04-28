@@ -9,6 +9,7 @@ export const eventService = {
       description: string;
       location: string;
       city?: string;
+      district?: string;
       category?: string;
       imageUrl?: string;
       date: string;
@@ -64,7 +65,8 @@ export const eventService = {
       title: data.title,
       description: data.description,
       location: data.location,
-      city: data.city || "",
+      city: data.city || "Kota Bekasi",
+      district: data.district || "",
       category: data.category || "",
       imageUrl: data.imageUrl || "",
       date: eventDate,
@@ -91,6 +93,11 @@ export const eventService = {
       throw new Error("Event not found");
     }
 
+    // Cek event sudah dibatalkan atau belum
+    if (event.status === "CANCELLED") {
+      throw new Error("Event has been cancelled");
+    }
+
     // Cek kapasitas penuh
     if (event.participants.length >= event.capacity) {
       throw new Error(
@@ -112,6 +119,21 @@ export const eventService = {
     return eventRepository.addParticipant(eventId, userId);
   },
 
+  async cancelEvent(eventId: string, userId: string, userRole: string) {
+    const event = await eventRepository.findById(eventId);
+
+    if (!event) {
+      throw new Error("Event not found");
+    }
+
+    // Hanya vendor (creator) atau admin yang boleh membatalkan
+    if (userRole !== "ADMIN" && event.creatorId !== userId) {
+      throw new Error("You are not authorized to cancel this event");
+    }
+
+    return eventRepository.updateStatus(eventId, "CANCELLED");
+  },
+
   async getEventById(id: string) {
     const event = await eventRepository.findById(id);
 
@@ -125,9 +147,18 @@ export const eventService = {
   async getAllEvents(params: {
     category?: string;
     city?: string;
+    district?: string;
     page?: number;
     limit?: number;
   }) {
     return eventRepository.findAll(params);
+  },
+
+  async getVendorEvents(vendorId: string) {
+    return eventRepository.findByVendor(vendorId);
+  },
+
+  async getAdminEvents() {
+    return eventRepository.findAllAdmin();
   },
 };

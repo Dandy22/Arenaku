@@ -16,6 +16,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
 import api from "@/lib/axios";
 
@@ -252,6 +253,7 @@ export default function AdminDashboardPage() {
             <AreaChart
               data={transactions}
               margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <Legend verticalAlign="top" height={36} />
               <defs>
                 <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#7C3AED" stopOpacity={0.3} />
@@ -278,8 +280,11 @@ export default function AdminDashboardPage() {
                   borderRadius: "8px",
                   boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                 }}
-                formatter={(value) => {
+                formatter={(value, name) => {
                   const numValue = typeof value === "number" ? value : 0;
+                  if (name === "Jumlah Transaksi") {
+                    return [numValue, "Jumlah Transaksi"];
+                  }
                   return [
                     `Rp ${numValue.toLocaleString("id-ID")}`,
                     "Pendapatan",
@@ -295,6 +300,15 @@ export default function AdminDashboardPage() {
                 fillOpacity={1}
                 fill="url(#colorAmount)"
                 name="Pendapatan"
+              />
+              <Area
+                type="monotone"
+                dataKey="count"
+                stroke="#10B981"
+                strokeWidth={2}
+                fillOpacity={0.1}
+                fill="#10B981"
+                name="Jumlah Transaksi"
               />
             </AreaChart>
           </ResponsiveContainer>

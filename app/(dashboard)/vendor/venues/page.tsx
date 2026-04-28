@@ -8,6 +8,7 @@ import {
   Modal,
   Form,
   Input,
+  Select,
   message,
   Popconfirm,
 } from "antd";
@@ -20,11 +21,13 @@ import {
 } from "react-icons/hi2";
 import { useRouter } from "next/navigation";
 import api from "@/lib/axios";
+import { BEKASI_DISTRICTS } from "@/lib/constants";
 
 interface Venue {
   id: string;
   name: string;
   city: string;
+  district: string;
   address: string;
   fields: { id: string }[];
   images: { url: string }[];
@@ -128,6 +131,11 @@ export default function VendorVenuesPage() {
       key: "city",
     },
     {
+      title: "Kecamatan",
+      dataIndex: "district",
+      key: "district",
+    },
+    {
       title: "Lapangan",
       key: "fields",
       render: (_, r) => (
@@ -222,11 +230,20 @@ export default function VendorVenuesPage() {
             rules={[{ required: true, message: "Deskripsi wajib diisi" }]}>
             <Input.TextArea rows={3} placeholder="Deskripsi venue..." />
           </Form.Item>
+          <Form.Item name="city" label="Kota" initialValue="Kota Bekasi">
+            <Input placeholder="Kota Bekasi" disabled />
+          </Form.Item>
           <Form.Item
-            name="city"
-            label="Kota"
-            rules={[{ required: true, message: "Kota wajib diisi" }]}>
-            <Input placeholder="Contoh: Jakarta Selatan" />
+            name="district"
+            label="Kecamatan"
+            rules={[{ required: true, message: "Kecamatan wajib diisi" }]}>
+            <Select placeholder="Pilih Kecamatan">
+              {BEKASI_DISTRICTS.filter((d) => d.value).map((d) => (
+                <Select.Option key={d.value} value={d.value}>
+                  {d.label}
+                </Select.Option>
+              ))}
+            </Select>
           </Form.Item>
           <Form.Item name="address" label="Alamat Lengkap">
             <Input placeholder="Contoh: Jl. Sudirman No. 1" />

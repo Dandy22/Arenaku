@@ -9,6 +9,7 @@ export const venueService = {
       name: string;
       description: string;
       city: string;
+      district?: string;
       address?: string;
       latitude?: number;
       longitude?: number;
@@ -29,6 +30,7 @@ export const venueService = {
       name: data.name,
       description: data.description,
       city: data.city,
+      district: data.district || "",
       address: data.address || "",
       latitude: data.latitude,
       longitude: data.longitude,
@@ -104,6 +106,7 @@ export const venueService = {
   async getAllVenues(params: {
     name?: string;
     city?: string;
+    district?: string;
     type?: string;
     page?: number;
     limit?: number;

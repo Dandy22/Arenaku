@@ -1,32 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { message, Modal, Form, Input } from "antd";
+import { useState } from "react";
 import { HiOutlineTrash } from "react-icons/hi2";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { useCartStore } from "@/lib/store/cart.store";
 import api from "@/lib/axios";
 
 export default function CartPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-
-  const [cart, setCart] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    items: cart,
+    loading,
+    fetchCart,
+    removeItem,
+    clearCart,
+  } = useCartStore();
   const [checkoutModal, setCheckoutModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
-
-  const fetchCart = async () => {
-    try {
-      const res = await api.get("/cart");
-      setCart(res.data);
-    } catch {
-      message.error("Gagal memuat cart");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (!user) {
@@ -38,9 +33,8 @@ export default function CartPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      await api.delete(`/cart/${id}`);
+      await removeItem(id);
       message.success("Item dihapus");
-      fetchCart();
     } catch {
       message.error("Gagal menghapus item");
     }
@@ -57,6 +51,7 @@ export default function CartPage() {
         notes: values.notes || "",
       });
       message.success("Order berhasil dibuat!");
+      clearCart(); // ← tambahkan ini
       setCheckoutModal(false);
       router.push(`/payment/${res.data.id}`);
     } catch (err: any) {
@@ -69,8 +64,14 @@ export default function CartPage() {
   };
 
   const total = cart.reduce((acc, item) => {
-    const hours = item.endHour - item.startHour;
-    return acc + item.field?.price * hours;
+    if (item.fieldId) {
+      const hours = item.endHour - item.startHour;
+      return acc + (item.field?.price || 0) * hours;
+    }
+    if (item.eventId) {
+      return acc + (item.event?.ticketPrice || 0) * (item.quantity || 1);
+    }
+    return acc;
   }, 0);
 
   if (loading)
@@ -105,63 +106,127 @@ export default function CartPage() {
         <>
           <div className="flex flex-col gap-4 mb-6">
             {cart.map((item) => {
-              const hours = item.endHour - item.startHour;
-              const subtotal = item.field?.price * hours;
-              return (
-                <div
-                  key={item.id}
-                  className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-gray-800">Detail Pesanan</h3>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="text-red-500 hover:text-red-600 flex items-center gap-1 text-sm">
-                      <HiOutlineTrash size={16} /> Delete
-                    </button>
+              if (item.fieldId) {
+                const hours = item.endHour - item.startHour;
+                const subtotal = (item.field?.price || 0) * hours;
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-bold text-gray-800">
+                        Booking Lapangan
+                      </h3>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="text-red-500 hover:text-red-600 flex items-center gap-1 text-sm">
+                        <HiOutlineTrash size={16} /> Delete
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-xs text-gray-400">Nama Venue</p>
+                        <p className="font-semibold text-gray-800">
+                          {item.field?.venue?.name || "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Tanggal</p>
+                        <p className="font-semibold text-gray-800">
+                          {new Date(item.date).toLocaleDateString("id-ID", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Nama Lapangan</p>
+                        <p className="font-semibold text-gray-800">
+                          {item.field?.name}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Subtotal</p>
+                        <p className="font-semibold text-gray-800">
+                          Rp. {subtotal?.toLocaleString("id-ID")}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Jam</p>
+                        <p className="font-semibold text-gray-800">
+                          {String(item.startHour).padStart(2, "0")}:00 -{" "}
+                          {String(item.endHour).padStart(2, "0")}:00
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-xs text-gray-400">Nama Venue</p>
-                      <p className="font-semibold text-gray-800">
-                        {item.field?.venue?.name || "-"}
-                      </p>
+                );
+              }
+
+              if (item.eventId) {
+                const subtotal =
+                  (item.event?.ticketPrice || 0) * (item.quantity || 1);
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-bold text-gray-800">Tiket Event</h3>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="text-red-500 hover:text-red-600 flex items-center gap-1 text-sm">
+                        <HiOutlineTrash size={16} /> Delete
+                      </button>
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Tanggal</p>
-                      <p className="font-semibold text-gray-800">
-                        {new Date(item.date).toLocaleDateString("id-ID", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Nama Lapangan</p>
-                      <p className="font-semibold text-gray-800">
-                        {item.field?.name}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Subtotal</p>
-                      <p className="font-semibold text-gray-800">
-                        Rp. {subtotal?.toLocaleString("id-ID")}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Jam</p>
-                      <p className="font-semibold text-gray-800">
-                        {String(item.startHour).padStart(2, "0")}:00 -{" "}
-                        {String(item.endHour).padStart(2, "0")}:00
-                      </p>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-xs text-gray-400">Nama Event</p>
+                        <p className="font-semibold text-gray-800">
+                          {item.event?.title || "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Tanggal Event</p>
+                        <p className="font-semibold text-gray-800">
+                          {new Date(item.event?.date).toLocaleDateString(
+                            "id-ID",
+                            {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            },
+                          )}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Jumlah Tiket</p>
+                        <p className="font-semibold text-gray-800">
+                          {item.quantity} Tiket
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Subtotal</p>
+                        <p className="font-semibold text-gray-800">
+                          Rp. {subtotal?.toLocaleString("id-ID")}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Waktu</p>
+                        <p className="font-semibold text-gray-800">
+                          {String(item.startHour).padStart(2, "0")}:00 -{" "}
+                          {String(item.endHour).padStart(2, "0")}:00
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
+                );
+              }
+
+              return null;
             })}
           </div>
 
-          {/* Total + Button */}
           <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
             <div className="flex justify-between items-center">
               <span className="font-semibold text-gray-800">Total</span>
@@ -173,7 +238,6 @@ export default function CartPage() {
         </>
       )}
 
-      {/* Sticky bottom */}
       {cart.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 z-50">
           <div className="max-w-3xl mx-auto">
@@ -195,7 +259,6 @@ export default function CartPage() {
         </div>
       )}
 
-      {/* Checkout Modal */}
       <Modal
         title="Detail Pemesanan"
         open={checkoutModal}

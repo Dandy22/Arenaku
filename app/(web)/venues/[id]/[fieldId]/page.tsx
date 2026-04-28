@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { message } from "antd";
+import { message, Modal } from "antd";
 import { HiArrowLeft, HiOutlineMapPin } from "react-icons/hi2";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { useCartStore } from "@/lib/store/cart.store";
 import api from "@/lib/axios";
 
 interface Slot {
@@ -22,10 +23,18 @@ interface DaySchedule {
   slots: Slot[];
 }
 
+interface SelectedSlot {
+  date: string;
+  startHour: number;
+  endHour: number;
+  price: number;
+}
+
 export default function FieldDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuthStore();
+  const { fetchCart } = useCartStore();
 
   const venueId = params.id as string;
   const fieldId = params.fieldId as string;
@@ -35,10 +44,9 @@ export default function FieldDetailPage() {
   const [schedule, setSchedule] = useState<DaySchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"jadwal" | "gallery">("jadwal");
-  const [selectedSlots, setSelectedSlots] = useState<
-    { date: string; startHour: number; endHour: number; price: number }[]
-  >([]);
+  const [selectedSlots, setSelectedSlots] = useState<SelectedSlot[]>([]);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(false);
 
   const startDate = new Date().toISOString().split("T")[0];
 
@@ -59,14 +67,14 @@ export default function FieldDetailPage() {
 
   const toggleSlot = (date: string, slot: Slot) => {
     if (slot.status !== "AVAILABLE") return;
-    const key = `${date}-${slot.startHour}`;
     const exists = selectedSlots.find(
-      (s) => s.date === date && s.startHour === slot.startHour,
+      (s: SelectedSlot) => s.date === date && s.startHour === slot.startHour,
     );
     if (exists) {
       setSelectedSlots(
         selectedSlots.filter(
-          (s) => !(s.date === date && s.startHour === slot.startHour),
+          (s: SelectedSlot) =>
+            !(s.date === date && s.startHour === slot.startHour),
         ),
       );
     } else {
@@ -83,7 +91,9 @@ export default function FieldDetailPage() {
   };
 
   const isSelected = (date: string, startHour: number) =>
-    selectedSlots.some((s) => s.date === date && s.startHour === startHour);
+    selectedSlots.some(
+      (s: SelectedSlot) => s.date === date && s.startHour === startHour,
+    );
 
   const handleAddToCart = async () => {
     if (!user) {
@@ -95,11 +105,15 @@ export default function FieldDetailPage() {
       message.warning("Pilih minimal 1 slot waktu");
       return;
     }
+    setConfirmModal(true);
+  };
 
+  const confirmAddToCart = async () => {
+    setConfirmModal(false);
     setAddingToCart(true);
     try {
       await Promise.all(
-        selectedSlots.map((slot) =>
+        selectedSlots.map((slot: SelectedSlot) =>
           api.post("/cart", {
             fieldId,
             date: slot.date,
@@ -108,6 +122,7 @@ export default function FieldDetailPage() {
           }),
         ),
       );
+      await fetchCart();
       message.success(
         `${selectedSlots.length} slot berhasil ditambahkan ke cart`,
       );
@@ -129,7 +144,10 @@ export default function FieldDetailPage() {
 
   if (!field) return null;
 
-  const totalPrice = selectedSlots.reduce((a, s) => a + s.price, 0);
+  const totalPrice = selectedSlots.reduce(
+    (a: number, s: SelectedSlot) => a + s.price,
+    0,
+  );
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-6 pb-28">
@@ -228,14 +246,13 @@ export default function FieldDetailPage() {
         ))}
       </div>
 
+      {/* Tab Jadwal */}
       {activeTab === "jadwal" && (
         <div>
           <p className="text-sm text-gray-600 mb-4">Pilih Lapangan:</p>
           <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold text-gray-800 mb-6">
             {field.name}
           </div>
-
-          {/* Weekly schedule */}
           <div className="overflow-x-auto">
             <div className="flex gap-2 min-w-max mb-4">
               {schedule.map((day) => {
@@ -263,7 +280,6 @@ export default function FieldDetailPage() {
                 );
               })}
             </div>
-
             <div className="flex gap-2 min-w-max">
               {schedule.map((day) => (
                 <div
@@ -286,12 +302,20 @@ export default function FieldDetailPage() {
                                 : "bg-white border border-gray-200 text-gray-700 hover:border-purple-300"
                         }`}>
                         <p
-                          className={`font-semibold ${selected ? "text-purple-700" : slot.status === "BOOKED" ? "text-red-500" : ""}`}>
+                          className={`font-semibold ${
+                            selected
+                              ? "text-purple-700"
+                              : slot.status === "BOOKED"
+                                ? "text-red-500"
+                                : ""
+                          }`}>
                           {slot.label.split(" - ")[0]} -{" "}
                           {slot.label.split(" - ")[1]}
                         </p>
                         <p
-                          className={`text-xs mt-0.5 ${selected ? "text-purple-600" : "text-gray-500"}`}>
+                          className={`text-xs mt-0.5 ${
+                            selected ? "text-purple-600" : "text-gray-500"
+                          }`}>
                           Rp. {slot.price?.toLocaleString("id-ID")}
                         </p>
                         <p
@@ -320,6 +344,7 @@ export default function FieldDetailPage() {
         </div>
       )}
 
+      {/* Tab Gallery */}
       {activeTab === "gallery" && (
         <div className="grid grid-cols-2 gap-4">
           {field.images?.map((img: any) => (
@@ -342,7 +367,8 @@ export default function FieldDetailPage() {
       )}
 
       {/* Location */}
-      {venue?.latitude && venue?.longitude && (
+      {/* Location */}
+      {venue?.latitude && venue?.longitude ? (
         <div className="mt-10">
           <h2 className="text-xl font-bold text-gray-900 mb-3">Lokasi Venue</h2>
 
@@ -373,8 +399,7 @@ export default function FieldDetailPage() {
             />
           </div>
         </div>
-      )}
-
+      ) : null}
       {/* Sticky bottom bar */}
       {selectedSlots.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 px-6 py-4">
@@ -399,6 +424,41 @@ export default function FieldDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <Modal
+        title="Konfirmasi Pemesanan"
+        open={confirmModal}
+        onOk={confirmAddToCart}
+        onCancel={() => setConfirmModal(false)}
+        okText="Ya, Lanjutkan"
+        cancelText="Batal"
+        okButtonProps={{
+          style: { backgroundColor: "#7C3AED", borderColor: "#7C3AED" },
+        }}>
+        <p className="text-gray-600 mb-4">
+          Anda akan memesan <strong>{selectedSlots.length} slot</strong> dengan
+          total:
+        </p>
+        <div className="bg-gray-50 p-4 rounded-lg mb-4">
+          <p className="text-2xl font-bold text-purple-700">
+            Rp. {totalPrice.toLocaleString("id-ID")}
+          </p>
+        </div>
+        <ul className="text-sm text-gray-600 space-y-1">
+          {selectedSlots.slice(0, 3).map((slot: SelectedSlot, i: number) => (
+            <li key={i}>
+              • {slot.date} | {String(slot.startHour).padStart(2, "0")}:00 -{" "}
+              {String(slot.endHour).padStart(2, "0")}:00
+            </li>
+          ))}
+          {selectedSlots.length > 3 && (
+            <li className="text-gray-400">
+              ...dan {selectedSlots.length - 3} slot lainnya
+            </li>
+          )}
+        </ul>
+      </Modal>
     </div>
   );
 }

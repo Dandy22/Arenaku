@@ -9,23 +9,13 @@ import {
   HiOutlineMagnifyingGlass,
 } from "react-icons/hi2";
 import api from "@/lib/axios";
-
-const SPORT_CATEGORIES = [
-  { label: "Semua", value: "", icon: "🏅" },
-  { label: "Mini Soccer", value: "MINI_SOCCER", icon: "⚽" },
-  { label: "Sepak Bola", value: "FUTSAL", icon: "🥅" },
-  { label: "Bulu Tangkis", value: "BADMINTON", icon: "🏸" },
-  { label: "Basket", value: "BASKETBALL", icon: "🏀" },
-  { label: "Tenis", value: "TENNIS", icon: "🎾" },
-  { label: "Bola Voli", value: "VOLLEYBALL", icon: "🏐" },
-  { label: "Padel", value: "PADEL", icon: "🎾" },
-];
+import { BEKASI_DISTRICTS, EVENT_CATEGORIES } from "@/lib/constants";
 
 export default function HomePage() {
   const router = useRouter();
   const [venues, setVenues] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
-  const [searchCity, setSearchCity] = useState("");
+  const [searchDistrict, setSearchDistrict] = useState("");
   const [searchType, setSearchType] = useState("");
   const [searchDate, setSearchDate] = useState(
     new Date().toISOString().split("T")[0],
@@ -44,7 +34,7 @@ export default function HomePage() {
 
   const handleSearch = () => {
     const params = new URLSearchParams();
-    if (searchCity) params.set("city", searchCity);
+    if (searchDistrict) params.set("district", searchDistrict);
     if (searchType) params.set("type", searchType);
     if (searchDate) params.set("date", searchDate);
     router.push(`/venues?${params.toString()}`);
@@ -113,12 +103,17 @@ export default function HomePage() {
                     size={18}
                     className="text-purple-500 shrink-0"
                   />
-                  <input
-                    placeholder="Pilih Kota"
-                    value={searchCity}
-                    onChange={(e) => setSearchCity(e.target.value)}
-                    className="flex-1 text-sm text-gray-700 placeholder-gray-400 outline-none bg-transparent"
-                  />
+                  <select
+                    value={searchDistrict}
+                    onChange={(e) => setSearchDistrict(e.target.value)}
+                    className="flex-1 text-sm text-gray-700 outline-none bg-transparent">
+                    <option value="">Pilih Kecamatan</option>
+                    {BEKASI_DISTRICTS.slice(1).map((d) => (
+                      <option key={d.value} value={d.value}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="flex-1 bg-white rounded-xl px-4 py-2.5 flex items-center gap-2">
                   <span className="text-purple-500 text-lg shrink-0">⚽</span>
@@ -127,7 +122,7 @@ export default function HomePage() {
                     onChange={(e) => setSearchType(e.target.value)}
                     className="flex-1 text-sm text-gray-700 outline-none bg-transparent">
                     <option value="">Pilih Olahraga</option>
-                    {SPORT_CATEGORIES.slice(1).map((s) => (
+                    {EVENT_CATEGORIES.slice(1).map((s) => (
                       <option key={s.value} value={s.value}>
                         {s.label}
                       </option>
@@ -241,7 +236,7 @@ export default function HomePage() {
             Aktivitas Komunitas
           </h2>
           <div className="flex gap-4 overflow-x-auto pb-2">
-            {SPORT_CATEGORIES.map((cat) => (
+            {EVENT_CATEGORIES.map((cat) => (
               <Link
                 key={cat.value}
                 href={`/activity?category=${cat.value}`}

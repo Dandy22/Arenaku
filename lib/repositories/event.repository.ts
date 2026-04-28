@@ -15,6 +15,7 @@ export const eventRepository = {
     description: string;
     location: string;
     city: string;
+    district: string;
     category: string;
     imageUrl: string;
     date: Date;
@@ -37,6 +38,7 @@ export const eventRepository = {
         description: data.description,
         location: data.location,
         city: data.city,
+        district: data.district,
         category: data.category,
         imageUrl: data.imageUrl,
         date: data.date,
@@ -71,6 +73,7 @@ export const eventRepository = {
   findAll: async (params: {
     category?: string;
     city?: string;
+    district?: string;
     page?: number;
     limit?: number;
   }) => {
@@ -84,6 +87,9 @@ export const eventRepository = {
     }
     if (params.city) {
       where.city = { contains: params.city, mode: "insensitive" };
+    }
+    if (params.district) {
+      where.district = { contains: params.district, mode: "insensitive" };
     }
 
     const [data, total] = await Promise.all([
@@ -110,6 +116,45 @@ export const eventRepository = {
       },
     };
   },
+
+  findByVendor: async (vendorId: string) => {
+    const vendorProfile = await prisma.vendorProfile.findFirst({
+      where: { userId: vendorId },
+    });
+
+    if (!vendorProfile) {
+      return [];
+    }
+
+    return prisma.event.findMany({
+      where: { creatorId: vendorId },
+      include: {
+        participants: true,
+        creator: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  },
+
+  findAllAdmin: async () => {
+    return prisma.event.findMany({
+      include: {
+        participants: true,
+        creator: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  },
+
+  updateStatus: (id: string, status: "ACTIVE" | "CANCELLED" | "COMPLETED") =>
+    prisma.event.update({
+      where: { id },
+      data: { status },
+      include: {
+        participants: true,
+        creator: { select: { id: true, name: true, email: true } },
+      },
+    }),
 
   findParticipant: (eventId: string, userId: string) =>
     prisma.eventParticipant.findFirst({

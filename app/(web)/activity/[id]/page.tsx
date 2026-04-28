@@ -77,18 +77,18 @@ export default function EventDetailPage() {
     setJoining(true);
 
     try {
-      await api.post("/events/join", {
+      // Add to cart instead of directly joining
+      await api.post("/cart", {
         eventId,
+        quantity: 1,
       });
 
-      message.success("Berhasil bergabung ke event!");
-      router.refresh();
-
-      // refresh data event
-      const res = await api.get(`/events/${eventId}`);
-      setEvent(res.data);
+      message.success("Tiket ditambahkan ke keranjang! Silakan checkout.");
+      router.push("/cart");
     } catch (err: any) {
-      message.error(err.response?.data?.error || "Gagal bergabung ke event");
+      message.error(
+        err.response?.data?.error || "Gagal menambahkan ke keranjang",
+      );
     } finally {
       setJoining(false);
     }

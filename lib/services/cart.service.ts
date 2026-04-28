@@ -76,4 +76,70 @@ export const cartService = {
     }
     return cartRepository.deleteById(cartItemId);
   },
+
+  // Add event ticket to cart
+  async addEventToCart(
+    userId: string,
+    userRole: string,
+    data: {
+      eventId: string;
+      quantity: number;
+    }
+  ) {
+    if (userRole !== "CUSTOMER") {
+      throw new Error("Only customers can buy event tickets");
+    }
+
+    // Check if user already has a ticket for this event (in cart or already bought)
+    const cartConflict = await cartRepository.findEventConflict(userId, data.eventId);
+    if (cartConflict) {
+      throw new Error("You already have a ticket for this event in your cart");
+    }
+
+    // Get event details to validate
+    const { prisma } = await import("@/lib/prisma");
+    const event = await prisma.event.findUnique({
+      where: { id: data.eventId },
+    });
+
+    if (!event) {
+      throw new Error("Event not found");
+    }
+
+    if (event.status === "CANCELLED") {
+      throw new Error("Cannot buy ticket for cancelled event");
+    }
+
+    if (event.status === "COMPLETED") {
+      throw new Error("Event has already ended");
+    }
+
+    // Check capacity
+    const participantCount = await prisma.eventParticipant.count({
+      where: { eventId: data.eventId },
+    });
+
+    if (participantCount >= event.capacity) {
+      throw new Error("Event is full");
+    }
+
+    // Check if user already has a confirmed ticket
+    const existingTicket = await prisma.eventTicket.findUnique({
+      where: { eventId_userId: { eventId: data.eventId, userId } },
+    });
+
+    if (existingTicket && existingTicket.status === "CONFIRMED") {
+      throw new Error("You already have a confirmed ticket for this event");
+    }
+
+    // Add to cart - use event date as the booking date
+    return cartRepository.createEventTicket({
+      userId,
+      eventId: data.eventId,
+      date: event.date, // Use event date
+      startHour: event.startHour,
+      endHour: event.endHour,
+      quantity: data.quantity,
+    });
+  },
 };

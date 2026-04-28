@@ -1,16 +1,37 @@
 // ============================================================
-// app/api/events/route.ts
+// app/api/vendor/events/route.ts
 // ------------------------------------------------------------
-// TIER 1 — Presentation Layer: Event Endpoints
+// TIER 1 — Presentation Layer: Vendor Event Management
 //
-//   - POST : Membuat event baru (user harus login)
-//   - GET  : Melihat semua event (publik, tidak perlu login)
+//   - GET  : Get vendor's events
+//   - POST : Create new event (vendor only)
 // ============================================================
 import { NextResponse } from "next/server";
 import { getUserFromToken } from "@/lib/auth";
 import { eventService } from "@/lib/services/event.service";
 
-// POST /api/events
+// GET /api/vendor/events
+// Header: Authorization: Bearer <token>
+// Response: Array of vendor's events
+export async function GET(req: Request) {
+  try {
+    const user = await getUserFromToken(req);
+
+    if (user.role !== "VENDOR") {
+      return NextResponse.json({ error: "Only vendors can access this" }, { status: 403 });
+    }
+
+    const events = await eventService.getVendorEvents(user.userId);
+    return NextResponse.json(events);
+  } catch (error: any) {
+    if (error.message.includes("token")) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// POST /api/vendor/events
 // Header: Authorization: Bearer <token>
 // Body: { title, description, location, city?, district?, category?, imageUrl?,
 //         date, startHour, endHour, ticketPrice, capacity,
@@ -50,25 +71,5 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
     return NextResponse.json({ error: error.message }, { status: 400 });
-  }
-}
-
-// GET /api/events?category=FUTSAL&district=Bekasi%20Utara&page=1&limit=8
-// Publik — tidak butuh autentikasi
-export async function GET(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-
-    const result = await eventService.getAllEvents({
-      category: searchParams.get("category") || undefined,
-      city: searchParams.get("city") || undefined,
-      district: searchParams.get("district") || undefined,
-      page: searchParams.get("page") ? parseInt(searchParams.get("page")!) : 1,
-      limit: searchParams.get("limit") ? parseInt(searchParams.get("limit")!) : 8,
-    });
-
-    return NextResponse.json(result);
-  } catch (error: any) {
-    return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
   }
 }

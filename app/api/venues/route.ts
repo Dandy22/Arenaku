@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   }
 }
 
-// GET /api/venues?name=arena&city=jakarta&type=futsal&page=1&limit=8
+// GET /api/venues?name=arena&district=bekasi&type=futsal&page=1&limit=8
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -38,6 +38,7 @@ export async function GET(req: Request) {
     const result = await venueService.getAllVenues({
       name: searchParams.get("name") || undefined,
       city: searchParams.get("city") || undefined,
+      district: searchParams.get("district") || undefined,
       type: searchParams.get("type") || undefined,
       page: searchParams.get("page") ? parseInt(searchParams.get("page")!) : 1,
       limit: searchParams.get("limit") ? parseInt(searchParams.get("limit")!) : 8,

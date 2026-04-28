@@ -74,6 +74,11 @@ export const orderRepository = {
             field: { include: { venue: true } },
           },
         },
+        eventTickets: {
+          include: {
+            event: true,
+          },
+        },
         payment: true,
       },
     }),
@@ -96,5 +101,111 @@ export const orderRepository = {
     prisma.order.update({
       where: { id },
       data: { status },
+    }),
+
+  // Create order with event tickets (no field items)
+  createWithEventTickets: (data: {
+    userId: string;
+    totalAmount: number;
+    customerName: string;
+    customerPhone: string;
+    customerEmail: string;
+    notes: string;
+    eventTickets: {
+      eventId: string;
+      quantity: number;
+      price: number;
+    }[];
+  }) =>
+    prisma.order.create({
+      data: {
+        userId: data.userId,
+        totalAmount: data.totalAmount,
+        customerName: data.customerName,
+        customerPhone: data.customerPhone,
+        customerEmail: data.customerEmail,
+        notes: data.notes,
+        // Create event tickets linked to this order
+        eventTickets: {
+          create: data.eventTickets.map((ticket) => ({
+            eventId: ticket.eventId,
+            userId: data.userId,
+            quantity: ticket.quantity,
+            totalPrice: ticket.price * ticket.quantity,
+            status: "PENDING",
+          })),
+        },
+      },
+      include: {
+        eventTickets: {
+          include: {
+            event: true,
+          },
+        },
+        payment: true,
+      },
+    }),
+
+  // Create order with both field items and event tickets
+  createWithMixedItems: (data: {
+    userId: string;
+    totalAmount: number;
+    customerName: string;
+    customerPhone: string;
+    customerEmail: string;
+    notes: string;
+    items: {
+      fieldId: string;
+      date: Date;
+      startHour: number;
+      endHour: number;
+      price: number;
+    }[];
+    eventTickets: {
+      eventId: string;
+      quantity: number;
+      price: number;
+    }[];
+  }) =>
+    prisma.order.create({
+      data: {
+        userId: data.userId,
+        totalAmount: data.totalAmount,
+        customerName: data.customerName,
+        customerPhone: data.customerPhone,
+        customerEmail: data.customerEmail,
+        notes: data.notes,
+        items: {
+          create: data.items.map((item) => ({
+            fieldId: item.fieldId,
+            date: item.date,
+            startHour: item.startHour,
+            endHour: item.endHour,
+            price: item.price,
+          })),
+        },
+        eventTickets: {
+          create: data.eventTickets.map((ticket) => ({
+            eventId: ticket.eventId,
+            userId: data.userId,
+            quantity: ticket.quantity,
+            totalPrice: ticket.price * ticket.quantity,
+            status: "PENDING",
+          })),
+        },
+      },
+      include: {
+        items: {
+          include: {
+            field: { include: { venue: true } },
+          },
+        },
+        eventTickets: {
+          include: {
+            event: true,
+          },
+        },
+        payment: true,
+      },
     }),
 };

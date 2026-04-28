@@ -23,31 +23,46 @@ export const useAuthStore = create<AuthStore>((set) => ({
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(user));
     set({ user, token });
+
+    // Fetch cart otomatis setelah login (hanya CUSTOMER)
+    if (user.role === "CUSTOMER") {
+      import("./cart.store").then(({ useCartStore }) => {
+        useCartStore.getState().fetchCart();
+      });
+    }
   },
 
   clearAuth: () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     set({ user: null, token: null });
+
+    // Bersihkan cart saat logout
+    import("./cart.store").then(({ useCartStore }) => {
+      useCartStore.getState().clearCart();
+    });
   },
 
   initAuth: () => {
     const token = localStorage.getItem("token");
     const userStr = localStorage.getItem("user");
-    console.log("[AuthStore] initAuth called. Token exists:", !!token, "User exists:", !!userStr);
-    
+
     if (token && userStr) {
       try {
         const user = JSON.parse(userStr);
-        console.log("[AuthStore] User loaded from localStorage:", user);
         set({ user, token });
+
+        // Restore cart saat halaman di-refresh (hanya CUSTOMER)
+        if (user.role === "CUSTOMER") {
+          import("@/lib/store/cart.store").then(({ useCartStore }) => {
+            useCartStore.getState().fetchCart();
+          });
+        }
       } catch (error) {
-        console.error("[AuthStore] Failed to parse user from localStorage:", error);
+        console.error("[AuthStore] Failed to parse user:", error);
         localStorage.removeItem("token");
         localStorage.removeItem("user");
       }
-    } else {
-      console.log("[AuthStore] No token or user in localStorage");
     }
   },
 }));

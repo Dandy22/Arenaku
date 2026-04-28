@@ -101,6 +101,8 @@ export const paymentService = {
   // Di sini kita buat endpoint manual untuk simulasi.
   // ----------------------------------------------------------
   async confirmPayment(paymentId: string) {
+    const { prisma } = await import("@/lib/prisma");
+    
     const payment = await paymentRepository.findById(paymentId);
     if (!payment) throw new Error("Payment not found");
 
@@ -113,6 +115,38 @@ export const paymentService = {
 
     // Update order ke PAID
     await orderRepository.updateStatus(payment.orderId, "PAID");
+
+    // Get order with event tickets
+    const order = await orderRepository.findById(payment.orderId);
+    
+    // If order has event tickets, confirm them and add to EventParticipant
+    if (order && order.eventTickets && order.eventTickets.length > 0) {
+      for (const ticket of order.eventTickets) {
+        // Update ticket status to CONFIRMED
+        await prisma.eventTicket.update({
+          where: { id: ticket.id },
+          data: { 
+            status: "CONFIRMED",
+            confirmedAt: new Date(),
+          },
+        });
+
+        // Add user to event participants
+        await prisma.eventParticipant.upsert({
+          where: {
+            eventId_userId: {
+              eventId: ticket.eventId,
+              userId: ticket.userId,
+            },
+          },
+          create: {
+            eventId: ticket.eventId,
+            userId: ticket.userId,
+          },
+          update: {}, // Already exists, no update needed
+        });
+      }
+    }
 
     return { message: "Payment confirmed successfully" };
   },

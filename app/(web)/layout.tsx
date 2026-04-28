@@ -10,6 +10,7 @@ import {
   HiOutlineTrash,
 } from "react-icons/hi2";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { useCartStore } from "@/lib/store/cart.store";
 import api from "@/lib/axios";
 import { Drawer, message } from "antd";
 
@@ -17,9 +18,8 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, clearAuth, initAuth } = useAuthStore();
+  const { items: cartItems, removeItem } = useCartStore();
   const [mounted, setMounted] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
-  const [cartItems, setCartItems] = useState<any[]>([]);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -28,22 +28,7 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (!mounted || !user) return;
-    if (user.role === "CUSTOMER") {
-      api
-        .get("/cart")
-        .then((res) => {
-          const items = res.data || [];
-          setCartCount(items.length);
-          setCartItems(items);
-        })
-        .catch(() => {
-          setCartCount(0);
-          setCartItems([]);
-        });
-    }
-  }, [mounted, user]);
+  const cartCount = cartItems.length;
 
   const handleCartClick = () => {
     if (!user) {
@@ -60,21 +45,21 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
 
   const handleRemoveFromCart = async (id: string) => {
     try {
-      await api.delete(`/cart/${id}`);
+      await removeItem(id);
       message.success("Item dihapus");
-      // Refresh cart
-      const res = await api.get("/cart");
-      const items = res.data || [];
-      setCartCount(items.length);
-      setCartItems(items);
     } catch {
       message.error("Gagal menghapus item");
     }
   };
 
   const cartTotal = cartItems.reduce((acc, item) => {
-    const hours = item.endHour - item.startHour;
-    return acc + (item.field?.price || 0) * hours;
+    if (item.fieldId) {
+      return acc + (item.field?.price || 0) * (item.endHour - item.startHour);
+    }
+    if (item.eventId) {
+      return acc + (item.event?.ticketPrice || 0) * (item.quantity || 1);
+    }
+    return acc;
   }, 0);
 
   const handleLogout = () => {
@@ -236,7 +221,7 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
         placement="right"
         onClose={() => setCartDrawerOpen(false)}
         open={cartDrawerOpen}
-        width={400}>
+        size={400}>
         {cartItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-gray-400">
             <HiOutlineShoppingCart size={48} className="mb-4 opacity-50" />
@@ -263,7 +248,7 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-800 truncate">
-                    {item.field?.name || "Venue"}
+                    {item.field?.name || item.event?.title || "Item"}
                   </p>
                   <p className="text-xs text-gray-500">
                     {new Date(item.date).toLocaleDateString("id-ID", {
@@ -275,13 +260,23 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                   <p className="text-xs text-gray-500">
                     {item.startHour}:00 - {item.endHour}:00
                   </p>
-                  <p className="text-sm font-bold text-purple-600 mt-1">
-                    Rp{" "}
-                    {(
-                      item.field?.price *
-                      (item.endHour - item.startHour)
-                    )?.toLocaleString("id-ID")}
-                  </p>
+                  {item.fieldId && (
+                    <p className="text-sm font-bold text-purple-600 mt-1">
+                      Rp{" "}
+                      {(
+                        item.field?.price *
+                        (item.endHour - item.startHour)
+                      )?.toLocaleString("id-ID")}
+                    </p>
+                  )}
+                  {item.eventId && (
+                    <p className="text-sm font-bold text-purple-600 mt-1">
+                      Rp{" "}
+                      {(
+                        item.event?.ticketPrice * (item.quantity || 1)
+                      )?.toLocaleString("id-ID")}
+                    </p>
+                  )}
                 </div>
                 <button
                   onClick={() => handleRemoveFromCart(item.id)}

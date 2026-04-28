@@ -51,6 +51,11 @@ const adminMenus: { group: string; items: MenuItem[] }[] = [
         href: "/admin/orders",
         icon: <HiClipboard size={18} />,
       },
+      {
+        label: "Kelola Event",
+        href: "/admin/events",
+        icon: <HiOutlineCalendar size={18} />,
+      },
     ],
   },
 ];
@@ -78,6 +83,11 @@ const vendorMenus: { group: string; items: MenuItem[] }[] = [
         label: "Booking Masuk",
         href: "/vendor/bookings",
         icon: <HiClipboard size={18} />,
+      },
+      {
+        label: "Event Saya",
+        href: "/vendor/events",
+        icon: <HiOutlineCalendar size={18} />,
       },
     ],
   },

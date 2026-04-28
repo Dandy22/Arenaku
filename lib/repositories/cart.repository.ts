@@ -14,6 +14,7 @@ export const cartRepository = {
         field: {
           include: { venue: true },
         },
+        event: true,
       },
       orderBy: { createdAt: "asc" },
     }),
@@ -21,9 +22,10 @@ export const cartRepository = {
   findById: (id: string) =>
     prisma.cartItem.findUnique({
       where: { id },
-      include: { field: true },
+      include: { field: true, event: true },
     }),
 
+  // Conflict check for field bookings
   findConflict: (userId: string, fieldId: string, date: Date, startHour: number, endHour: number) =>
     prisma.cartItem.findFirst({
       where: {
@@ -34,6 +36,15 @@ export const cartRepository = {
           { startHour: { lt: endHour } },
           { endHour: { gt: startHour } },
         ],
+      },
+    }),
+
+  // Conflict check for event tickets (user already has ticket for this event)
+  findEventConflict: (userId: string, eventId: string) =>
+    prisma.cartItem.findFirst({
+      where: {
+        userId,
+        eventId,
       },
     }),
 
@@ -51,12 +62,24 @@ export const cartRepository = {
       },
     }),
 
+  // Create field booking
   create: (data: {
     userId: string;
     fieldId: string;
     date: Date;
     startHour: number;
     endHour: number;
+  }) =>
+    prisma.cartItem.create({ data }),
+
+  // Create event ticket
+  createEventTicket: (data: {
+    userId: string;
+    eventId: string;
+    date: Date;
+    startHour: number;
+    endHour: number;
+    quantity: number;
   }) =>
     prisma.cartItem.create({ data }),
 

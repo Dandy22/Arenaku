@@ -14,6 +14,7 @@ export const venueRepository = {
     name: string;
     description: string;
     city: string;
+    district?: string;
     address: string;
     latitude?: number;
     longitude?: number;
@@ -24,6 +25,7 @@ export const venueRepository = {
         name: data.name,
         description: data.description,
         city: data.city,
+        district: data.district || "",
         address: data.address,
         latitude: data.latitude,
         longitude: data.longitude,
@@ -39,6 +41,7 @@ export const venueRepository = {
     name?: string;
     description?: string;
     city?: string;
+    district?: string;
     address?: string;
     latitude?: number;
     longitude?: number;
@@ -91,6 +94,7 @@ export const venueRepository = {
   findAll: async (params: {
     name?: string;
     city?: string;
+    district?: string;
     type?: string;
     page?: number;
     limit?: number;
@@ -107,6 +111,10 @@ export const venueRepository = {
 
     if (params.city) {
       where.city = { contains: params.city, mode: "insensitive" };
+    }
+
+    if (params.district) {
+      where.district = { contains: params.district, mode: "insensitive" };
     }
 
     if (params.type) {

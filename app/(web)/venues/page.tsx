@@ -9,17 +9,7 @@ import {
   HiOutlineCalendar,
 } from "react-icons/hi2";
 import api from "@/lib/axios";
-
-const SPORT_TYPES = [
-  { label: "Semua", value: "" },
-  { label: "Futsal", value: "FUTSAL" },
-  { label: "Badminton", value: "BADMINTON" },
-  { label: "Mini Soccer", value: "MINI_SOCCER" },
-  { label: "Basketball", value: "BASKETBALL" },
-  { label: "Tennis", value: "TENNIS" },
-  { label: "Volleyball", value: "VOLLEYBALL" },
-  { label: "Padel", value: "PADEL" },
-];
+import { BEKASI_DISTRICTS, SPORT_TYPES } from "@/lib/constants";
 
 function VenuesContent() {
   const searchParams = useSearchParams();
@@ -35,7 +25,7 @@ function VenuesContent() {
   const [loading, setLoading] = useState(true);
 
   const [name, setName] = useState(searchParams.get("name") || "");
-  const [city, setCity] = useState(searchParams.get("city") || "");
+  const [district, setDistrict] = useState(searchParams.get("district") || "");
   const [type, setType] = useState(searchParams.get("type") || "");
   const [date, setDate] = useState(
     searchParams.get("date") || new Date().toISOString().split("T")[0],
@@ -47,7 +37,7 @@ function VenuesContent() {
     try {
       const params = new URLSearchParams();
       if (name) params.set("name", name);
-      if (city) params.set("city", city);
+      if (district) params.set("district", district);
       if (type) params.set("type", type);
       params.set("page", String(p));
       params.set("limit", "8");
@@ -110,13 +100,13 @@ function VenuesContent() {
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-gray-900">
           Venue <span className="text-purple-600">{type || "Semua"}</span> di{" "}
-          <span className="text-purple-600">{city || "Semua Kota"}</span>
+          <span className="text-purple-600">{district || "Kota Bekasi"}</span>
         </h1>
         <p className="text-gray-500 mt-2 text-sm">
           Berikut Venue{" "}
           <span className="text-purple-600">{type || "Semua"}</span> di{" "}
-          <span className="text-purple-600">{city || "Semua Kota"}</span> yang
-          sudah memenuhi standar kualitas terbaik
+          <span className="text-purple-600">{district || "Kota Bekasi"}</span>{" "}
+          yang sudah memenuhi standar kualitas terbaik
         </p>
       </div>
 
@@ -132,12 +122,16 @@ function VenuesContent() {
         <div className="flex flex-col md:flex-row gap-3">
           <div className="flex-1 flex items-center gap-2 px-4 py-3 border border-gray-200 rounded-xl">
             <HiOutlineMapPin size={18} className="text-purple-500 shrink-0" />
-            <input
-              placeholder="Pilih Kota"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="flex-1 text-sm text-gray-700 placeholder-gray-400 outline-none"
-            />
+            <select
+              value={district}
+              onChange={(e) => setDistrict(e.target.value)}
+              className="flex-1 text-sm text-gray-700 outline-none bg-transparent">
+              {BEKASI_DISTRICTS.map((d) => (
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="flex-1 flex items-center gap-2 px-4 py-3 border border-gray-200 rounded-xl">
             <span className="text-purple-500 shrink-0">⚽</span>

@@ -31,6 +31,12 @@ enum PaymentStatus {
   EXPIRED
 }
 
+enum EventStatus {
+  ACTIVE
+  CANCELLED
+  COMPLETED
+}
+
 model User {
   id          String   @id @default(cuid())
   name        String
@@ -45,6 +51,7 @@ model User {
   cartItems     CartItem[]
   orders        Order[]
   eventJoins    EventParticipant[]
+  eventTickets  EventTicket[]
   events        Event[]
   ratings       VenueRating[]
 }
@@ -62,7 +69,8 @@ model Venue {
   id          String  @id @default(cuid())
   name        String
   description String
-  city        String
+  city        String  @default("")  // Kota Bekasi
+  district    String  @default("")  // 12 Kecamatan: Medan Satria, Bekasi Utara, Bekasi Timur, Rawalumbu, Mustikajaya, Bantargebang, Bekasi Barat, Bekasi Selatan, Jatiasih, Pondokmelati, Jatisampurna, Pondokgede
   address     String  @default("")
   latitude    Float?
   longitude   Float?
@@ -135,14 +143,19 @@ model FieldContact {
 model CartItem {
   id        String   @id @default(cuid())
   userId    String
-  fieldId   String
+  fieldId   String?  // Nullable - bisa field atau event
+  eventId   String?  // Nullable - bisa field atau event
   date      DateTime
   startHour Int
   endHour   Int
+  quantity  Int      @default(1) // Untuk event ticket
   createdAt DateTime @default(now())
 
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  field Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  field Field? @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Validasi: harus ada field ATAU event, tidak keduanya
 }
 
 model Order {
@@ -159,6 +172,7 @@ model Order {
   user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   items   OrderItem[]
   payment Payment?
+  eventTickets EventTicket[]
 }
 
 model OrderItem {
@@ -189,20 +203,22 @@ model Payment {
 }
 
 model Event {
-  id               String   @id @default(cuid())
+  id               String     @id @default(cuid())
   title            String
   description      String
   location         String
-  city             String   @default("")
-  category         String   @default("")
-  imageUrl         String   @default("")
+  city             String     @default("")  // Kota Bekasi
+  district         String     @default("")  // 12 Kecamatan
+  category         String     @default("")
+  imageUrl         String     @default("")
   date             DateTime
   startHour        Int
   endHour          Int
   ticketPrice      Int
   capacity         Int
   creatorId        String
-  createdAt        DateTime @default(now())
+  createdAt        DateTime   @default(now())
+  status           EventStatus @default(ACTIVE)
 
   additionalInfo   String   @default("")  // Informasi Tambahan
   termsConditions  String   @default("")  // Syarat dan Ketentuan
@@ -214,6 +230,8 @@ model Event {
 
   creator      User               @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   participants EventParticipant[]
+  cartItems    CartItem[]
+  eventTickets EventTicket[]
 }
 
 model EventParticipant {
@@ -225,4 +243,29 @@ model EventParticipant {
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, userId])
+}
+
+// Model untuk ticket event yang dibeli melalui cart + payment
+model EventTicket {
+  id            String            @id @default(cuid())
+  eventId       String
+  userId        String
+  quantity      Int               @default(1)
+  totalPrice    Int
+  status        TicketStatus      @default(PENDING)
+  orderId       String?           // Link ke Order jika dibeli via cart
+  createdAt     DateTime          @default(now())
+  confirmedAt   DateTime?
+
+  event         Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order         Order?            @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@unique([eventId, userId])
+}
+
+enum TicketStatus {
+  PENDING
+  CONFIRMED    // Sudah dibayar
+  CANCELLED
 }

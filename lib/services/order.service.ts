@@ -14,6 +14,7 @@
 // ============================================================
 import { orderRepository } from "@/lib/repositories/order.repository";
 import { cartRepository } from "@/lib/repositories/cart.repository";
+import { prisma } from "@/lib/prisma";
 
 export const orderService = {
   async createOrder(
@@ -39,7 +40,13 @@ export const orderService = {
       throw new Error("Cart is empty. Add items before checkout");
     }
 
-    for (const item of cartItems) {
+    // Separate field bookings and event tickets
+    const fieldItems = cartItems.filter((item) => item.fieldId);
+    const eventItems = cartItems.filter((item) => item.eventId);
+
+    // Validate field bookings
+    for (const item of fieldItems) {
+      if (!item.fieldId) continue;
       const conflict = await orderRepository.findConflict(
         item.fieldId,
         item.date,
@@ -48,31 +55,101 @@ export const orderService = {
       );
       if (conflict) {
         throw new Error(
-          `${item.field.name} pada jam ${item.startHour}:00 - ${item.endHour}:00 sudah dibooking orang lain. Hapus dari cart dan pilih jam lain.`
+          `${item.field?.name || 'Field'} pada jam ${item.startHour}:00 - ${item.endHour}:00 sudah dibooking orang lain. Hapus dari cart dan pilih jam lain.`
         );
       }
     }
 
-    const totalAmount = cartItems.reduce((acc, item) => {
-      const duration = item.endHour - item.startHour;
-      return acc + item.field.price * duration;
-    }, 0);
+    // Validate event tickets - check capacity
+    for (const item of eventItems) {
+      if (!item.eventId || !item.event) continue;
+      
+      const participantCount = await prisma.eventParticipant.count({
+        where: { eventId: item.eventId },
+      });
 
-    const order = await orderRepository.create({
-      userId,
-      totalAmount,
-      customerName: data.customerName,
-      customerPhone: data.customerPhone,
-      customerEmail: data.customerEmail,
-      notes: data.notes || "",
-      items: cartItems.map((item) => ({
-        fieldId: item.fieldId,
-        date: item.date,
-        startHour: item.startHour,
-        endHour: item.endHour,
-        price: item.field.price,
-      })),
-    });
+      if (participantCount >= item.event.capacity) {
+        throw new Error(`Event ${item.event.title} is full`);
+      }
+
+      // Check if event is still active
+      if (item.event.status === "CANCELLED") {
+        throw new Error(`Event ${item.event.title} has been cancelled`);
+      }
+    }
+
+    // Calculate total amount
+    let totalAmount = 0;
+    
+    // Field booking total
+    for (const item of fieldItems) {
+      const duration = item.endHour - item.startHour;
+      totalAmount += (item.field?.price || 0) * duration;
+    }
+
+    // Event ticket total
+    for (const item of eventItems) {
+      totalAmount += (item.event?.ticketPrice || 0) * item.quantity;
+    }
+
+    let order;
+
+    // Create order based on cart contents
+    if (fieldItems.length > 0 && eventItems.length > 0) {
+      // Mixed order (both field bookings and event tickets)
+      order = await orderRepository.createWithMixedItems({
+        userId,
+        totalAmount,
+        customerName: data.customerName,
+        customerPhone: data.customerPhone,
+        customerEmail: data.customerEmail,
+        notes: data.notes || "",
+        items: fieldItems.map((item) => ({
+          fieldId: item.fieldId!,
+          date: item.date,
+          startHour: item.startHour,
+          endHour: item.endHour,
+          price: item.field?.price || 0,
+        })),
+        eventTickets: eventItems.map((item) => ({
+          eventId: item.eventId!,
+          quantity: item.quantity,
+          price: item.event?.ticketPrice || 0,
+        })),
+      });
+    } else if (eventItems.length > 0) {
+      // Event tickets only
+      order = await orderRepository.createWithEventTickets({
+        userId,
+        totalAmount,
+        customerName: data.customerName,
+        customerPhone: data.customerPhone,
+        customerEmail: data.customerEmail,
+        notes: data.notes || "",
+        eventTickets: eventItems.map((item) => ({
+          eventId: item.eventId!,
+          quantity: item.quantity,
+          price: item.event?.ticketPrice || 0,
+        })),
+      });
+    } else {
+      // Field bookings only (original behavior)
+      order = await orderRepository.create({
+        userId,
+        totalAmount,
+        customerName: data.customerName,
+        customerPhone: data.customerPhone,
+        customerEmail: data.customerEmail,
+        notes: data.notes || "",
+        items: fieldItems.map((item) => ({
+          fieldId: item.fieldId!,
+          date: item.date,
+          startHour: item.startHour,
+          endHour: item.endHour,
+          price: item.field?.price || 0,
+        })),
+      });
+    }
 
     await cartRepository.deleteByUserId(userId);
 

@@ -29,19 +29,31 @@ export async function GET(req: Request) {
 
 // POST /api/cart
 // Header: Authorization: Bearer <token>
-// Body: { fieldId, date, startHour, endHour }
+// Body for field booking: { fieldId, date, startHour, endHour }
+// Body for event ticket: { eventId, quantity }
 // Response: cart item yang baru ditambahkan
 export async function POST(req: Request) {
   try {
     const user = await getUserFromToken(req);
     const body = await req.json();
 
-    const item = await cartService.addToCart(user.userId, user.role, {
-      fieldId: body.fieldId,
-      date: body.date,
-      startHour: body.startHour,
-      endHour: body.endHour,
-    });
+    let item;
+
+    // Check if this is an event ticket purchase
+    if (body.eventId) {
+      item = await cartService.addEventToCart(user.userId, user.role, {
+        eventId: body.eventId,
+        quantity: body.quantity || 1,
+      });
+    } else {
+      // Field booking
+      item = await cartService.addToCart(user.userId, user.role, {
+        fieldId: body.fieldId,
+        date: body.date,
+        startHour: body.startHour,
+        endHour: body.endHour,
+      });
+    }
 
     return NextResponse.json(item, { status: 201 });
   } catch (error: any) {
