@@ -13,26 +13,22 @@ import { fieldRepository } from "@/lib/repositories/field.repository";
 import { venueRepository } from "@/lib/repositories/venue.repository";
 
 export const fieldService = {
-  // ----------------------------------------------------------
-  // Helper: verifikasi vendor adalah pemilik field ini
-  // ----------------------------------------------------------
   async verifyFieldOwnership(userId: string, fieldId: string) {
-    const vendorProfile = await venueRepository.findVendorProfileByUserId(userId);
-    if (!vendorProfile) throw new Error("Vendor profile not found");
+    // GANTI: Cari organisasi vendor tempat user bernaung
+    const vendorOrg = await venueRepository.findVendorProfileByUserId(userId);
+    if (!vendorOrg) throw new Error("Vendor organization not found");
 
     const field = await fieldRepository.findById(fieldId);
     if (!field) throw new Error("Field not found");
 
-    if (field.venue.vendorId !== vendorProfile.id) {
+    // Bandingkan dengan vendorId organisasi
+    if (field.venue.vendorId !== vendorOrg.id) {
       throw new Error("You are not authorized to modify this field");
     }
 
-    return { vendorProfile, field };
+    return { vendorOrg, field };
   },
 
-  // ----------------------------------------------------------
-  // createField
-  // ----------------------------------------------------------
   async createField(
     userId: string,
     userRole: string,
@@ -45,43 +41,37 @@ export const fieldService = {
       price: number;
       description?: string;
       venueId: string;
-    }
+      thumbnailUrl?: string;
+    },
   ) {
-    if (userRole !== "VENDOR") {
+    if (userRole !== "VENDOR")
       throw new Error("Only vendors can create a field");
-    }
 
-    if (!data.name || !data.type || !data.venueId) {
-      throw new Error("Name, type, and venueId are required");
-    }
+    if (data.price < 0) throw new Error("Price cannot be negative");
 
-    if (data.price < 0) {
-      throw new Error("Price cannot be negative");
-    }
+    // Ambil data organisasi vendor
+    const vendorOrg = await venueRepository.findVendorProfileByUserId(userId);
+    if (!vendorOrg) throw new Error("Vendor organization not found");
 
-    const vendorProfile = await venueRepository.findVendorProfileByUserId(userId);
-    if (!vendorProfile) throw new Error("Vendor profile not found");
-
-    if (vendorProfile.status !== "VERIFIED") {
-      throw new Error("Your vendor account is not verified yet. Please wait for admin approval.");
+    if (vendorOrg.status !== "VERIFIED") {
+      throw new Error("Your vendor account is not verified yet.");
     }
 
     const venue = await venueRepository.findById(data.venueId);
     if (!venue) throw new Error("Venue not found");
 
-    if (venue.vendorId !== vendorProfile.id) {
+    // Pastikan venue tersebut milik organisasi vendor si user
+    if (venue.vendorId !== vendorOrg.id) {
       throw new Error("You are not authorized to add fields to this venue");
     }
 
     return fieldRepository.create({
-      name: data.name,
-      type: data.type,
+      ...data,
       floorType: data.floorType || "",
       length: data.length || 0,
       width: data.width || 0,
-      price: data.price,
       description: data.description || "",
-      venueId: data.venueId,
+      thumbnailUrl: data.thumbnailUrl || "",
     });
   },
 
@@ -100,7 +90,8 @@ export const fieldService = {
       width?: number;
       price?: number;
       description?: string;
-    }
+      thumbnailUrl?: string;
+    },
   ) {
     if (userRole !== "VENDOR") {
       throw new Error("Only vendors can update a field");
@@ -145,18 +136,29 @@ export const fieldService = {
     return field;
   },
 
-  async addImage(userId: string, userRole: string, fieldId: string, url: string) {
-  if (userRole !== "VENDOR") throw new Error("Only vendors can add images");
-  await this.verifyFieldOwnership(userId, fieldId);
-  return fieldRepository.addImage(fieldId, url);
-},
+  async addImage(
+    userId: string,
+    userRole: string,
+    fieldId: string,
+    url: string,
+    title: string,
+  ) {
+    if (userRole !== "VENDOR") throw new Error("Only vendors can add images");
+    await this.verifyFieldOwnership(userId, fieldId);
+    return fieldRepository.addImage(fieldId, url, title); // Kirim title ke repository
+  },
 
-async deleteImage(userId: string, userRole: string, fieldId: string, imageId: string) {
-  if (userRole !== "VENDOR") throw new Error("Only vendors can delete images");
-  await this.verifyFieldOwnership(userId, fieldId);
-  return fieldRepository.deleteImage(imageId);
-},
-
+  async deleteImage(
+    userId: string,
+    userRole: string,
+    fieldId: string,
+    imageId: string,
+  ) {
+    if (userRole !== "VENDOR")
+      throw new Error("Only vendors can delete images");
+    await this.verifyFieldOwnership(userId, fieldId);
+    return fieldRepository.deleteImage(imageId);
+  },
   // ----------------------------------------------------------
   // addContact
   // ----------------------------------------------------------
@@ -168,7 +170,7 @@ async deleteImage(userId: string, userRole: string, fieldId: string, imageId: st
       name: string;
       email?: string;
       phone?: string;
-    }
+    },
   ) {
     if (userRole !== "VENDOR") {
       throw new Error("Only vendors can add contacts");
@@ -192,7 +194,7 @@ async deleteImage(userId: string, userRole: string, fieldId: string, imageId: st
       name?: string;
       email?: string;
       phone?: string;
-    }
+    },
   ) {
     if (userRole !== "VENDOR") {
       throw new Error("Only vendors can update contacts");

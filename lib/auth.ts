@@ -38,21 +38,18 @@ export function verifyToken(token: string) {
 }
 
 // ------------------------------------------------------------
-// getUserFromToken
+// getAuth
 // ------------------------------------------------------------
 // Fungsi async untuk mengambil data user dari Authorization header.
-// Format header yang diharapkan: "Bearer <token>"
-//
-// Dipakai di route handler untuk protected endpoints.
-// Jika token tidak ada atau invalid → throw Error (ditangkap di route).
+// Mengembalikan objek { userId, role } atau null jika tidak valid.
 // ------------------------------------------------------------
-export async function getUserFromToken(req: Request) {
+export async function getAuth(req: Request) {
   // Ambil header Authorization dari request
   const authHeader = req.headers.get("authorization");
 
-  // Jika header tidak ada → tolak request
+  // Jika header tidak ada → return null
   if (!authHeader) {
-    throw new Error("No token provided");
+    return null;
   }
 
   // Pisahkan "Bearer" dan token-nya → ambil bagian token saja
@@ -61,10 +58,13 @@ export async function getUserFromToken(req: Request) {
   // Verifikasi token
   const user = verifyToken(token);
 
-  // Jika token tidak valid → tolak request
+  // Jika token tidak valid → return null
   if (!user) {
-    throw new Error("Invalid or expired token");
+    return null;
   }
 
   return user;
 }
+
+// Alias untuk backward compatibility
+export const getUserFromToken = getAuth;

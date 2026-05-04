@@ -6,10 +6,18 @@ datasource db {
   provider = "postgresql"
 }
 
+// Enum tingkat aplikasi (Sistem)
 enum Role {
   CUSTOMER
   VENDOR
   ADMIN
+}
+
+// Enum tingkat internal Gor/Bisnis
+enum VendorRole {
+  OWNER
+  ADMIN
+  STAFF
 }
 
 enum VendorStatus {
@@ -22,6 +30,8 @@ enum OrderStatus {
   PENDING
   PAID
   CANCELLED
+  REFUND_REQUESTED
+  REFUNDED
 }
 
 enum PaymentStatus {
@@ -32,51 +42,131 @@ enum PaymentStatus {
 }
 
 enum EventStatus {
+  DRAFT
   ACTIVE
   CANCELLED
   COMPLETED
 }
 
-model User {
-  id          String   @id @default(cuid())
-  name        String
-  email       String   @unique
-  phone       String
-  password    String
-  role        Role     @default(CUSTOMER)
-  isSuspended Boolean  @default(false)
-  createdAt   DateTime @default(now())
-
-  vendorProfile VendorProfile?
-  cartItems     CartItem[]
-  orders        Order[]
-  eventJoins    EventParticipant[]
-  eventTickets  EventTicket[]
-  events        Event[]
-  ratings       VenueRating[]
+enum TicketStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
 }
 
-model VendorProfile {
-  id     String       @id @default(cuid())
-  userId String       @unique
-  status VendorStatus @default(PENDING)
+// Enum untuk jenis notifikasi
+enum NotificationType {
+  BOOKING_NEW      // Booking/Pesanan Baru
+  PAYMENT_SUCCESS // Pembayaran Berhasil
+  PAYMENT_FAILED  // Pembayaran Gagal
+  ORDER_CANCELLED // Pesanan Dibatalkan
+  RATING_NEW      // Ulasan/Rating Baru
+  VENDOR_VERIFIED // Status Verifikasi Vendor
+  TICKET_SOLD     // Tiket Event Terjual
+  VENDOR_REGISTER // Pendaftaran Vendor Baru (untuk Admin)
+  EVENT_NEW       // Event Baru Dibuat (untuk Admin)
+  USER_SUSPENDED  // Pengguna Disuspend (untuk Admin)
+  VENDOR_INVITE   // Undangan Bergabung Vendor
+}
 
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  venues Venue[]
+// Enum untuk target notifikasi
+enum NotificationTarget {
+  VENDOR   // Untuk Vendor (Owner/Admin/Staff)
+  ADMIN   // Untuk Admin
+  USER    // Untuk User biasa
+}
+
+model Notification {
+  id        String             @id @default(cuid())
+  userId    String             // User yang menerima notifikasi
+  type      NotificationType
+  target    NotificationTarget // Target: VENDOR, ADMIN, atau USER
+  title     String
+  message   String
+  data      Json?              // Data tambahan (misal: orderId, eventId, dll)
+  isRead    Boolean            @default(false)
+  createdAt DateTime           @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([target, createdAt])
+}
+
+model User {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  phone           String
+  password        String
+  role            Role     @default(CUSTOMER)
+  
+  address         String   @default("")
+  district        String   @default("")
+  
+  isSuspended     Boolean  @default(false)
+  isEmailVerified Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  notifications   Notification[]
+  vendorMemberships VendorMember[]
+  cartItems         CartItem[]
+  orders            Order[]
+  eventJoins        EventParticipant[]
+  eventTickets      EventTicket[]
+  events            Event[]
+  ratings           VenueRating[]
+}
+
+// Menggantikan VendorProfile menjadi entitas Organisasi
+model Vendor {
+  id                String       @id @default(cuid())
+  name              String       // Nama bisnis (cth: "Gor Sukamaju")
+  description       String       @default("")
+  status            VendorStatus @default(PENDING)
+
+  // Data rekening bank untuk payout
+  bankName          String       @default("")
+  bankAccountNumber String       @default("")
+  bankAccountName   String       @default("")
+  
+  // Saldo vendor
+  balance           Int          @default(0)
+  
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  members           VendorMember[]
+  venues            Venue[]
+}
+
+// Tabel Perantara (Jembatan User ke Vendor)
+model VendorMember {
+  id        String     @id @default(cuid())
+  userId    String
+  vendorId  String
+  role      VendorRole @default(STAFF)
+  joinedAt  DateTime   @default(now())
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor    Vendor     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, vendorId]) // 1 user hanya bisa punya 1 role di 1 vendor yang sama
 }
 
 model Venue {
-  id          String  @id @default(cuid())
-  name        String
-  description String
-  city        String  @default("")  // Kota Bekasi
-  district    String  @default("")  // 12 Kecamatan: Medan Satria, Bekasi Utara, Bekasi Timur, Rawalumbu, Mustikajaya, Bantargebang, Bekasi Barat, Bekasi Selatan, Jatiasih, Pondokmelati, Jatisampurna, Pondokgede
-  address     String  @default("")
-  latitude    Float?
-  longitude   Float?
-  vendorId    String
+  id           String  @id @default(cuid())
+  name         String
+  description  String
+  city         String  @default("")
+  district     String  @default("")
+  address      String  @default("")
+  latitude     Float?
+  longitude    Float?
+  vendorId     String
+  thumbnailUrl String  @default("")
 
-  vendor  VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  // Relasi diubah menunjuk ke model Vendor (bukan VendorProfile)
+  vendor  Vendor        @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   fields  Field[]
   images  VenueImage[]
   ratings VenueRating[]
@@ -93,27 +183,29 @@ model VenueRating {
   venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([venueId, userId]) // satu user hanya bisa rating satu venue sekali
+  @@unique([venueId, userId])
 }
 
 model VenueImage {
-  id      String @id @default(cuid())
+  id      String  @id @default(cuid())
   venueId String
   url     String
-
-  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  title   String?  
+  venue   Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
 }
 
 model Field {
-  id          String @id @default(cuid())
-  name        String
-  type        String
-  floorType   String @default("")
-  length      Float  @default(0)
-  width       Float  @default(0)
-  price       Int
-  description String @default("")
-  venueId     String
+  id           String  @id @default(cuid())
+  name         String
+  type         String
+  floorType    String  @default("")
+  length       Float   @default(0)
+  width        Float   @default(0)
+  price        Int
+  description  String  @default("")
+  venueId      String
+  thumbnailUrl String  @default("") 
+  title        String? @default("") 
 
   venue      Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
   cartItems  CartItem[]
@@ -143,19 +235,17 @@ model FieldContact {
 model CartItem {
   id        String   @id @default(cuid())
   userId    String
-  fieldId   String?  // Nullable - bisa field atau event
-  eventId   String?  // Nullable - bisa field atau event
+  fieldId   String?  
+  eventId   String?  
   date      DateTime
   startHour Int
   endHour   Int
-  quantity  Int      @default(1) // Untuk event ticket
+  quantity  Int      @default(1)
   createdAt DateTime @default(now())
 
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   field Field? @relation(fields: [fieldId], references: [id], onDelete: Cascade)
   event Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  // Validasi: harus ada field ATAU event, tidak keduanya
 }
 
 model Order {
@@ -168,11 +258,14 @@ model Order {
   customerEmail String      @default("")
   notes         String      @default("")
   createdAt     DateTime    @default(now())
+  expiresAt     DateTime    // Waktu kedaluwarsa payment (24 jam dari creation)
 
-  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items   OrderItem[]
-  payment Payment?
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items        OrderItem[]
+  payment      Payment?
   eventTickets EventTicket[]
+
+  @@index([status, expiresAt])
 }
 
 model OrderItem {
@@ -203,35 +296,52 @@ model Payment {
 }
 
 model Event {
-  id               String     @id @default(cuid())
-  title            String
-  description      String
-  location         String
-  city             String     @default("")  // Kota Bekasi
-  district         String     @default("")  // 12 Kecamatan
-  category         String     @default("")
-  imageUrl         String     @default("")
-  date             DateTime
-  startHour        Int
-  endHour          Int
-  ticketPrice      Int
-  capacity         Int
-  creatorId        String
-  createdAt        DateTime   @default(now())
-  status           EventStatus @default(ACTIVE)
+  id              String      @id @default(cuid())
+  title           String
+  description     String
+  location        String
+  city            String      @default("")
+  district        String      @default("")
+  category        String      @default("")
+  topic           String      @default("")        
+  imageUrl        String      @default("")
+  date            DateTime
+  endDate         DateTime                        
+  startHour       Int
+  endHour         Int
+  capacity        Int
+  creatorId       String
+  createdAt       DateTime    @default(now())
+  status          EventStatus @default(DRAFT)
+  additionalInfo  String      @default("")
+  termsConditions String      @default("")
+  contactName     String      @default("")
+  contactEmail    String      @default("")
+  contactPhone    String      @default("")
+  latitude        Float?
+  longitude       Float?
+  ticketPrice     Int         @default(0)
+  
+  creator         User               @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  ticketTiers     EventTicketTier[]  @relation("EventToTickets")
+  participants    EventParticipant[]
+  cartItems       CartItem[]
+  eventTickets    EventTicket[]
+}
 
-  additionalInfo   String   @default("")  // Informasi Tambahan
-  termsConditions  String   @default("")  // Syarat dan Ketentuan
-  contactName      String   @default("")  // Narahubung
-  contactEmail     String   @default("")
-  contactPhone     String   @default("")
-  latitude         Float?                 // koordinat peta
-  longitude        Float?
+model EventTicketTier {
+  id          String   @id @default(cuid())
+  eventId     String
+  name        String
+  stock       Int
+  description String   @default("")
+  price       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  creator      User               @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  participants EventParticipant[]
-  cartItems    CartItem[]
-  eventTickets EventTicket[]
+  event Event @relation("EventToTickets", fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
 }
 
 model EventParticipant {
@@ -245,27 +355,20 @@ model EventParticipant {
   @@unique([eventId, userId])
 }
 
-// Model untuk ticket event yang dibeli melalui cart + payment
 model EventTicket {
-  id            String            @id @default(cuid())
-  eventId       String
-  userId        String
-  quantity      Int               @default(1)
-  totalPrice    Int
-  status        TicketStatus      @default(PENDING)
-  orderId       String?           // Link ke Order jika dibeli via cart
-  createdAt     DateTime          @default(now())
-  confirmedAt   DateTime?
+  id          String       @id @default(cuid())
+  eventId     String
+  userId      String
+  quantity    Int          @default(1)
+  totalPrice  Int
+  status      TicketStatus @default(PENDING)
+  orderId     String?      
+  createdAt   DateTime     @default(now())
+  confirmedAt DateTime?
 
-  event         Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  order         Order?            @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  event Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
   @@unique([eventId, userId])
-}
-
-enum TicketStatus {
-  PENDING
-  CONFIRMED    // Sudah dibayar
-  CANCELLED
 }

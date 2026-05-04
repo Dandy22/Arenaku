@@ -2,17 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { message, Select } from "antd";
+import { message, Select, Button, Spin } from "antd";
 import { useAuthStore } from "@/lib/store/auth.store";
 import api from "@/lib/axios";
 
-const PAYMENT_METHODS = [
-  { label: "QRIS Payment", value: "QRIS", group: "E-Wallet" },
-  { label: "GoPay", value: "GOPAY", group: "E-Wallet" },
-  { label: "OVO", value: "OVO", group: "E-Wallet" },
-  { label: "Bank Transfer BCA", value: "BCA", group: "Bank Transfer" },
-  { label: "Bank Transfer Mandiri", value: "MANDIRI", group: "Bank Transfer" },
-];
+declare global {
+  interface Window {
+    snap: any;
+  }
+}
 
 export default function PaymentPage() {
   const params = useParams();
@@ -21,204 +19,150 @@ export default function PaymentPage() {
   const orderId = params.orderId as string;
 
   const [order, setOrder] = useState<any>(null);
-  const [payment, setPayment] = useState<any>(null);
-  const [method, setMethod] = useState("QRIS");
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [step, setStep] = useState<"form" | "qr">("form");
+
+  // Load Midtrans Snap Script
+  useEffect(() => {
+    const midtransScriptUrl = "https://app.sandbox.midtrans.com/snap/snap.js"; // Ganti ke app.midtrans.com jika production
+    const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || "";
+
+    let script = document.querySelector(
+      `script[src="${midtransScriptUrl}"]`,
+    ) as HTMLScriptElement;
+
+    if (!script) {
+      script = document.createElement("script");
+      script.src = midtransScriptUrl;
+      script.setAttribute("data-client-key", clientKey);
+      document.body.appendChild(script);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!user) { router.push("/login"); return; }
-    api.get(`/orders/${orderId}`)
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    api
+      .get(`/orders/${orderId}`)
       .then((res) => {
         setOrder(res.data);
-        if (res.data.payment) {
-          setPayment(res.data.payment);
-          setStep("qr");
+        // Jika sudah bayar, langsung tendang ke halaman sukses/orders
+        if (res.data.status === "PAID") {
+          router.push("/orders");
         }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [orderId]);
+  }, [orderId, user, router]);
 
-  const handleCreatePayment = async () => {
+  const handlePayNow = async () => {
     setCreating(true);
     try {
-      const res = await api.post("/payments", { orderId, method });
-      setPayment(res.data);
-      setStep("qr");
-      message.success("Payment berhasil dibuat! Scan QR untuk membayar.");
+      // 1. Request Snap Token ke backend kita
+      const res = await api.post("/payments", {
+        orderId,
+        method: "QRIS",
+      });
+
+      const { snapToken } = res.data;
+
+      if (!snapToken) {
+        throw new Error("Gagal mendapatkan token pembayaran");
+      }
+
+      // 2. Panggil Snap Pop-up
+      window.snap.pay(snapToken, {
+        onSuccess: async (result: any) => {
+          try {
+            // Karena foldermu namanya 'confirm', panggil dengan akhiran /confirm
+            await api.patch(`/payments/${orderId}/confirm`);
+
+            message.success("Pembayaran Berhasil!");
+            router.push("/orders");
+          } catch (err: any) {
+            console.error("Gagal update status di DB:", err);
+            const errorMsg = err.response?.data?.error || err.message;
+            message.error(`Gagal DB: ${errorMsg}`);
+          }
+        },
+        onPending: (result: any) => {
+          message.info("Menunggu pembayaran...");
+          router.push("/orders");
+        },
+        onError: (result: any) => {
+          message.error("Pembayaran Gagal!");
+        },
+        onClose: () => {
+          message.warning("Anda menutup jendela pembayaran sebelum selesai.");
+        },
+      });
     } catch (err: any) {
-      message.error(err.response?.data?.error || "Gagal membuat payment");
+      message.error(err.response?.data?.error || "Gagal memproses pembayaran");
     } finally {
       setCreating(false);
     }
   };
 
-  const handleConfirmPayment = async () => {
-    setConfirming(true);
-    try {
-      await api.patch(`/payments/${orderId}/confirm`);
-      message.success("Pembayaran berhasil dikonfirmasi!");
-      router.push("/orders");
-    } catch (err: any) {
-      message.error(err.response?.data?.error || "Gagal konfirmasi");
-    } finally {
-      setConfirming(false);
-    }
-  };
-
-  if (loading) return (
-    <div className="max-w-3xl mx-auto px-6 py-16">
-      <div className="bg-gray-100 rounded-2xl h-40 animate-pulse" />
-    </div>
-  );
-
+  if (loading)
+    return (
+      <div className="flex justify-center py-20">
+        <Spin size="large" />
+      </div>
+    );
   if (!order) return null;
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10 pb-24">
-      <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">Payment</h1>
+      <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">
+        Checkout
+      </h1>
 
-      {step === "form" ? (
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Customer Detail */}
-          <div className="flex-1 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-            <h2 className="font-bold text-gray-800 mb-4">Customer Detail</h2>
-            <div className="flex flex-col gap-4">
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <p className="text-xs text-gray-500 mb-1">Customer Name</p>
-                  <div className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-gray-50">
-                    {order.customerName}
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-gray-500 mb-1">Customer Phone Number</p>
-                  <div className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-gray-50">
-                    {order.customerPhone}
-                  </div>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Email</p>
-                <div className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-gray-50">
-                  {order.customerEmail}
-                </div>
-              </div>
-              {order.notes && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Notes</p>
-                  <div className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-gray-50">
-                    {order.notes}
-                  </div>
-                </div>
-              )}
-            </div>
+      <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm text-center mb-6">
+        <p className="text-gray-500 mb-2">Total yang harus dibayar</p>
+        <h2 className="text-4xl font-extrabold text-purple-700 mb-6">
+          Rp {order.totalAmount?.toLocaleString("id-ID")}
+        </h2>
+
+        <div className="bg-gray-50 rounded-xl p-4 mb-6 inline-block text-left w-full max-w-md">
+          <div className="flex justify-between mb-2">
+            <span className="text-gray-500 text-sm">Order ID:</span>
+            <span className="font-mono text-sm">{order.id}</span>
           </div>
-
-          {/* Payment Method */}
-          <div className="w-full md:w-64 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-            <h2 className="font-bold text-gray-800 mb-4">Pilih Jenis Pembayaran</h2>
-            <p className="text-xs text-gray-500 mb-2">E-Wallet</p>
-            <Select
-              value={method}
-              onChange={setMethod}
-              style={{ width: "100%" }}
-              options={PAYMENT_METHODS.map((m) => ({ label: m.label, value: m.value }))}
-            />
+          <div className="flex justify-between">
+            <span className="text-gray-500 text-sm">Customer:</span>
+            <span className="font-semibold text-sm">{order.customerName}</span>
           </div>
         </div>
-      ) : (
-        <div className="flex flex-col items-center">
-          {/* QR Code */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm w-80">
-            <div className="bg-gray-50 rounded-xl p-6 flex flex-col items-center">
-              <div className="flex items-center justify-between w-full mb-4">
-                <span className="text-xs font-bold text-gray-600">QRIS QR Code Standar</span>
-                <span className="text-xs font-bold text-red-600">GPN</span>
-              </div>
-              <p className="text-sm font-bold text-gray-800 mb-1">Nama Merchant {order.customerName}</p>
-              <p className="text-xs text-gray-500 mb-1">NMID: XXXXXXXXXXXXX</p>
-              <p className="text-xs text-gray-500 mb-4">TID</p>
-              {/* QR placeholder */}
-              <div className="w-40 h-40 bg-white border-2 border-gray-300 rounded-xl flex items-center justify-center mb-4">
-                <div className="grid grid-cols-5 gap-0.5">
-                  {[...Array(25)].map((_, i) => (
-                    <div key={i} className={`w-6 h-6 ${Math.random() > 0.5 ? "bg-black" : "bg-white"}`} />
-                  ))}
-                </div>
-              </div>
-              <p className="text-xs font-bold text-gray-700">SATU QRIS UNTUK SEMUA</p>
-              <p className="text-xs text-gray-500">Cek aplikasi penyelenggara</p>
-              <p className="text-xs text-gray-500">di: www.aspi-qris.id</p>
-            </div>
-          </div>
 
-          <div className="mt-4 text-center">
-            <p className="text-sm font-semibold text-gray-700">Total: <span className="text-purple-700">Rp. {order.totalAmount?.toLocaleString("id-ID")}</span></p>
-            <p className="text-xs text-gray-500 mt-1">Metode: {method}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Order detail */}
-      <div className="mt-6 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-gray-800 mb-4">Detail Pesanan</h2>
-        {order.items?.map((item: any) => (
-          <div key={item.id} className="grid grid-cols-2 gap-4 text-sm pb-4 border-b border-gray-100 last:border-0 last:pb-0">
-            <div>
-              <p className="text-xs text-gray-400">Nama Venue</p>
-              <p className="font-semibold text-gray-800">{item.field?.venue?.name || "-"}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Tanggal</p>
-              <p className="font-semibold text-gray-800">
-                {new Date(item.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Nama Lapangan</p>
-              <p className="font-semibold text-gray-800">{item.field?.name}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Subtotal</p>
-              <p className="font-semibold text-gray-800">Rp. {item.price?.toLocaleString("id-ID")}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Jam</p>
-              <p className="font-semibold text-gray-800">
-                {String(item.startHour).padStart(2, "0")}:00 - {String(item.endHour).padStart(2, "0")}:00
-              </p>
-            </div>
-          </div>
-        ))}
+        <Button
+          type="primary"
+          size="large"
+          block
+          onClick={handlePayNow}
+          loading={creating}
+          className="h-14 rounded-xl text-lg font-bold bg-red-600 hover:bg-red-700 border-none">
+          BAYAR SEKARANG
+        </Button>
       </div>
 
-      {/* Sticky bottom */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 z-50">
-        <div className="max-w-3xl mx-auto">
-          {step === "form" ? (
-            <button
-              onClick={handleCreatePayment}
-              disabled={creating}
-              className="w-full py-3 rounded-xl text-white font-bold text-sm hover:opacity-90 transition disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg, #EF4444, #DC2626)" }}
-            >
-              {creating ? "Memproses..." : "KONFIRMASI PEMESANAN"}
-            </button>
-          ) : (
-            <button
-              onClick={handleConfirmPayment}
-              disabled={confirming}
-              className="w-full py-3 rounded-xl text-white font-bold text-sm hover:opacity-90 transition disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg, #EF4444, #DC2626)" }}
-            >
-              {confirming ? "Memproses..." : "KONFIRMASI PEMBAYARAN"}
-            </button>
-          )}
-        </div>
+      {/* Detail Pesanan tetap tampil di bawah */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-gray-800 mb-4">Detail Pesanan</h2>
+        {order.items?.map((item: any) => (
+          <div
+            key={item.id}
+            className="flex justify-between items-center py-3 border-b last:border-0">
+            <div>
+              <p className="font-semibold">{item.field?.name}</p>
+              <p className="text-xs text-gray-400">{item.field?.venue?.name}</p>
+            </div>
+            <p className="font-bold">
+              Rp {item.price?.toLocaleString("id-ID")}
+            </p>
+          </div>
+        ))}
       </div>
     </div>
   );

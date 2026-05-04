@@ -5,7 +5,7 @@ import { venueService } from "@/lib/services/venue.service";
 // GET /api/venues/[id] — publik, detail satu venue
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -22,10 +22,14 @@ export async function GET(
 // PATCH /api/venues/[id] — edit venue (VENDOR & pemilik only)
 export async function PATCH(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const user = await getUserFromToken(req);
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
     const body = await req.json();
     const { id } = await params;
 
@@ -33,9 +37,11 @@ export async function PATCH(
       name: body.name,
       description: body.description,
       city: body.city,
+      district: body.district,
       address: body.address,
       latitude: body.latitude,
       longitude: body.longitude,
+      thumbnailUrl: body.thumbnailUrl,
     });
 
     return NextResponse.json(venue);
@@ -59,10 +65,14 @@ export async function PATCH(
 // DELETE /api/venues/[id] — hapus venue (VENDOR & pemilik only)
 export async function DELETE(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const user = await getUserFromToken(req);
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
     const { id } = await params;
     await venueService.deleteVenue(user.userId, user.role, id);
     return NextResponse.json({ message: "Venue deleted successfully" });

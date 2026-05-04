@@ -18,30 +18,36 @@ import { prisma } from "@/lib/prisma";
 export async function GET(req: Request) {
   try {
     const user = await getUserFromToken(req);
-
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     if (user.role !== "VENDOR") {
       return NextResponse.json(
         { error: "Only vendors can access this endpoint" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
-    // Ambil VendorProfile dulu untuk dapat ID vendor
-    const vendorProfile = await prisma.vendorProfile.findUnique({
+    // 1. Cari membership vendor user ini (Struktur Baru)
+    const membership = await prisma.vendorMember.findFirst({
       where: { userId: user.userId },
+      select: { vendorId: true },
     });
 
-    if (!vendorProfile) {
-      return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 });
+    if (!membership) {
+      return NextResponse.json(
+        { error: "Anda tidak terdaftar di vendor manapun" },
+        { status: 404 },
+      );
     }
 
-    // Ambil semua OrderItem yang lapangannya milik vendor ini
-    // Relasi: OrderItem → Field → Venue → VendorProfile
+    // 2. Ambil semua OrderItem yang lapangannya milik vendor ini
+    // Relasi baru: OrderItem → Field → Venue → Vendor (id)
     const orderItems = await prisma.orderItem.findMany({
       where: {
         field: {
           venue: {
-            vendorId: vendorProfile.id,
+            vendorId: membership.vendorId, // Menggunakan ID dari tabel Vendor
           },
         },
       },
@@ -63,9 +69,13 @@ export async function GET(req: Request) {
 
     return NextResponse.json(orderItems);
   } catch (error: any) {
+    console.error("Vendor Bookings Error:", error);
     if (error.message.includes("token")) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
-    return NextResponse.json({ error: "Failed to fetch bookings" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch bookings" },
+      { status: 500 },
+    );
   }
 }

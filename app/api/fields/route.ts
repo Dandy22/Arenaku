@@ -15,7 +15,9 @@ export async function POST(req: Request) {
   try {
     const user = await getUserFromToken(req);
     const body = await req.json();
-
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const field = await fieldService.createField(user.userId, user.role, {
       name: body.name,
       type: body.type,
@@ -25,6 +27,7 @@ export async function POST(req: Request) {
       price: body.price,
       description: body.description,
       venueId: body.venueId,
+      thumbnailUrl: body.thumbnailUrl,
     });
 
     return NextResponse.json(field, { status: 201 });
@@ -32,7 +35,11 @@ export async function POST(req: Request) {
     if (error.message.includes("token")) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
-    if (error.message.includes("Only vendors") || error.message.includes("not authorized") || error.message.includes("not verified")) {
+    if (
+      error.message.includes("Only vendors") ||
+      error.message.includes("not authorized") ||
+      error.message.includes("not verified")
+    ) {
       return NextResponse.json({ error: error.message }, { status: 403 });
     }
     return NextResponse.json({ error: error.message }, { status: 400 });
@@ -48,7 +55,7 @@ export async function GET(req: Request) {
     if (!venueId) {
       return NextResponse.json(
         { error: "venueId query parameter is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 

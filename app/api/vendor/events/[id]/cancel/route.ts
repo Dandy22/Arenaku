@@ -13,17 +13,26 @@ import { eventService } from "@/lib/services/event.service";
 // Header: Authorization: Bearer <token>
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const user = await getUserFromToken(req);
     const { id: eventId } = await params;
-
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     if (user.role !== "VENDOR") {
-      return NextResponse.json({ error: "Only vendors can access this" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Only vendors can access this" },
+        { status: 403 },
+      );
     }
 
-    const event = await eventService.cancelEvent(eventId, user.userId, user.role);
+    const event = await eventService.cancelEvent(
+      eventId,
+      user.userId,
+      user.role,
+    );
     return NextResponse.json(event);
   } catch (error: any) {
     if (error.message.includes("token")) {

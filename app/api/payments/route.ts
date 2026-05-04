@@ -18,11 +18,13 @@ export async function POST(req: Request) {
   try {
     const user = await getUserFromToken(req);
     const body = await req.json();
-
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     if (!body.orderId || !body.method) {
       return NextResponse.json(
         { error: "orderId and method are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 

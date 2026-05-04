@@ -14,21 +14,10 @@
 import { prisma } from "@/lib/prisma";
 
 export const userRepository = {
-  // ----------------------------------------------------------
-  // findByEmail
-  // Mencari satu user berdasarkan email (untuk login & cek duplikat).
-  // Mengembalikan null jika tidak ditemukan.
-  // ----------------------------------------------------------
   findByEmail: (email: string) =>
     prisma.user.findUnique({
       where: { email },
     }),
-
-  // ----------------------------------------------------------
-  // findById
-  // Mencari satu user berdasarkan ID (untuk profile, verifikasi, dll).
-  // Password dikecualikan agar tidak ikut terkirim ke client.
-  // ----------------------------------------------------------
   findById: (id: string) =>
     prisma.user.findUnique({
       where: { id },
@@ -39,16 +28,11 @@ export const userRepository = {
         phone: true,
         role: true,
         createdAt: true,
-        // password SENGAJA tidak diinclude — jangan pernah kirim password ke client!
-        vendorProfile: true,
+        vendorMemberships: {
+          include: { vendor: true },
+        },
       },
     }),
-
-  // ----------------------------------------------------------
-  // findAll
-  // Mengambil semua user (hanya untuk ADMIN).
-  // Password tidak disertakan demi keamanan.
-  // ----------------------------------------------------------
   findAll: () =>
     prisma.user.findMany({
       select: {
@@ -63,18 +47,18 @@ export const userRepository = {
       orderBy: { createdAt: "desc" },
     }),
 
-  // ----------------------------------------------------------
-  // create
-  // Membuat user baru di database.
-  // Jika role VENDOR → otomatis buat VendorProfile kosong sekaligus.
-  // Password yang diterima di sini sudah di-hash (dilakukan di service layer).
-  // ----------------------------------------------------------
   create: (data: {
     name: string;
+    vendorName?: string;
     email: string;
     phone: string;
-    password: string; // harus sudah di-hash sebelum masuk sini
+    password: string;
     role?: "CUSTOMER" | "VENDOR" | "ADMIN";
+    address?: string;
+    district?: string;
+    bankName?: string;
+    bankAccountNumber?: string;
+    bankAccountName?: string;
   }) =>
     prisma.user.create({
       data: {
@@ -82,14 +66,24 @@ export const userRepository = {
         email: data.email,
         phone: data.phone,
         password: data.password,
-        role: data.role ?? "CUSTOMER", // default CUSTOMER jika tidak diisi
-
-        // Jika mendaftar sebagai VENDOR → buat profil vendor kosong secara otomatis
-        vendorProfile:
-          data.role === "VENDOR" ? { create: {} } : undefined,
-      },
-      include: {
-        vendorProfile: true, // sertakan data vendorProfile di response
+        role: data.role ?? "CUSTOMER",
+        address: data.address,
+        district: data.district,
+        // GANTI vendorProfile jadi vendorMemberships
+        vendorMemberships:
+          data.role === "VENDOR"
+            ? {
+                create: {
+                  role: "OWNER",
+                  vendor: {
+                    create: {
+                      status: "PENDING",
+                      name: data.vendorName || data.name,
+                    },
+                  },
+                },
+              }
+            : undefined,
       },
     }),
 };

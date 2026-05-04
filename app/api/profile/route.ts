@@ -7,7 +7,11 @@ import { profileService } from "@/lib/services/profile.service";
 export async function GET(req: Request) {
   try {
     const user = await getUserFromToken(req);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const profile = await userRepository.findById(user.userId);
+
     if (!profile) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
@@ -16,7 +20,10 @@ export async function GET(req: Request) {
     if (error.message.includes("token")) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
-    return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch profile" },
+      { status: 500 },
+    );
   }
 }
 
@@ -25,7 +32,9 @@ export async function PATCH(req: Request) {
   try {
     const user = await getUserFromToken(req);
     const body = await req.json();
-
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const updated = await profileService.updateProfile(user.userId, {
       name: body.name,
       phone: body.phone,

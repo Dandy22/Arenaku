@@ -17,13 +17,19 @@ import { cartService } from "@/lib/services/cart.service";
 export async function GET(req: Request) {
   try {
     const user = await getUserFromToken(req);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const cart = await cartService.getCart(user.userId);
     return NextResponse.json(cart);
   } catch (error: any) {
     if (error.message.includes("token")) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
-    return NextResponse.json({ error: "Failed to fetch cart" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch cart" },
+      { status: 500 },
+    );
   }
 }
 
@@ -36,7 +42,9 @@ export async function POST(req: Request) {
   try {
     const user = await getUserFromToken(req);
     const body = await req.json();
-
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     let item;
 
     // Check if this is an event ticket purchase

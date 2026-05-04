@@ -23,13 +23,15 @@ export async function GET(req: Request) {
   try {
     // Autentikasi: harus login
     const user = await getUserFromToken(req);
-
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     // Otorisasi: hanya ADMIN yang boleh melihat semua data user
     // CUSTOMER dan VENDOR tidak boleh akses data user lain
     if (user.role !== "ADMIN") {
       return NextResponse.json(
         { error: "Access denied. Admin only" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -40,6 +42,9 @@ export async function GET(req: Request) {
     if (error.message.includes("token")) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
-    return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch users" },
+      { status: 500 },
+    );
   }
 }

@@ -6,7 +6,7 @@ import {
   HiOutlineUsers,
   HiOutlineBuildingOffice,
   HiOutlineClipboard,
-  HiOutlineCurrencyDollar,
+  HiDocumentCheck,
 } from "react-icons/hi2";
 import {
   AreaChart,
@@ -187,7 +187,7 @@ export default function AdminDashboardPage() {
     {
       title: "Vendor Pending",
       value: stats.pendingVendors,
-      icon: <HiOutlineCurrencyDollar size={24} />,
+      icon: <HiDocumentCheck size={24} />,
       color: "#D97706",
       bg: "#FFFBEB",
     },

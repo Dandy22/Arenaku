@@ -15,6 +15,7 @@
 import { orderRepository } from "@/lib/repositories/order.repository";
 import { cartRepository } from "@/lib/repositories/cart.repository";
 import { prisma } from "@/lib/prisma";
+import { notificationService } from "@/lib/services/notification.service";
 
 export const orderService = {
   async createOrder(
@@ -25,7 +26,7 @@ export const orderService = {
       customerPhone: string;
       customerEmail: string;
       notes?: string;
-    }
+    },
   ) {
     if (userRole !== "CUSTOMER") {
       throw new Error("Only customers can create orders");
@@ -51,11 +52,11 @@ export const orderService = {
         item.fieldId,
         item.date,
         item.startHour,
-        item.endHour
+        item.endHour,
       );
       if (conflict) {
         throw new Error(
-          `${item.field?.name || 'Field'} pada jam ${item.startHour}:00 - ${item.endHour}:00 sudah dibooking orang lain. Hapus dari cart dan pilih jam lain.`
+          `${item.field?.name || "Field"} pada jam ${item.startHour}:00 - ${item.endHour}:00 sudah dibooking orang lain. Hapus dari cart dan pilih jam lain.`,
         );
       }
     }
@@ -63,7 +64,7 @@ export const orderService = {
     // Validate event tickets - check capacity
     for (const item of eventItems) {
       if (!item.eventId || !item.event) continue;
-      
+
       const participantCount = await prisma.eventParticipant.count({
         where: { eventId: item.eventId },
       });
@@ -80,7 +81,7 @@ export const orderService = {
 
     // Calculate total amount
     let totalAmount = 0;
-    
+
     // Field booking total
     for (const item of fieldItems) {
       const duration = item.endHour - item.startHour;
@@ -153,6 +154,11 @@ export const orderService = {
 
     await cartRepository.deleteByUserId(userId);
 
+    // Trigger notifikasi Booking Baru
+    if (order) {
+      await notificationService.notifyBookingNew(order.id);
+    }
+
     return order;
   },
 
@@ -163,6 +169,49 @@ export const orderService = {
       throw new Error("You are not authorized to view this order");
     }
     return order;
+  },
+
+  async requestRefund(userId: string, orderId: string) {
+    const order = await orderRepository.findById(orderId);
+    if (!order) throw new Error("Order not found");
+    if (order.userId !== userId) {
+      throw new Error(
+        "You are not authorized to request refund for this order",
+      );
+    }
+    if (order.status !== "PAID") {
+      throw new Error("Only paid orders can be refunded");
+    }
+
+    // Update status to REFUND_REQUESTED
+    const updatedOrder = await orderRepository.updateStatus(
+      orderId,
+      "REFUND_REQUESTED",
+    );
+
+    // Notify admin
+    await notificationService.notifyRefundRequest(orderId);
+
+    return updatedOrder;
+  },
+
+  async refundComplete(adminId: string, orderId: string) {
+    // Only admin can call this
+    const order = await orderRepository.findById(orderId);
+    if (!order) throw new Error("Order not found");
+    if (order.status !== "REFUND_REQUESTED") {
+      throw new Error("Order is not in refund requested status");
+    }
+
+    // Update status to REFUNDED
+    const updatedOrder = await orderRepository.updateStatus(
+      orderId,
+      "REFUNDED",
+    );
+
+    // TODO: Kurangi balance vendor jika perlu
+
+    return updatedOrder;
   },
 
   async getUserOrders(userId: string) {

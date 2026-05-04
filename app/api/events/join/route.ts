@@ -19,8 +19,14 @@ export async function POST(req: Request) {
     const user = await getUserFromToken(req);
     const body = await req.json();
 
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     if (!body.eventId) {
-      return NextResponse.json({ error: "eventId is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "eventId is required" },
+        { status: 400 },
+      );
     }
 
     const result = await eventService.joinEvent(user.userId, body.eventId);

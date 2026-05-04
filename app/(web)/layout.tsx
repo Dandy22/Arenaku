@@ -1,34 +1,183 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import {
   HiOutlineShoppingCart,
-  HiOutlineUser,
   HiOutlineTrash,
+  HiOutlineBell,
+  HiBell,
+  HiOutlineXMark,
+  HiCheck,
+  HiOutlineEnvelope,
+  HiChevronDown,
+  HiArrowRightOnRectangle,
+  HiOutlineUserCircle,
 } from "react-icons/hi2";
+import { HiClipboardDocumentList } from "react-icons/hi2";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useCartStore } from "@/lib/store/cart.store";
 import api from "@/lib/axios";
 import { Drawer, message } from "antd";
+
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+  type: string;
+  data?: any;
+}
 
 export default function WebLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, clearAuth, initAuth } = useAuthStore();
   const { items: cartItems, removeItem } = useCartStore();
+
   const [mounted, setMounted] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
+  // STATE NOTIFIKASI
+  const [showNotifMenu, setShowNotifMenu] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loadingNotif, setLoadingNotif] = useState(false);
+
   useEffect(() => {
     initAuth();
     setMounted(true);
-  }, []);
+  }, [initAuth]);
 
+  // Fetch Notifikasi
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+    try {
+      setLoadingNotif(true);
+      const response = await api.get("/notifications?limit=20");
+      if (response.data) {
+        setNotifications(response.data.notifications || []);
+        setUnreadCount(response.data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    } finally {
+      setLoadingNotif(false);
+    }
+  }, [user]);
+
+  // Load notifikasi saat user tersedia
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+    }
+  }, [user, fetchNotifications]);
+
+  // Mark single notification as read
+  const handleMarkAsRead = async (notifId: string) => {
+    try {
+      await api.post("/notifications", {
+        action: "read",
+        notificationIds: [notifId],
+      });
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notifId ? { ...n, isRead: true } : n)),
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  };
+
+  // Mark all notifications as read
+  const handleMarkAllRead = async () => {
+    try {
+      await api.post("/notifications", {
+        action: "read-all",
+      });
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    }
+  };
+
+  // Delete all notifications
+  const handleDeleteAllNotifications = async () => {
+    try {
+      await api.delete("/notifications");
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Error deleting all notifications:", error);
+    }
+  };
+
+  // FORMAT TIME
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return "Baru saja";
+    if (diffMins < 60) return `${diffMins} mnt`;
+    if (diffHours < 24) return `${diffHours} jam`;
+    if (diffDays < 7) return `${diffDays} hari`;
+    return date.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+  };
+
+  // 👇 FUNGSI BARU: HANDLE KLIK NOTIFIKASI 👇
+  const handleNotificationClick = async (notif: Notification) => {
+    if (!notif.isRead) {
+      await handleMarkAsRead(notif.id);
+    }
+    if (notif.type === "VENDOR_INVITE" && user?.role === "CUSTOMER") {
+      const updatedUser = { ...user, role: "VENDOR" as "VENDOR" };
+
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      useAuthStore.setState({ user: updatedUser });
+
+      message.success("Berhasil bergabung! Mengalihkan ke dashboard...");
+      setTimeout(() => {
+        window.location.href = notif.data.actionUrl;
+      }, 800);
+    } else {
+      router.push(notif.data.actionUrl);
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (dropdownOpen && !target.closest(".profile-dropdown")) {
+        setDropdownOpen(false);
+      }
+      if (showNotifMenu && !target.closest(".notif-dropdown")) {
+        setShowNotifMenu(false);
+      }
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [dropdownOpen, showNotifMenu]);
+
+  // CART LOGIC
   const cartCount = cartItems.length;
+  const cartTotal = cartItems.reduce((acc, item) => {
+    if (item.fieldId) {
+      return acc + (item.field?.price || 0) * (item.endHour - item.startHour);
+    }
+    if (item.eventId) {
+      return acc + (item.event?.ticketPrice || 0) * (item.quantity || 1);
+    }
+    return acc;
+  }, 0);
 
   const handleCartClick = () => {
     if (!user) {
@@ -51,16 +200,6 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
       message.error("Gagal menghapus item");
     }
   };
-
-  const cartTotal = cartItems.reduce((acc, item) => {
-    if (item.fieldId) {
-      return acc + (item.field?.price || 0) * (item.endHour - item.startHour);
-    }
-    if (item.eventId) {
-      return acc + (item.event?.ticketPrice || 0) * (item.quantity || 1);
-    }
-    return acc;
-  }, 0);
 
   const handleLogout = () => {
     clearAuth();
@@ -87,7 +226,6 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
       {/* Navbar */}
       <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          {/* Logo */}
           <Link href="/">
             <Image
               src="/LOGO-ARENAKU-PURPLE.svg"
@@ -97,7 +235,6 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
             />
           </Link>
 
-          {/* Nav Links */}
           <div className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => {
               const isActive =
@@ -118,10 +255,9 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
             })}
           </div>
 
-          {/* Right side */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             {!user ? (
-              <>
+              <div className="flex items-center gap-3">
                 <Link
                   href="/login"
                   className="text-sm font-semibold text-gray-600 hover:text-gray-800 transition">
@@ -135,70 +271,233 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                   }}>
                   Daftar
                 </Link>
-              </>
+              </div>
             ) : (
               <>
-                {/* Cart - only for CUSTOMER */}
                 {user.role === "CUSTOMER" && (
                   <button
                     onClick={handleCartClick}
-                    className="relative p-2 text-gray-600 hover:text-purple-700 transition">
-                    <HiOutlineShoppingCart size={22} />
+                    className="relative p-2 text-gray-500 hover:text-purple-600 transition"
+                    title="Keranjang">
+                    <HiOutlineShoppingCart size={24} />
                     {cartCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-purple-600 text-white text-[10px] flex items-center justify-center font-bold">
+                      <span className="absolute top-1 right-0 w-4 h-4 rounded-full bg-purple-600 text-white text-[10px] flex items-center justify-center font-bold border-2 border-white box-content">
                         {cartCount}
                       </span>
                     )}
                   </button>
                 )}
 
-                {/* Avatar + dropdown */}
-                <div className="relative">
+                {/* Notification Dropdown */}
+                <div className="relative notif-dropdown flex items-center">
                   <button
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                    style={{
-                      background: "linear-gradient(135deg, #7C3AED, #9333EA)",
-                    }}>
-                    {user.name?.charAt(0).toUpperCase()}
+                    onClick={() => {
+                      setShowNotifMenu(!showNotifMenu);
+                      setDropdownOpen(false);
+                      if (!showNotifMenu) fetchNotifications();
+                    }}
+                    className="relative p-2 text-gray-500 cursor-pointer hover:text-purple-600 transition"
+                    title="Notifikasi">
+                    {unreadCount > 0 ? (
+                      <>
+                        <HiBell size={24} className="text-purple-600" />
+                        <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#A855F7] text-white text-[10px] flex items-center justify-center font-bold border-2 border-white box-content">
+                          {unreadCount}
+                        </span>
+                      </>
+                    ) : (
+                      <HiOutlineBell size={24} />
+                    )}
+                  </button>
+
+                  {showNotifMenu && (
+                    <div className="absolute right-0 top-12 w-[360px] bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-gray-100 flex flex-col z-[60] origin-top-right animate-in fade-in zoom-in duration-200">
+                      <div className="absolute -top-2 right-4 w-4 h-4 bg-white border-t border-l border-gray-100 transform rotate-45 z-0"></div>
+
+                      <div className="flex items-center justify-between px-5 py-4 border-b border-dashed border-gray-200 relative z-10 bg-white rounded-t-2xl">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-[17px] font-bold text-[#334155]">
+                            Notifikasi
+                          </h3>
+                          {unreadCount > 0 && (
+                            <span className="bg-[#F3E8FF] text-[#9333EA] text-sm font-bold px-2 py-0.5 rounded-md">
+                              {unreadCount}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => setShowNotifMenu(false)}
+                          className="text-gray-400 hover:text-gray-600 p-1 rounded-md cursor-pointer hover:bg-gray-100 transition">
+                          <HiOutlineXMark size={22} />
+                        </button>
+                      </div>
+
+                      <div className="max-h-[340px] overflow-y-auto p-3 space-y-2 relative z-10 bg-white">
+                        {loadingNotif ? (
+                          <div className="py-8 text-center text-sm text-slate-500 font-medium">
+                            Memuat notifikasi...
+                          </div>
+                        ) : notifications.length === 0 ? (
+                          <div className="py-8 text-center text-sm text-slate-500 font-medium">
+                            Belum ada notifikasi baru.
+                          </div>
+                        ) : (
+                          notifications.map((notif) => (
+                            <div
+                              key={notif.id}
+                              onClick={() => handleNotificationClick(notif)} // 👈 MENGGUNAKAN FUNGSI BARU DI SINI
+                              className={`flex gap-3 p-3.5 rounded-xl transition cursor-pointer hover:bg-gray-50 border border-transparent ${
+                                !notif.isRead ? "bg-slate-50" : "bg-white"
+                              }`}>
+                              <div className="w-11 h-11 rounded-full bg-[#E2E8F0] flex items-center justify-center shrink-0">
+                                <HiOutlineEnvelope
+                                  className="text-[#64748B]"
+                                  size={22}
+                                />
+                              </div>
+
+                              <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                <div className="flex justify-between items-start gap-2">
+                                  <p className="text-sm font-semibold text-[#64748B] break-words pr-2">
+                                    {notif.title}
+                                  </p>
+                                  {!notif.isRead && (
+                                    <div className="w-2.5 h-2.5 mt-1.5 rounded-full bg-[#A855F7] shrink-0"></div>
+                                  )}
+                                </div>
+                                <p className="text-sm font-bold text-[#334155] break-words mt-0.5 leading-snug">
+                                  {notif.message}
+                                </p>
+                                <div className="flex items-center justify-between mt-1.5">
+                                  <p className="text-[13px] font-semibold text-[#94A3B8]">
+                                    {formatRelativeTime(notif.createdAt)}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      <div className="px-4 py-3 border-t border-dashed border-gray-200 relative z-10 bg-white rounded-b-2xl flex justify-between items-center">
+                        <button
+                          onClick={handleDeleteAllNotifications}
+                          className="flex items-center cursor-pointer gap-1.5 text-sm font-semibold text-red-500 hover:text-red-600 transition px-2 py-1 rounded-md hover:bg-red-50">
+                          <HiOutlineTrash size={18} />
+                          Hapus Semua
+                        </button>
+                        <button
+                          onClick={handleMarkAllRead}
+                          className="flex items-center cursor-pointer gap-1.5 text-sm font-semibold text-[#A855F7] hover:text-[#9333EA] transition px-2 py-1 rounded-md hover:bg-purple-50">
+                          <div className="flex -space-x-1.5">
+                            <HiCheck size={18} />
+                            <HiCheck size={18} />
+                          </div>
+                          Tandai semua dibaca
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="w-[1px] h-8 bg-slate-200 rounded-full hidden sm:block mx-1"></div>
+
+                {/* Avatar + Profile Dropdown */}
+                <div className="relative profile-dropdown">
+                  <button
+                    onClick={() => {
+                      setDropdownOpen(!dropdownOpen);
+                      setShowNotifMenu(false);
+                    }}
+                    className={`flex items-center gap-3 p-1.5 rounded-xl transition-all duration-200 ${
+                      dropdownOpen ? "bg-gray-100" : "hover:bg-gray-50"
+                    }`}>
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-inner cursor-pointer"
+                      style={{
+                        background: "linear-gradient(135deg, #7C3AED, #9333EA)",
+                      }}>
+                      {user.name?.charAt(0).toUpperCase()}
+                    </div>
+
+                    <div className="text-left hidden sm:block cursor-pointer">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-bold text-gray-800 leading-none">
+                          {user.name}
+                        </p>
+                        <div
+                          className={`transition-transform duration-200 ${
+                            dropdownOpen ? "rotate-180" : ""
+                          }`}>
+                          <HiChevronDown size={14} className="text-gray-400" />
+                        </div>
+                      </div>
+                      <p className="text-[10px] font-bold text-purple-600 uppercase tracking-wider mt-0.5">
+                        {user.role}
+                      </p>
+                    </div>
                   </button>
 
                   {dropdownOpen && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setDropdownOpen(false)}
-                      />
-                      <div className="absolute right-0 top-11 z-50 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2">
-                        <div className="px-4 py-2 border-b border-gray-100">
-                          <p className="text-sm font-semibold text-gray-800">
+                    <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-gray-100 z-[60] origin-top-right animate-in fade-in zoom-in duration-200">
+                      <div className="absolute -top-2 right-6 w-4 h-4 bg-white border-t border-l border-gray-100 rotate-45"></div>
+
+                      <div className="relative z-10 py-2">
+                        <div className="px-4 py-3 mb-1 border-b border-gray-50">
+                          <p className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-1">
+                            Akun Saya
+                          </p>
+                          <p className="text-sm font-bold text-gray-800 truncate">
                             {user.name}
                           </p>
-                          <p className="text-xs text-gray-500">{user.role}</p>
+                          <p className="text-xs text-gray-500 truncate mt-0.5">
+                            {user.email}
+                          </p>
                         </div>
-                        {(user.role === "ADMIN" || user.role === "VENDOR") && (
-                          <Link
-                            href={user.role === "ADMIN" ? "/admin" : "/vendor"}
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
-                            onClick={() => setDropdownOpen(false)}>
-                            Dashboard
-                          </Link>
-                        )}
-                        {user.role === "CUSTOMER" && (
-                          <Link
-                            href="/orders"
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
-                            onClick={() => setDropdownOpen(false)}>
-                            Riwayat Pesanan
-                          </Link>
-                        )}
-                        <button
-                          onClick={handleLogout}
-                          className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition w-full text-left">
-                          Keluar
-                        </button>
+
+                        <div className="px-2 space-y-1">
+                          {(user.role === "ADMIN" ||
+                            user.role === "VENDOR") && (
+                            <button
+                              onClick={() => {
+                                setDropdownOpen(false);
+                                router.push(
+                                  user.role === "ADMIN" ? "/admin" : "/vendor",
+                                );
+                              }}
+                              className="w-full text-left px-3 py-2.5 text-sm text-gray-700 font-semibold hover:bg-gray-50 rounded-xl cursor-pointer transition-colors flex items-center gap-3 group">
+                              <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center group-hover:bg-purple-200 transition-colors text-purple-600">
+                                <HiOutlineUserCircle size={18} />
+                              </div>
+                              Dashboard
+                            </button>
+                          )}
+
+                          {user.role === "CUSTOMER" && (
+                            <button
+                              onClick={() => {
+                                setDropdownOpen(false);
+                                router.push("/orders");
+                              }}
+                              className="w-full text-left px-3 py-2.5 text-sm text-gray-700 font-semibold hover:bg-gray-50 rounded-xl cursor-pointer transition-colors flex items-center gap-3 group">
+                              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors text-blue-600">
+                                <HiClipboardDocumentList size={18} />
+                              </div>
+                              Riwayat Pesanan
+                            </button>
+                          )}
+
+                          <button
+                            onClick={handleLogout}
+                            className="w-full text-left px-3 py-2.5 text-sm text-red-600 font-semibold hover:bg-red-50 rounded-xl cursor-pointer transition-colors flex items-center gap-3 group">
+                            <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center group-hover:bg-red-200 transition-colors">
+                              <HiArrowRightOnRectangle size={18} />
+                            </div>
+                            Keluar Aplikasi
+                          </button>
+                        </div>
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
               </>
@@ -207,7 +506,6 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      {/* Page content */}
       <main className="flex-1">{children}</main>
 
       {/* Cart Drawer */}
@@ -311,7 +609,6 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
         )}
       </Drawer>
 
-      {/* Footer */}
       <footer
         style={{
           background: "linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)",

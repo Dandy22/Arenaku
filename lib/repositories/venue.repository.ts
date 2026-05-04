@@ -7,8 +7,14 @@
 import { prisma } from "@/lib/prisma";
 
 export const venueRepository = {
-  findVendorProfileByUserId: (userId: string) =>
-    prisma.vendorProfile.findUnique({ where: { userId } }),
+  findVendorProfileByUserId: async (userId: string) => {
+    // Cari member, lalu ambil data Vendor-nya
+    const membership = await prisma.vendorMember.findFirst({
+      where: { userId },
+      include: { vendor: true },
+    });
+    return membership?.vendor || null;
+  },
 
   create: (data: {
     name: string;
@@ -19,6 +25,7 @@ export const venueRepository = {
     latitude?: number;
     longitude?: number;
     vendorId: string;
+    thumbnailUrl?: string;
   }) =>
     prisma.venue.create({
       data: {
@@ -30,6 +37,7 @@ export const venueRepository = {
         latitude: data.latitude,
         longitude: data.longitude,
         vendorId: data.vendorId,
+        thumbnailUrl: data.thumbnailUrl || "",
       },
       include: {
         images: true,
@@ -37,15 +45,19 @@ export const venueRepository = {
       },
     }),
 
-  update: (id: string, data: {
-    name?: string;
-    description?: string;
-    city?: string;
-    district?: string;
-    address?: string;
-    latitude?: number;
-    longitude?: number;
-  }) =>
+  update: (
+    id: string,
+    data: {
+      name?: string;
+      description?: string;
+      city?: string;
+      district?: string;
+      address?: string;
+      latitude?: number;
+      longitude?: number;
+      thumbnailUrl?: string;
+    },
+  ) =>
     prisma.venue.update({
       where: { id },
       data,
@@ -55,8 +67,7 @@ export const venueRepository = {
       },
     }),
 
-  deleteById: (id: string) =>
-    prisma.venue.delete({ where: { id } }),
+  deleteById: (id: string) => prisma.venue.delete({ where: { id } }),
 
   findById: (id: string) =>
     prisma.venue.findUnique({
@@ -74,22 +85,40 @@ export const venueRepository = {
         },
         vendor: {
           include: {
-            user: { select: { id: true, name: true, email: true, phone: true } },
+            members: {
+              where: {
+                role: "OWNER",
+              },
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
     }),
 
-  findByVendorId: (vendorId: string) =>
-    prisma.venue.findMany({
-      where: { vendorId },
+  findByVendorId: async (vendorId: string) => {
+    // Langsung cari semua venue berdasarkan vendorId organisasi
+    return prisma.venue.findMany({
+      where: { vendorId: vendorId },
       include: {
-        fields: { include: { images: true, contacts: true } },
+        fields: {
+          include: { images: true, contacts: true },
+        },
         images: true,
         ratings: true,
       },
       orderBy: { name: "asc" },
-    }),
+    });
+  },
 
   findAll: async (params: {
     name?: string;
@@ -134,7 +163,19 @@ export const venueRepository = {
           ratings: true,
           vendor: {
             include: {
-              user: { select: { name: true, email: true } },
+              members: {
+                where: {
+                  role: "OWNER",
+                },
+                include: {
+                  user: {
+                    select: {
+                      name: true,
+                      email: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -154,9 +195,14 @@ export const venueRepository = {
     };
   },
 
-  // Images
-  addImage: (venueId: string, url: string) =>
-    prisma.venueImage.create({ data: { venueId, url } }),
+  addImage: (venueId: string, url: string, title?: string) =>
+    prisma.venueImage.create({
+      data: {
+        venueId,
+        url,
+        title: title || "",
+      },
+    }),
 
   deleteImage: (imageId: string) =>
     prisma.venueImage.delete({ where: { id: imageId } }),
@@ -167,12 +213,22 @@ export const venueRepository = {
       where: { venueId_userId: { venueId, userId } },
     }),
 
-  createRating: (venueId: string, userId: string, rating: number, comment: string) =>
+  createRating: (
+    venueId: string,
+    userId: string,
+    rating: number,
+    comment: string,
+  ) =>
     prisma.venueRating.create({
       data: { venueId, userId, rating, comment },
     }),
 
-  updateRating: (venueId: string, userId: string, rating: number, comment: string) =>
+  updateRating: (
+    venueId: string,
+    userId: string,
+    rating: number,
+    comment: string,
+  ) =>
     prisma.venueRating.update({
       where: { venueId_userId: { venueId, userId } },
       data: { rating, comment },

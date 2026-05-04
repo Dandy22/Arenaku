@@ -2,9 +2,6 @@
 // lib/repositories/event.repository.ts
 // ------------------------------------------------------------
 // TIER 3 — Data Access Layer: Event Repository
-//
-// Operasi database untuk tabel "Event" dan "EventParticipant".
-// Event adalah turnamen/acara olahraga yang bisa diikuti user.
 // ============================================================
 
 import { prisma } from "@/lib/prisma";
@@ -17,11 +14,12 @@ export const eventRepository = {
     city: string;
     district: string;
     category: string;
+    topic: string;
     imageUrl: string;
     date: Date;
+    endDate: Date;
     startHour: number;
     endHour: number;
-    ticketPrice: number;
     capacity: number;
     creatorId: string;
     additionalInfo: string;
@@ -31,6 +29,7 @@ export const eventRepository = {
     contactPhone: string;
     latitude?: number;
     longitude?: number;
+    status: "DRAFT" | "ACTIVE";
   }) =>
     prisma.event.create({
       data: {
@@ -40,11 +39,12 @@ export const eventRepository = {
         city: data.city,
         district: data.district,
         category: data.category,
+        topic: data.topic,
         imageUrl: data.imageUrl,
         date: data.date,
+        endDate: data.endDate,
         startHour: data.startHour,
         endHour: data.endHour,
-        ticketPrice: data.ticketPrice,
         capacity: data.capacity,
         creatorId: data.creatorId,
         additionalInfo: data.additionalInfo,
@@ -54,6 +54,7 @@ export const eventRepository = {
         contactPhone: data.contactPhone,
         latitude: data.latitude,
         longitude: data.longitude,
+        status: data.status,
       },
       include: {
         participants: true,
@@ -70,6 +71,11 @@ export const eventRepository = {
       },
     }),
 
+  delete: (id: string) =>
+    prisma.event.delete({
+      where: { id },
+    }),
+
   findAll: async (params: {
     category?: string;
     city?: string;
@@ -81,7 +87,11 @@ export const eventRepository = {
     const limit = params.limit || 8;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    // --- FIX: Hanya tampilkan status ACTIVE ke publik ---
+    const where: any = {
+      status: "ACTIVE",
+    };
+
     if (params.category) {
       where.category = { contains: params.category, mode: "insensitive" };
     }
@@ -117,20 +127,32 @@ export const eventRepository = {
     };
   },
 
-  findByVendor: async (vendorId: string) => {
-    const vendorProfile = await prisma.vendorProfile.findFirst({
-      where: { userId: vendorId },
+  findByVendor: async (userId: string) => {
+    // 1. Cari dulu vendorId di mana user ini menjadi member (bisa Owner atau Staff)
+    const membership = await prisma.vendorMember.findFirst({
+      where: { userId: userId },
+      select: { vendorId: true },
     });
 
-    if (!vendorProfile) {
+    if (!membership) {
       return [];
     }
 
+    // 2. Ambil semua event yang dibuat oleh siapapun yang berada di vendor yang sama
     return prisma.event.findMany({
-      where: { creatorId: vendorId },
+      where: {
+        creator: {
+          vendorMemberships: {
+            some: {
+              vendorId: membership.vendorId,
+            },
+          },
+        },
+      },
       include: {
         participants: true,
         creator: { select: { id: true, name: true } },
+        ticketTiers: true,
       },
       orderBy: { createdAt: "desc" },
     });

@@ -10,16 +10,18 @@
 import { prisma } from "@/lib/prisma";
 
 export const orderRepository = {
-  findConflict: (fieldId: string, date: Date, startHour: number, endHour: number) =>
+  findConflict: (
+    fieldId: string,
+    date: Date,
+    startHour: number,
+    endHour: number,
+  ) =>
     prisma.orderItem.findFirst({
       where: {
         fieldId,
         date,
         order: { status: "PAID" },
-        AND: [
-          { startHour: { lt: endHour } },
-          { endHour: { gt: startHour } },
-        ],
+        AND: [{ startHour: { lt: endHour } }, { endHour: { gt: startHour } }],
       },
     }),
 
@@ -46,6 +48,7 @@ export const orderRepository = {
         customerPhone: data.customerPhone,
         customerEmail: data.customerEmail,
         notes: data.notes,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 jam
         items: {
           create: data.items.map((item) => ({
             fieldId: item.fieldId,
@@ -69,6 +72,31 @@ export const orderRepository = {
     prisma.order.findUnique({
       where: { id },
       include: {
+        user: true,
+        items: {
+          include: {
+            field: { include: { venue: true } },
+          },
+        },
+        eventTickets: {
+          include: {
+            event: true,
+          },
+        },
+        payment: true,
+      },
+    }),
+
+  // HANYA ADA SATU updateStatus DI SINI
+  updateStatus: (
+    id: string,
+    status: "PENDING" | "PAID" | "CANCELLED" | "REFUND_REQUESTED" | "REFUNDED",
+  ) =>
+    prisma.order.update({
+      where: { id },
+      data: { status },
+      include: {
+        user: true,
         items: {
           include: {
             field: { include: { venue: true } },
@@ -97,12 +125,6 @@ export const orderRepository = {
       orderBy: { createdAt: "desc" },
     }),
 
-  updateStatus: (id: string, status: "PENDING" | "PAID" | "CANCELLED") =>
-    prisma.order.update({
-      where: { id },
-      data: { status },
-    }),
-
   // Create order with event tickets (no field items)
   createWithEventTickets: (data: {
     userId: string;
@@ -125,6 +147,7 @@ export const orderRepository = {
         customerPhone: data.customerPhone,
         customerEmail: data.customerEmail,
         notes: data.notes,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 jam
         // Create event tickets linked to this order
         eventTickets: {
           create: data.eventTickets.map((ticket) => ({
@@ -175,6 +198,7 @@ export const orderRepository = {
         customerPhone: data.customerPhone,
         customerEmail: data.customerEmail,
         notes: data.notes,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 jam
         items: {
           create: data.items.map((item) => ({
             fieldId: item.fieldId,

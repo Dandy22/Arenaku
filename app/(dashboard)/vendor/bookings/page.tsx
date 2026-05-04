@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Table, Tag, Badge, message } from "antd";
+import { useMemo, useEffect, useState } from "react";
+import { message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import api from "@/lib/axios";
+import dayjs from "dayjs";
+import DataTable from "@/components/reusable/DataTable";
+import { useSearchParams } from "next/navigation";
 
 interface Booking {
   id: string;
@@ -11,6 +14,7 @@ interface Booking {
   startHour: number;
   endHour: number;
   price: number;
+  createdAt: string;
   field: { name: string; venue: { name: string } };
   order: {
     id: string;
@@ -18,13 +22,21 @@ interface Booking {
     customerName: string;
     customerPhone: string;
     customerEmail: string;
-    payment?: { status: string; method: string };
+    payment?: {
+      status: string;
+      method: string;
+      createdAt: string;
+    };
   };
 }
 
 export default function VendorBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Mengambil query pencarian langsung dari URL
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("search") || "";
 
   useEffect(() => {
     api
@@ -34,90 +46,161 @@ export default function VendorBookingsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Fungsi Badge Status (Murni UI logic, tidak mengandung Hooks)
+  const statusBadge = (status: string) => {
+    const map: Record<string, { text: string; className: string }> = {
+      PENDING: { text: "Pending", className: "text-yellow-600 bg-yellow-50" },
+      PAID: { text: "Lunas", className: "text-green-500 bg-green-50" },
+      SUCCESS: { text: "Berhasil", className: "text-green-500 bg-green-50" },
+      CANCELLED: { text: "Batal", className: "text-red-500 bg-red-50" },
+      FAILED: { text: "Gagal", className: "text-red-500 bg-red-50" },
+      EXPIRED: { text: "Expired", className: "text-slate-500 bg-slate-100" },
+    };
+
+    const item = map[status?.toUpperCase()] || map.PENDING;
+
+    return (
+      <div
+        className={`inline-flex items-center h-7 gap-1.5 rounded-full px-3 text-[10px] font-bold uppercase tracking-wider ${item.className}`}>
+        <div className="w-1.5 h-1.5 rounded-full bg-current" />
+        {item.text}
+      </div>
+    );
+  };
+
+  // LOGIKA PENCARIAN (Filtering)
+  // Menghitung ulang data yang ditampilkan hanya saat data asli atau keyword URL berubah
+  const filteredBookings = useMemo(() => {
+    if (!searchQuery) return bookings;
+
+    const query = searchQuery.toLowerCase();
+    return bookings.filter((item) => {
+      return (
+        item.order?.customerName?.toLowerCase().includes(query) ||
+        item.order?.id?.toLowerCase().includes(query) ||
+        item.field?.name?.toLowerCase().includes(query) ||
+        item.field?.venue?.name?.toLowerCase().includes(query)
+      );
+    });
+  }, [bookings, searchQuery]);
+
   const columns: ColumnsType<Booking> = [
+    {
+      title: "ID Order",
+      key: "orderId",
+      render: (_, r) => (
+        <span className="text-sm font-semibold text-slate-500 uppercase">
+          #{r.order?.id?.slice(-6) || "-"}
+        </span>
+      ),
+    },
+    {
+      title: "Customer",
+      key: "customerName",
+      render: (_, r) => (
+        <span className="font-semibold text-sm text-slate-500">
+          {r.order?.customerName}
+        </span>
+      ),
+    },
+    {
+      title: "No. Telepon",
+      key: "phone",
+      render: (_, r) => (
+        <span className="text-sm font-semibold text-slate-500">
+          {r.order?.customerPhone}
+        </span>
+      ),
+    },
     {
       title: "Lapangan",
       key: "field",
       render: (_, r) => (
         <div>
-          <p className="font-medium text-gray-800">{r.field?.name}</p>
-          <p className="text-xs text-gray-500">{r.field?.venue?.name}</p>
-        </div>
-      ),
-    },
-    {
-      title: "Customer",
-      key: "customer",
-      render: (_, r) => (
-        <div>
-          <p className="font-medium text-gray-800">{r.order?.customerName}</p>
-          <p className="text-xs text-gray-500">{r.order?.customerPhone}</p>
-        </div>
-      ),
-    },
-    {
-      title: "Tanggal & Jam",
-      key: "schedule",
-      render: (_, r) => (
-        <div>
-          <p className="text-sm font-medium">
-            {new Date(r.date).toLocaleDateString("id-ID", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
+          <p className="text-sm font-semibold text-slate-500">
+            {r.field?.name}
           </p>
-          <p className="text-xs text-gray-500">
-            {r.startHour}:00 - {r.endHour}:00
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+            {r.field?.venue?.name}
           </p>
         </div>
       ),
     },
     {
-      title: "Harga",
+      title: "Tanggal Booking",
+      key: "date",
+      render: (_, r) => (
+        <span className="text-sm font-semibold text-slate-500">
+          {dayjs(r.date).format("DD MMM YYYY")}
+        </span>
+      ),
+    },
+    {
+      title: "Jam Booking",
+      key: "time",
+      render: (_, r) => {
+        const start = String(r.startHour).padStart(2, "0");
+        const end = String(r.endHour).padStart(2, "0");
+
+        return (
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
+            <span>{start}:00</span>
+            <svg
+              viewBox="64 64 896 896"
+              focusable="false"
+              width="12px"
+              height="12px"
+              fill="currentColor"
+              className="text-slate-400">
+              <path d="M873.1 596.2l-164-208A32 32 0 00684 376h-64.8c-6.7 0-10.4 7.7-6.3 13l144.3 183H152c-4.4 0-8 3.6-8 8v60c0 4.4 3.6 8 8 8h695.9c26.8 0 41.7-30.8 25.2-51.8z" />
+            </svg>
+            <span>{end}:00</span>
+          </div>
+        );
+      },
+    },
+    {
+      title: "Waktu Transaksi",
+      key: "transactionTime",
+      render: (_, r) => (
+        <div className="flex flex-col">
+          <span className="text-sm font-semibold text-slate-500">
+            {dayjs(r.order?.payment?.createdAt || r.createdAt).format(
+              "DD/MM/YY",
+            )}
+          </span>
+          <span className="text-[10px] font-bold text-slate-400">
+            {dayjs(r.order?.payment?.createdAt || r.createdAt).format("HH:mm")}{" "}
+            WIB
+          </span>
+        </div>
+      ),
+    },
+    {
+      title: "Metode",
+      key: "paymentMethod",
+      render: (_, r) => (
+        <span className="text-sm font-semibold text-slate-500 uppercase">
+          {r.order?.payment?.method?.replace(/_/g, " ") || "N/A"}
+        </span>
+      ),
+    },
+    {
+      title: "Total Bayar",
       dataIndex: "price",
       key: "price",
+      align: "right",
       render: (price) => (
-        <span className="font-semibold text-purple-700">
+        <span className="font-semibold text-sm text-slate-500">
           Rp {price?.toLocaleString("id-ID")}
         </span>
       ),
     },
     {
-      title: "Status Order",
+      title: "Status",
       key: "orderStatus",
-      render: (_, r) => {
-        const map: Record<string, string> = {
-          PENDING: "orange",
-          PAID: "green",
-          CANCELLED: "red",
-        };
-        return <Tag color={map[r.order?.status]}>{r.order?.status}</Tag>;
-      },
-    },
-    {
-      title: "Pembayaran",
-      key: "payment",
-      render: (_, r) => {
-        if (!r.order?.payment)
-          return <span className="text-gray-400 text-xs">Belum ada</span>;
-        const map: Record<string, string> = {
-          PENDING: "orange",
-          SUCCESS: "green",
-          FAILED: "red",
-          EXPIRED: "default",
-        };
-        return (
-          <div>
-            <Tag color={map[r.order.payment.status]}>
-              {r.order.payment.status}
-            </Tag>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {r.order.payment.method}
-            </p>
-          </div>
-        );
-      },
+      align: "center",
+      render: (_, r) => statusBadge(r.order?.status),
     },
   ];
 
@@ -126,19 +209,17 @@ export default function VendorBookingsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Booking Masuk</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Monitor semua pemesanan lapangan kamu
+          Monitor semua pemesanan lapangan dan status pembayaran
         </p>
       </div>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <Table
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <DataTable
           columns={columns}
-          dataSource={bookings}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            pageSize: 10,
-            showTotal: (total) => `Total ${total} booking`,
-          }}
+          dataSource={filteredBookings}
+          isLoading={loading}
+          showSearch
+          searchPlaceholder="Cari nama customer, ID order, atau lapangan..."
         />
       </div>
     </div>

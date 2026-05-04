@@ -13,15 +13,40 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) { router.push("/login"); return; }
-    api.get("/orders")
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    api
+      .get("/orders")
       .then((res) => setOrders(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [user]);
 
   const statusColor: Record<string, string> = {
-    PENDING: "orange", PAID: "green", CANCELLED: "red"
+    PENDING: "orange",
+    PAID: "green",
+    CANCELLED: "red",
+    REFUND_REQUESTED: "blue",
+    REFUNDED: "gray",
+  };
+
+  const handleRequestRefund = async (orderId: string) => {
+    try {
+      await api.put(`/orders/${orderId}`, { action: "request-refund" });
+      // Update local state
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId ? { ...o, status: "REFUND_REQUESTED" } : o,
+        ),
+      );
+      alert(
+        "Permintaan refund telah diajukan. Admin akan memproses dalam 1-2 hari kerja.",
+      );
+    } catch (error: any) {
+      alert(error.response?.data?.error || "Gagal mengajukan refund");
+    }
   };
 
   return (
@@ -31,7 +56,10 @@ export default function OrdersPage() {
       {loading ? (
         <div className="flex flex-col gap-4">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-gray-100 rounded-2xl h-32 animate-pulse" />
+            <div
+              key={i}
+              className="bg-gray-100 rounded-2xl h-32 animate-pulse"
+            />
           ))}
         </div>
       ) : orders.length === 0 ? (
@@ -40,8 +68,7 @@ export default function OrdersPage() {
           <button
             onClick={() => router.push("/venues")}
             className="mt-4 px-6 py-2.5 rounded-xl text-white font-semibold text-sm"
-            style={{ background: "linear-gradient(135deg, #7C3AED, #9333EA)" }}
-          >
+            style={{ background: "linear-gradient(135deg, #7C3AED, #9333EA)" }}>
             Cari Venue
           </button>
         </div>
@@ -51,35 +78,60 @@ export default function OrdersPage() {
             <div
               key={order.id}
               className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition cursor-pointer"
-              onClick={() => router.push(`/payment/${order.id}`)}
-            >
+              onClick={() => router.push(`/payment/${order.id}`)}>
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-mono text-gray-400">#{order.id.slice(0, 8)}</span>
+                <span className="text-xs font-mono text-gray-400">
+                  #{order.id.slice(0, 8)}
+                </span>
                 <div className="flex items-center gap-2">
                   <Tag color={statusColor[order.status]}>{order.status}</Tag>
                   {order.status === "PENDING" && !order.payment && (
-                    <span className="text-xs text-orange-500 font-medium">Belum bayar</span>
+                    <span className="text-xs text-orange-500 font-medium">
+                      Belum bayar
+                    </span>
                   )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {order.items?.slice(0, 2).map((item: any) => (
                   <div key={item.id}>
-                    <p className="font-semibold text-gray-800">{item.field?.name}</p>
+                    <p className="font-semibold text-gray-800">
+                      {item.field?.name}
+                    </p>
                     <p className="text-xs text-gray-500">
-                      {new Date(item.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
-                      {" · "}{item.startHour}:00 - {item.endHour}:00
+                      {new Date(item.date).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                      {" · "}
+                      {item.startHour}:00 - {item.endHour}:00
                     </p>
                   </div>
                 ))}
               </div>
               <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
                 <span className="text-xs text-gray-500">
-                  {new Date(order.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                  {new Date(order.createdAt).toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
                 </span>
-                <span className="font-bold text-purple-700">
-                  Rp. {order.totalAmount?.toLocaleString("id-ID")}
-                </span>
+                <div className="flex items-center gap-3">
+                  {order.status === "PAID" && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRequestRefund(order.id);
+                      }}
+                      className="px-3 py-1 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition">
+                      Ajukan Pembatalan
+                    </button>
+                  )}
+                  <span className="font-bold text-purple-700">
+                    Rp. {order.totalAmount?.toLocaleString("id-ID")}
+                  </span>
+                </div>
               </div>
             </div>
           ))}

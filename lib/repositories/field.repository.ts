@@ -18,6 +18,7 @@ export const fieldRepository = {
     price: number;
     description: string;
     venueId: string;
+    thumbnailUrl?: string;
   }) =>
     prisma.field.create({
       data: {
@@ -29,19 +30,24 @@ export const fieldRepository = {
         price: data.price,
         description: data.description,
         venueId: data.venueId,
+        thumbnailUrl: data.thumbnailUrl,
       },
       include: { images: true, contacts: true },
     }),
 
-  update: (id: string, data: {
-    name?: string;
-    type?: string;
-    floorType?: string;
-    length?: number;
-    width?: number;
-    price?: number;
-    description?: string;
-  }) =>
+  update: (
+    id: string,
+    data: {
+      name?: string;
+      type?: string;
+      floorType?: string;
+      length?: number;
+      width?: number;
+      price?: number;
+      description?: string;
+      thumbnailUrl?: string;
+    },
+  ) =>
     prisma.field.update({
       where: { id },
       data,
@@ -74,9 +80,13 @@ export const fieldRepository = {
     }),
 
   // Images
-  addImage: (fieldId: string, url: string) =>
+  addImage: (fieldId: string, url: string, title: string) =>
     prisma.fieldImage.create({
-      data: { fieldId, url },
+      data: {
+        fieldId,
+        url,
+        title: title || "",
+      },
     }),
 
   deleteImage: (imageId: string) =>
@@ -85,11 +95,14 @@ export const fieldRepository = {
     }),
 
   // Contacts
-  addContact: (fieldId: string, data: {
-    name: string;
-    email?: string;
-    phone?: string;
-  }) =>
+  addContact: (
+    fieldId: string,
+    data: {
+      name: string;
+      email?: string;
+      phone?: string;
+    },
+  ) =>
     prisma.fieldContact.create({
       data: {
         fieldId,
@@ -99,11 +112,14 @@ export const fieldRepository = {
       },
     }),
 
-  updateContact: (contactId: string, data: {
-    name?: string;
-    email?: string;
-    phone?: string;
-  }) =>
+  updateContact: (
+    contactId: string,
+    data: {
+      name?: string;
+      email?: string;
+      phone?: string;
+    },
+  ) =>
     prisma.fieldContact.update({
       where: { id: contactId },
       data,

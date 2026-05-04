@@ -8,6 +8,9 @@
     "start": "next start",
     "lint": "eslint"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "dependencies": {
     "@ant-design/icons": "^6.1.1",
     "@hookform/resolvers": "^5.2.2",
@@ -26,7 +29,10 @@
     "react-dom": "19.2.3",
     "react-hook-form": "^7.73.1",
     "react-icons": "^5.6.0",
+    "react-is": "^19.2.5",
+    "react-quill-new": "^3.8.3",
     "recharts": "^3.8.1",
+    "use-debounce": "^10.1.1",
     "zod": "^4.3.6",
     "zustand": "^5.0.12"
   },
@@ -43,8 +49,5 @@
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "typescript": "^5"
-  },
-  "prisma": {
-    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
   }
 }

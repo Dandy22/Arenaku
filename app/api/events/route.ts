@@ -6,22 +6,26 @@
 //   - POST : Membuat event baru (user harus login)
 //   - GET  : Melihat semua event (publik, tidak perlu login)
 // ============================================================
+
 import { NextResponse } from "next/server";
 import { getUserFromToken } from "@/lib/auth";
 import { eventService } from "@/lib/services/event.service";
 
-// POST /api/events
-// Header: Authorization: Bearer <token>
-// Body: { title, description, location, city?, district?, category?, imageUrl?,
-//         date, startHour, endHour, ticketPrice, capacity,
-//         additionalInfo?, termsConditions?,
-//         contactName?, contactEmail?, contactPhone?,
-//         latitude?, longitude? }
+/**
+ * POST /api/events
+ * Membuat event baru atau menyimpan draf
+ */
 export async function POST(req: Request) {
   try {
     const user = await getUserFromToken(req);
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
 
+    // Meneruskan semua field termasuk status (DRAFT/ACTIVE) ke service
     const event = await eventService.createEvent(user.userId, user.role, {
       title: body.title,
       description: body.description,
@@ -29,12 +33,13 @@ export async function POST(req: Request) {
       city: body.city,
       district: body.district,
       category: body.category,
+      topic: body.topic,
       imageUrl: body.imageUrl,
       date: body.date,
+      endDate: body.endDate || body.date, // Fallback jika endDate kosong
       startHour: body.startHour,
       endHour: body.endHour,
-      ticketPrice: body.ticketPrice,
-      capacity: body.capacity,
+      capacity: Number(body.capacity) || 0,
       additionalInfo: body.additionalInfo,
       termsConditions: body.termsConditions,
       contactName: body.contactName,
@@ -42,10 +47,13 @@ export async function POST(req: Request) {
       contactPhone: body.contactPhone,
       latitude: body.latitude,
       longitude: body.longitude,
+      status: body.status || "ACTIVE", // Default ke ACTIVE jika status tidak dikirim
     });
 
     return NextResponse.json(event, { status: 201 });
   } catch (error: any) {
+    console.error("POST Event Error:", error);
+    // Handle error token expired atau lainnya
     if (error.message.includes("token")) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
@@ -53,10 +61,28 @@ export async function POST(req: Request) {
   }
 }
 
-// GET /api/events?category=FUTSAL&district=Bekasi%20Utara&page=1&limit=8
-// Publik — tidak butuh autentikasi
+/**
+ * GET /api/events
+ * Mengambil daftar event berdasarkan filter dan role
+ */
 export async function GET(req: Request) {
   try {
+    let user = null;
+    try {
+      user = await getUserFromToken(req);
+    } catch (e) {
+      // Abaikan jika tidak ada token (akses publik)
+    }
+
+    // 1. LOGIKA UNTUK VENDOR (Owner & Staff)
+    // Jika user login sebagai VENDOR, tampilkan event khusus vendor mereka
+    if (user && user.role === "VENDOR") {
+      const vendorEvents = await eventService.getVendorEvents(user.userId);
+      return NextResponse.json(vendorEvents);
+    }
+
+    // 2. LOGIKA UNTUK PUBLIK / CUSTOMER
+    // Tampilkan semua event yang statusnya ACTIVE saja
     const { searchParams } = new URL(req.url);
 
     const result = await eventService.getAllEvents({
@@ -64,11 +90,17 @@ export async function GET(req: Request) {
       city: searchParams.get("city") || undefined,
       district: searchParams.get("district") || undefined,
       page: searchParams.get("page") ? parseInt(searchParams.get("page")!) : 1,
-      limit: searchParams.get("limit") ? parseInt(searchParams.get("limit")!) : 8,
+      limit: searchParams.get("limit")
+        ? parseInt(searchParams.get("limit")!)
+        : 8,
     });
 
     return NextResponse.json(result);
   } catch (error: any) {
-    return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
+    console.error("GET Events Error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch events" },
+      { status: 500 },
+    );
   }
 }

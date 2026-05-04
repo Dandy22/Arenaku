@@ -6,11 +6,19 @@ import { adminService } from "@/lib/services/admin.service";
 export async function GET(req: Request) {
   try {
     const user = await getUserFromToken(req);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const orders = await adminService.getAllOrders(user.role);
     return NextResponse.json(orders);
   } catch (error: any) {
-    if (error.message.includes("token")) return NextResponse.json({ error: error.message }, { status: 401 });
-    if (error.message.includes("Only admins")) return NextResponse.json({ error: error.message }, { status: 403 });
-    return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 });
+    if (error.message.includes("token"))
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    if (error.message.includes("Only admins"))
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    return NextResponse.json(
+      { error: "Failed to fetch orders" },
+      { status: 500 },
+    );
   }
 }

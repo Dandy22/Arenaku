@@ -19,7 +19,9 @@ export async function POST(req: Request) {
   try {
     const user = await getUserFromToken(req);
     const body = await req.json();
-
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const order = await orderService.createOrder(user.userId, user.role, {
       customerName: body.customerName,
       customerPhone: body.customerPhone,
@@ -45,12 +47,18 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   try {
     const user = await getUserFromToken(req);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const orders = await orderService.getUserOrders(user.userId);
     return NextResponse.json(orders);
   } catch (error: any) {
     if (error.message.includes("token")) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
-    return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch orders" },
+      { status: 500 },
+    );
   }
 }

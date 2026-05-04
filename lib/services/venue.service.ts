@@ -1,5 +1,6 @@
 import { venueRepository } from "@/lib/repositories/venue.repository";
 import { prisma } from "@/lib/prisma";
+import { notificationService } from "@/lib/services/notification.service";
 
 export const venueService = {
   async createVenue(
@@ -13,28 +14,25 @@ export const venueService = {
       address?: string;
       latitude?: number;
       longitude?: number;
-    }
+      thumbnailUrl?: string;
+    },
   ) {
-    if (userRole !== "VENDOR") throw new Error("Only vendors can create a venue");
-    if (!data.name || !data.description || !data.city) {
-      throw new Error("Name, description, and city are required");
-    }
+    if (userRole !== "VENDOR")
+      throw new Error("Only vendors can create a venue");
+    const vendorOrg = await venueRepository.findVendorProfileByUserId(userId);
 
-    const vendorProfile = await venueRepository.findVendorProfileByUserId(userId);
-    if (!vendorProfile) throw new Error("Vendor profile not found. Please contact support");
-    if (vendorProfile.status !== "VERIFIED") {
-      throw new Error("Your vendor account is not verified yet. Please wait for admin approval.");
+    if (!vendorOrg) throw new Error("Vendor organization not found.");
+
+    if (vendorOrg.status !== "VERIFIED") {
+      throw new Error("Your vendor account is not verified yet.");
     }
 
     return venueRepository.create({
-      name: data.name,
-      description: data.description,
-      city: data.city,
+      ...data,
       district: data.district || "",
       address: data.address || "",
-      latitude: data.latitude,
-      longitude: data.longitude,
-      vendorId: vendorProfile.id,
+      vendorId: vendorOrg.id, // Gunakan ID Organisasi
+      thumbnailUrl: data.thumbnailUrl || "",
     });
   },
 
@@ -42,24 +40,16 @@ export const venueService = {
     userId: string,
     userRole: string,
     venueId: string,
-    data: {
-      name?: string;
-      description?: string;
-      city?: string;
-      address?: string;
-      latitude?: number;
-      longitude?: number;
-    }
+    data: any,
   ) {
-    if (userRole !== "VENDOR") throw new Error("Only vendors can update a venue");
+    if (userRole !== "VENDOR")
+      throw new Error("Only vendors can update a venue");
 
-    const vendorProfile = await venueRepository.findVendorProfileByUserId(userId);
-    if (!vendorProfile) throw new Error("Vendor profile not found");
-
+    const vendorOrg = await venueRepository.findVendorProfileByUserId(userId);
     const venue = await venueRepository.findById(venueId);
-    if (!venue) throw new Error("Venue not found");
 
-    if (venue.vendorId !== vendorProfile.id) {
+    if (!venue) throw new Error("Venue not found");
+    if (!vendorOrg || venue.vendorId !== vendorOrg.id) {
       throw new Error("You are not authorized to update this venue");
     }
 
@@ -67,15 +57,14 @@ export const venueService = {
   },
 
   async deleteVenue(userId: string, userRole: string, venueId: string) {
-    if (userRole !== "VENDOR") throw new Error("Only vendors can delete a venue");
+    if (userRole !== "VENDOR")
+      throw new Error("Only vendors can delete a venue");
 
-    const vendorProfile = await venueRepository.findVendorProfileByUserId(userId);
-    if (!vendorProfile) throw new Error("Vendor profile not found");
-
+    const vendorOrg = await venueRepository.findVendorProfileByUserId(userId);
     const venue = await venueRepository.findById(venueId);
-    if (!venue) throw new Error("Venue not found");
 
-    if (venue.vendorId !== vendorProfile.id) {
+    if (!venue) throw new Error("Venue not found");
+    if (!vendorOrg || venue.vendorId !== vendorOrg.id) {
       throw new Error("You are not authorized to delete this venue");
     }
 
@@ -83,12 +72,11 @@ export const venueService = {
   },
 
   async getVendorVenues(userId: string, userRole: string) {
-    if (userRole !== "VENDOR") throw new Error("Only vendors can view their venues");
-
-    const vendorProfile = await venueRepository.findVendorProfileByUserId(userId);
-    if (!vendorProfile) throw new Error("Vendor profile not found");
-
-    return venueRepository.findByVendorId(vendorProfile.id);
+    if (userRole !== "VENDOR")
+      throw new Error("Only vendors can view their venues");
+    const vendorOrg = await venueRepository.findVendorProfileByUserId(userId);
+    if (!vendorOrg) throw new Error("Vendor organization not found");
+    return venueRepository.findByVendorId(vendorOrg.id);
   },
 
   async getVenueById(id: string) {
@@ -114,10 +102,18 @@ export const venueService = {
     return venueRepository.findAll(params);
   },
 
-  async addImage(userId: string, userRole: string, venueId: string, url: string) {
-    if (userRole !== "VENDOR") throw new Error("Only vendors can add images");
+  async addImage(
+    userId: string,
+    userRole: string,
+    venueId: string,
+    url: string,
+    title?: string,
+  ) {
+    if (userRole !== "VENDOR" && userRole !== "ADMIN")
+      throw new Error("Only vendors and admins can add images");
 
-    const vendorProfile = await venueRepository.findVendorProfileByUserId(userId);
+    const vendorProfile =
+      await venueRepository.findVendorProfileByUserId(userId);
     if (!vendorProfile) throw new Error("Vendor profile not found");
 
     const venue = await venueRepository.findById(venueId);
@@ -127,50 +123,82 @@ export const venueService = {
       throw new Error("You are not authorized to add images to this venue");
     }
 
-    return venueRepository.addImage(venueId, url);
+    return venueRepository.addImage(venueId, url, title);
   },
 
-  async deleteImage(userId: string, userRole: string, venueId: string, imageId: string) {
-    if (userRole !== "VENDOR") throw new Error("Only vendors can delete images");
+  async deleteImage(
+    userId: string,
+    userRole: string,
+    venueId: string,
+    imageId: string,
+  ) {
+    if (userRole !== "VENDOR" && userRole !== "ADMIN")
+      throw new Error("Only vendors and admins can delete images");
 
-    const vendorProfile = await venueRepository.findVendorProfileByUserId(userId);
+    const vendorProfile =
+      await venueRepository.findVendorProfileByUserId(userId);
     if (!vendorProfile) throw new Error("Vendor profile not found");
 
     const venue = await venueRepository.findById(venueId);
     if (!venue) throw new Error("Venue not found");
 
     if (venue.vendorId !== vendorProfile.id) {
-      throw new Error("You are not authorized to delete images from this venue");
+      throw new Error(
+        "You are not authorized to delete images from this venue",
+      );
     }
 
     return venueRepository.deleteImage(imageId);
   },
 
- async rateVenue(userId: string, venueId: string, rating: number, comment: string) {
-  if (rating < 1 || rating > 5) throw new Error("Rating must be between 1 and 5");
+  async rateVenue(
+    userId: string,
+    venueId: string,
+    rating: number,
+    comment: string,
+  ) {
+    if (rating < 1 || rating > 5)
+      throw new Error("Rating must be between 1 and 5");
 
-  const venue = await venueRepository.findById(venueId);
-  if (!venue) throw new Error("Venue not found");
+    const venue = await venueRepository.findById(venueId);
+    if (!venue) throw new Error("Venue not found");
 
-  // Cek apakah user pernah booking di venue ini dan sudah PAID
-  const hasPaidBooking = await prisma.orderItem.findFirst({
-    where: {
-      field: { venueId },
-      order: {
-        userId,
-        status: "PAID",
+    // Cek apakah user pernah booking di venue ini dan sudah PAID
+    const hasPaidBooking = await prisma.orderItem.findFirst({
+      where: {
+        field: { venueId },
+        order: {
+          userId,
+          status: "PAID",
+        },
       },
-    },
-  });
+    });
 
-  if (!hasPaidBooking) {
-    throw new Error("You can only rate a venue after completing a booking there");
-  }
+    if (!hasPaidBooking) {
+      throw new Error(
+        "You can only rate a venue after completing a booking there",
+      );
+    }
 
-  const existing = await venueRepository.findRating(venueId, userId);
-  if (existing) {
-    return venueRepository.updateRating(venueId, userId, rating, comment);
-  }
-  return venueRepository.createRating(venueId, userId, rating, comment);
-},
+    const existing = await venueRepository.findRating(venueId, userId);
+    let result;
+    if (existing) {
+      result = await venueRepository.updateRating(
+        venueId,
+        userId,
+        rating,
+        comment,
+      );
+    } else {
+      result = await venueRepository.createRating(
+        venueId,
+        userId,
+        rating,
+        comment,
+      );
+      // Trigger notifikasi Rating Baru ke vendor
+      await notificationService.notifyRatingNew(venueId);
+    }
+    return result;
+  },
 };

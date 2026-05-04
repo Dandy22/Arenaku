@@ -5,6 +5,9 @@ interface User {
   name: string;
   email: string;
   role: "CUSTOMER" | "VENDOR" | "ADMIN";
+  phone: string;
+  vendorStatus?: "PENDING" | "VERIFIED" | "REJECTED";
+  vendorId?: string;
 }
 
 interface AuthStore {

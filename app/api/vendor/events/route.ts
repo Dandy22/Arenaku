@@ -16,9 +16,22 @@ import { eventService } from "@/lib/services/event.service";
 export async function GET(req: Request) {
   try {
     const user = await getUserFromToken(req);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    // TAMBAHKAN PENGECEKAN INI
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: Token tidak valid atau tidak ditemukan" },
+        { status: 401 },
+      );
+    }
 
     if (user.role !== "VENDOR") {
-      return NextResponse.json({ error: "Only vendors can access this" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Only vendors can access this" },
+        { status: 403 },
+      );
     }
 
     const events = await eventService.getVendorEvents(user.userId);
@@ -41,6 +54,10 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const user = await getUserFromToken(req);
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const body = await req.json();
 
     const event = await eventService.createEvent(user.userId, user.role, {
@@ -50,12 +67,14 @@ export async function POST(req: Request) {
       city: body.city,
       district: body.district,
       category: body.category,
+      topic: body.topic,
       imageUrl: body.imageUrl,
       date: body.date,
+      endDate: body.endDate || body.date,
       startHour: body.startHour,
       endHour: body.endHour,
-      ticketPrice: body.ticketPrice,
-      capacity: body.capacity,
+      ticketPrice: Number(body.ticketPrice) || 0,
+      capacity: Number(body.capacity),
       additionalInfo: body.additionalInfo,
       termsConditions: body.termsConditions,
       contactName: body.contactName,
@@ -63,13 +82,11 @@ export async function POST(req: Request) {
       contactPhone: body.contactPhone,
       latitude: body.latitude,
       longitude: body.longitude,
+      status: body.status,
     });
 
     return NextResponse.json(event, { status: 201 });
   } catch (error: any) {
-    if (error.message.includes("token")) {
-      return NextResponse.json({ error: error.message }, { status: 401 });
-    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

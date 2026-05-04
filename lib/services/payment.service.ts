@@ -4,61 +4,73 @@
 // TIER 2 — Business Logic Layer: Payment Service
 //
 // Payment dibuat setelah user pilih metode bayar.
-// QR code di-generate di sini (simulasi — di production
-// integrasikan dengan Midtrans / Xendit / payment gateway).
+// Menggunakan Midtrans SNAP (sandbox) sebagai payment gateway.
 // ============================================================
 
 import { paymentRepository } from "@/lib/repositories/payment.repository";
 import { orderRepository } from "@/lib/repositories/order.repository";
+import { createMidtransTransaction, getMidtransConfig } from "@/lib/midtrans";
+import { notificationService } from "@/lib/services/notification.service";
 
 // Durasi expired payment: 15 menit
 const PAYMENT_EXPIRY_MINUTES = 15;
 
 export const paymentService = {
-  // ----------------------------------------------------------
-  // createPayment
-  // Buat payment untuk sebuah order.
-  // Generate QR code dan set waktu expired.
-  // ----------------------------------------------------------
   async createPayment(
     userId: string,
     data: {
       orderId: string;
-      method: string; // "QRIS" | "BANK_TRANSFER" | "E_WALLET"
-    }
+      method: string;
+    },
   ) {
-    // Validasi metode pembayaran yang tersedia
     const validMethods = ["QRIS", "BANK_TRANSFER", "E_WALLET"];
     if (!validMethods.includes(data.method)) {
-      throw new Error(`Invalid payment method. Choose: ${validMethods.join(", ")}`);
+      throw new Error(
+        `Invalid payment method. Choose: ${validMethods.join(", ")}`,
+      );
     }
 
-    // Ambil order dan pastikan milik user ini
     const order = await orderRepository.findById(data.orderId);
     if (!order) throw new Error("Order not found");
     if (order.userId !== userId) {
       throw new Error("You are not authorized to pay this order");
     }
 
-    // Jika order sudah punya payment, jangan buat lagi
     if (order.payment) {
       throw new Error("Payment already exists for this order");
     }
 
-    // Pastikan order masih PENDING (belum dibayar / dibatalkan)
     if (order.status !== "PENDING") {
-      throw new Error(`Cannot create payment for order with status: ${order.status}`);
+      throw new Error(
+        `Cannot create payment for order with status: ${order.status}`,
+      );
     }
 
-    // Hitung waktu expired (sekarang + 15 menit)
     const expiredAt = new Date();
     expiredAt.setMinutes(expiredAt.getMinutes() + PAYMENT_EXPIRY_MINUTES);
 
-    // Generate QR code (simulasi)
-    // Di production: panggil API Midtrans/Xendit di sini
-    const qrCode = generateQRCode(data.orderId, order.totalAmount, data.method);
+    let snapToken = "";
+    let redirectUrl = "";
+    let qrCode = "";
 
-    // Buat record payment
+    try {
+      const midtransResult = await createMidtransTransaction({
+        id: order.id,
+        totalAmount: order.totalAmount,
+        user: {
+          name: order.user.name,
+          email: order.user.email,
+          phone: order.user.phone,
+        },
+      });
+      snapToken = midtransResult.snapToken;
+      redirectUrl = midtransResult.redirectUrl;
+      qrCode = redirectUrl;
+    } catch (error: any) {
+      console.warn("⚠️ Midtrans unavailable, using simulation:", error.message);
+      qrCode = generateQRCode(data.orderId, order.totalAmount, data.method);
+    }
+
     const payment = await paymentRepository.create({
       orderId: data.orderId,
       amount: order.totalAmount,
@@ -67,14 +79,14 @@ export const paymentService = {
       expiredAt,
     });
 
-    return payment;
+    return {
+      ...payment,
+      snapToken,
+      redirectUrl,
+      midtransConfig: getMidtransConfig(),
+    };
   },
 
-  // ----------------------------------------------------------
-  // getPaymentStatus
-  // Cek status payment berdasarkan orderId.
-  // Frontend polling endpoint ini untuk cek apakah QR sudah di-scan.
-  // ----------------------------------------------------------
   async getPaymentStatus(userId: string, orderId: string) {
     const payment = await paymentRepository.findByOrderId(orderId);
     if (!payment) throw new Error("Payment not found");
@@ -95,14 +107,9 @@ export const paymentService = {
     return payment;
   },
 
-  // ----------------------------------------------------------
-  // confirmPayment (simulasi)
-  // Di production ini dipanggil oleh webhook dari payment gateway.
-  // Di sini kita buat endpoint manual untuk simulasi.
-  // ----------------------------------------------------------
   async confirmPayment(paymentId: string) {
     const { prisma } = await import("@/lib/prisma");
-    
+
     const payment = await paymentRepository.findById(paymentId);
     if (!payment) throw new Error("Payment not found");
 
@@ -110,22 +117,20 @@ export const paymentService = {
       throw new Error(`Payment already ${payment.status}`);
     }
 
-    // Update payment ke SUCCESS
     await paymentRepository.updateStatus(paymentId, "SUCCESS");
-
-    // Update order ke PAID
     await orderRepository.updateStatus(payment.orderId, "PAID");
-
-    // Get order with event tickets
     const order = await orderRepository.findById(payment.orderId);
-    
+
+    // Trigger notifikasi Pembayaran Berhasil
+    await notificationService.notifyPaymentSuccess(payment.orderId);
+
     // If order has event tickets, confirm them and add to EventParticipant
     if (order && order.eventTickets && order.eventTickets.length > 0) {
       for (const ticket of order.eventTickets) {
         // Update ticket status to CONFIRMED
         await prisma.eventTicket.update({
           where: { id: ticket.id },
-          data: { 
+          data: {
             status: "CONFIRMED",
             confirmedAt: new Date(),
           },
@@ -146,6 +151,13 @@ export const paymentService = {
           update: {}, // Already exists, no update needed
         });
       }
+
+      // Trigger notifikasi Tiket Terjual
+      if (order.eventTickets[0]) {
+        await notificationService.notifyTicketSold(
+          order.eventTickets[0].eventId,
+        );
+      }
     }
 
     return { message: "Payment confirmed successfully" };
@@ -153,11 +165,15 @@ export const paymentService = {
 };
 
 // ----------------------------------------------------------
-// generateQRCode (helper)
+// generateQRCode (fallback helper)
 // Simulasi generate QR code string.
-// Di production: panggil Midtrans QRIS API atau Xendit.
+// Dipakai jika Midtrans unavailable.
 // ----------------------------------------------------------
-function generateQRCode(orderId: string, amount: number, method: string): string {
+function generateQRCode(
+  orderId: string,
+  amount: number,
+  method: string,
+): string {
   if (method === "QRIS") {
     // Format simulasi QRIS — di production diganti response dari payment gateway
     return `QRIS-${orderId}-${amount}-${Date.now()}`;
