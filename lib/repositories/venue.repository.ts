@@ -143,12 +143,12 @@ export const venueRepository = {
     }
 
     if (params.district) {
-      where.district = { contains: params.district, mode: "insensitive" };
+      where.district = { equals: params.district, mode: "insensitive" };
     }
 
     if (params.type) {
       where.fields = {
-        some: { type: { contains: params.type, mode: "insensitive" } },
+        some: { type: { equals: params.type, mode: "insensitive" } },
       };
     }
 

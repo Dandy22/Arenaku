@@ -1,19 +1,37 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   HiOutlineMapPin,
   HiOutlineMagnifyingGlass,
   HiOutlineCalendar,
+  HiOutlineTag,
 } from "react-icons/hi2";
 import api from "@/lib/axios";
 import { BEKASI_DISTRICTS, SPORT_TYPES } from "@/lib/constants";
+import { Select, DatePicker } from "antd";
+import dayjs from "dayjs";
+
+import VenueCard from "@/components/reusable/VenueCard";
+
+// Format enum → label: MINI_SOCCER → Mini Soccer
+const formatTypeLabel = (value: string) => {
+  if (!value) return "Semua";
+  return value
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+};
+
+// Normalize label di SPORT_TYPES jaga-jaga jika constants masih pakai raw enum
+const normalizedSportTypes = SPORT_TYPES.map((s) => ({
+  ...s,
+  label: formatTypeLabel(s.label !== s.value ? s.label : s.value),
+}));
 
 function VenuesContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const [venues, setVenues] = useState<any[]>([]);
   const [meta, setMeta] = useState({
@@ -32,13 +50,24 @@ function VenuesContent() {
   );
   const [page, setPage] = useState(Number(searchParams.get("page")) || 1);
 
-  const fetchVenues = async (p = page) => {
+  // Label formatted untuk heading
+  const typeLabel = formatTypeLabel(type);
+  const districtLabel =
+    BEKASI_DISTRICTS.find((d) => d.value === district)?.label ||
+    district ||
+    "Kota Bekasi";
+
+  // Terima filters eksplisit agar tidak bergantung pada stale state
+  const fetchVenues = async (
+    p: number,
+    filters: { name: string; district: string; type: string },
+  ) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (name) params.set("name", name);
-      if (district) params.set("district", district);
-      if (type) params.set("type", type);
+      if (filters.name) params.set("name", filters.name);
+      if (filters.district) params.set("district", filters.district);
+      if (filters.type) params.set("type", filters.type);
       params.set("page", String(p));
       params.set("limit", "8");
 
@@ -47,128 +76,124 @@ function VenuesContent() {
         setVenues(res.data.data);
         setMeta(res.data.meta);
       } else {
-        setVenues(res.data);
+        const data = res.data ?? [];
+        setVenues(data);
+        setMeta((prev) => ({ ...prev, total: data.length, totalPages: 1 }));
       }
     } catch {
       console.error("Failed to fetch venues");
+      setVenues([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Fetch on mount — gunakan nilai dari URL params langsung (bukan state yg mungkin belum terupdate)
   useEffect(() => {
-    fetchVenues();
+    fetchVenues(1, {
+      name: searchParams.get("name") || "",
+      district: searchParams.get("district") || "",
+      type: searchParams.get("type") || "",
+    });
   }, []);
 
   const handleSearch = () => {
     setPage(1);
-    fetchVenues(1);
+    fetchVenues(1, { name, district, type });
   };
-
-  const getMinPrice = (fields: any[]) => {
-    if (!fields?.length) return 0;
-    return Math.min(...fields.map((f) => f.price));
-  };
-
-  const getAvgRating = (ratings: any[]) => {
-    if (!ratings?.length) return 0;
-    return (
-      ratings.reduce((a: number, r: any) => a + r.rating, 0) / ratings.length
-    );
-  };
-
-  const renderStars = (rating: number) =>
-    Array.from({ length: 5 }, (_, i) => (
-      <span
-        key={i}
-        className={
-          i < Math.round(rating) ? "text-purple-500" : "text-gray-300"
-        }>
-        ★
-      </span>
-    ));
-
-  const todayLabel = new Date(date).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10">
       {/* Title */}
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-gray-900">
-          Venue <span className="text-purple-600">{type || "Semua"}</span> di{" "}
-          <span className="text-purple-600">{district || "Kota Bekasi"}</span>
+          Venue <span className="text-purple-600">{typeLabel}</span> di{" "}
+          <span className="text-purple-600">{districtLabel}</span>
         </h1>
         <p className="text-gray-500 mt-2 text-sm">
-          Berikut Venue{" "}
-          <span className="text-purple-600">{type || "Semua"}</span> di{" "}
-          <span className="text-purple-600">{district || "Kota Bekasi"}</span>{" "}
-          yang sudah memenuhi standar kualitas terbaik
+          Berikut Venue <span className="text-purple-600">{typeLabel}</span> di{" "}
+          <span className="text-purple-600">{districtLabel}</span> yang sudah
+          memenuhi standar kualitas terbaik
         </p>
       </div>
 
       {/* Search Bar */}
       <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm mb-8">
-        <input
-          placeholder="Cari nama venue"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-400 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition mb-3"
-        />
+        <div className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl mb-3">
+          <HiOutlineMagnifyingGlass className="text-primary shrink-0" />
+          <input
+            placeholder="Cari nama venue"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            className="flex-1 text-sm text-gray-700 placeholder-gray-400 outline-none bg-transparent"
+          />
+        </div>
+
         <div className="flex flex-col md:flex-row gap-3">
-          <div className="flex-1 flex items-center gap-2 px-4 py-3 border border-gray-200 rounded-xl">
-            <HiOutlineMapPin size={18} className="text-purple-500 shrink-0" />
-            <select
-              value={district}
-              onChange={(e) => setDistrict(e.target.value)}
-              className="flex-1 text-sm text-gray-700 outline-none bg-transparent">
-              {BEKASI_DISTRICTS.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex-1 flex items-center gap-2 px-4 py-3 border border-gray-200 rounded-xl">
-            <span className="text-purple-500 shrink-0">⚽</span>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="flex-1 text-sm text-gray-700 outline-none bg-transparent">
-              {SPORT_TYPES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex-1 flex items-center gap-2 px-4 py-3 border border-gray-200 rounded-xl">
-            <HiOutlineCalendar size={18} className="text-purple-500 shrink-0" />
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="flex-1 text-sm text-gray-700 outline-none bg-transparent"
+          <div className="flex-1 h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-4 flex items-center gap-2">
+            <HiOutlineMapPin className="text-primary shrink-0" />
+            <Select
+              placeholder="Pilih Kecamatan"
+              variant="borderless"
+              className="flex-1 text-sm font-semibold"
+              value={district || undefined}
+              onChange={setDistrict}
+              options={BEKASI_DISTRICTS}
             />
           </div>
+
+          <div className="flex-1 h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-4 flex items-center gap-2">
+            <HiOutlineTag className="text-primary shrink-0" />
+            <Select
+              placeholder="Pilih Olahraga"
+              variant="borderless"
+              className="flex-1 text-sm font-semibold"
+              value={type || undefined}
+              onChange={setType}
+              options={normalizedSportTypes}
+            />
+          </div>
+
+          <div className="flex-1 h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-4 flex items-center gap-2">
+            <HiOutlineCalendar className="text-primary shrink-0" />
+            <DatePicker
+              variant="borderless"
+              className="flex-1 text-sm font-semibold"
+              value={date ? dayjs(date) : null}
+              suffixIcon={null}
+              onChange={(d) => setDate(d ? d.format("YYYY-MM-DD") : "")}
+              format="YYYY-MM-DD"
+              placeholder="Pilih tanggal"
+            />
+          </div>
+
           <button
             onClick={handleSearch}
-            className="px-6 py-3 rounded-xl text-white font-semibold text-sm hover:opacity-90 transition"
-            style={{ background: "#EF4444" }}>
+            className="flex-1 md:flex-none h-[44px] px-6 cursor-pointer rounded-xl bg-[#EF4444] text-white font-semibold text-sm hover:opacity-90 transition flex items-center justify-center gap-2">
+            <HiOutlineMagnifyingGlass className="text-lg" />
             Cari Venue
           </button>
         </div>
       </div>
 
       {/* Result count */}
-      <p className="text-sm text-gray-500 mb-4">
-        Hasil pencarian:{" "}
-        <span className="font-semibold">{meta.total} Venue tersedia</span>
-      </p>
+      {!loading && (
+        <p className="text-sm text-gray-500 mb-4">
+          {venues.length > 0 ? (
+            <>
+              Ditemukan{" "}
+              <span className="font-semibold text-gray-800">
+                {meta.total} Venue tersedia
+              </span>
+            </>
+          ) : (
+            <span className="font-semibold text-gray-500">
+              Tidak ada venue yang ditemukan
+            </span>
+          )}
+        </p>
+      )}
 
       {/* Venue Grid */}
       {loading ? (
@@ -188,73 +213,9 @@ function VenuesContent() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {venues.map((venue) => (
-            <div
-              key={venue.id}
-              className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition">
-              <div className="aspect-video bg-gray-100 overflow-hidden">
-                <img
-                  src={
-                    venue.images?.[0]?.url ||
-                    "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=400"
-                  }
-                  alt={venue.name}
-                  className="w-full h-full object-cover hover:scale-105 transition duration-300"
-                />
-              </div>
-              <div className="p-3">
-                <div className="flex text-sm mb-1">
-                  {renderStars(getAvgRating(venue.ratings))}
-                </div>
-                <h3 className="font-bold text-gray-900 text-sm uppercase">
-                  {venue.name}
-                </h3>
-                <p className="text-xs text-purple-600 font-medium mt-0.5">
-                  🏠 {venue.fields?.[0]?.type || "Olahraga"} ·{" "}
-                  <span className="font-semibold">
-                    {venue.fields?.length || 0} Lapangan
-                  </span>
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-                  <HiOutlineMapPin size={12} /> {venue.city}
-                </p>
-                <p className="text-xs text-gray-700 mt-1">
-                  Harga mulai{" "}
-                  <span className="text-purple-600 font-bold">
-                    Rp. {getMinPrice(venue.fields)?.toLocaleString("id-ID")}
-                  </span>
-                </p>
-
-                {/* First field slot preview */}
-                {venue.fields?.[0] && (
-                  <div className="mt-2">
-                    <p className="text-xs font-semibold text-gray-700">
-                      {venue.fields[0].name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {venue.fields[0].type} · P {venue.fields[0].length} x L{" "}
-                      {venue.fields[0].width}
-                    </p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {[8, 9, 10, 11, 12, 13, 14, 15].map((h) => (
-                        <span
-                          key={h}
-                          className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
-                          {String(h).padStart(2, "0")}:00
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <Link
-                  href={`/venues/${venue.id}`}
-                  className="mt-3 block text-center py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:border-purple-500 hover:text-purple-600 transition">
-                  Lihat Lebih Selengkapnya
-                </Link>
-              </div>
-            </div>
+            <VenueCard key={venue.id} venue={venue} showSlots />
           ))}
         </div>
       )}
@@ -270,8 +231,9 @@ function VenuesContent() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
-                setPage(page - 1);
-                fetchVenues(page - 1);
+                const p = page - 1;
+                setPage(p);
+                fetchVenues(p, { name, district, type });
               }}
               disabled={page <= 1}
               className="text-sm text-gray-500 hover:text-purple-600 disabled:opacity-40 disabled:cursor-not-allowed">
@@ -282,8 +244,9 @@ function VenuesContent() {
             </span>
             <button
               onClick={() => {
-                setPage(page + 1);
-                fetchVenues(page + 1);
+                const p = page + 1;
+                setPage(p);
+                fetchVenues(p, { name, district, type });
               }}
               disabled={page >= meta.totalPages}
               className="text-sm text-purple-600 font-semibold hover:underline disabled:opacity-40 disabled:cursor-not-allowed">
