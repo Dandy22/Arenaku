@@ -50,6 +50,12 @@ export default function VendorSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
+  const [initialProfileForm, setInitialProfileForm] = useState({
+    name: "",
+    vendorName: "",
+    phone: "",
+  });
+
   // Profile form state
   const [profileForm, setProfileForm] = useState({
     name: "",
@@ -62,6 +68,13 @@ export default function VendorSettingsPage() {
 
   // Bank form state
   const [bankForm, setBankForm] = useState({
+    bankName: "",
+    bankAccountNumber: "",
+    bankAccountName: "",
+  });
+
+  // Initial Bank form state (DITAMBAHKAN)
+  const [initialBankForm, setInitialBankForm] = useState({
     bankName: "",
     bankAccountNumber: "",
     bankAccountName: "",
@@ -98,6 +111,21 @@ export default function VendorSettingsPage() {
     }
   }, [user?.role]);
 
+  const isPasswordFilled =
+    !!profileForm.currentPassword ||
+    !!profileForm.newPassword ||
+    !!profileForm.confirmPassword;
+
+  const isProfileChanged = () => {
+    return (
+      profileForm.name !== initialProfileForm.name ||
+      (vendorRole === "OWNER" &&
+        profileForm.vendorName !== initialProfileForm.vendorName) ||
+      profileForm.phone !== initialProfileForm.phone ||
+      isPasswordFilled
+    );
+  };
+
   const fetchProfile = async () => {
     try {
       setLoadingProfile(true);
@@ -107,26 +135,47 @@ export default function VendorSettingsPage() {
       console.log("DATA DARI BACKEND:", res.data);
       if (roleFromApi) setVendorRole(roleFromApi);
 
-      setProfileForm((prev) => ({
-        ...prev,
-        name: userData?.name || "",
-        vendorName: vendor?.name || "",
-        phone: userData?.phone || "",
-      }));
+      setProfileForm((prev) => {
+        const newData = {
+          ...prev,
+          name: userData?.name || "",
+          vendorName: vendor?.name || "",
+          phone: userData?.phone || "",
+        };
+
+        setInitialProfileForm({
+          name: newData.name,
+          vendorName: newData.vendorName,
+          phone: newData.phone,
+        });
+
+        return newData;
+      });
 
       if (vendor) {
-        setVendorData(vendor);
-        setBankForm({
+        const bankData = {
           bankName: vendor.bankName || "",
           bankAccountNumber: vendor.bankAccountNumber || "",
           bankAccountName: vendor.bankAccountName || "",
-        });
+        };
+
+        setVendorData(vendor);
+        setBankForm(bankData);
+        setInitialBankForm(bankData); // ✅ simpan data awal
       }
     } catch (error: any) {
       message.error(error.response?.data?.error || "Failed to fetch profile");
     } finally {
       setLoadingProfile(false);
     }
+  };
+
+  const isBankFormChanged = () => {
+    return (
+      bankForm.bankName !== initialBankForm.bankName ||
+      bankForm.bankAccountNumber !== initialBankForm.bankAccountNumber ||
+      bankForm.bankAccountName !== initialBankForm.bankAccountName
+    );
   };
 
   const handleProfileChange = (field: string, value: string) => {
@@ -175,13 +224,24 @@ export default function VendorSettingsPage() {
       await axios.put("/vendor/profile", payload);
 
       message.success("Profil berhasil diperbarui");
-
       if (user) {
         setAuth(
           { ...user, name: profileForm.name, phone: profileForm.phone },
           localStorage.getItem("token") || "",
         );
       }
+
+      setInitialProfileForm({
+        name: profileForm.name,
+        vendorName: profileForm.vendorName,
+        phone: profileForm.phone,
+      });
+
+      setInitialBankForm({
+        bankName: bankForm.bankName,
+        bankAccountNumber: bankForm.bankAccountNumber,
+        bankAccountName: bankForm.bankAccountName,
+      });
 
       setProfileForm((prev) => ({
         ...prev,
@@ -451,6 +511,7 @@ export default function VendorSettingsPage() {
               type="primary"
               loading={loading}
               onClick={handleSaveProfile}
+              disabled={!isProfileChanged()}
               className="!h-11 !px-10 !rounded-full !bg-[#7C3AED] border-none shadow-lg shadow-purple-100 !font-bold">
               Simpan Profil
             </Button>
@@ -549,8 +610,9 @@ export default function VendorSettingsPage() {
               loading={loading}
               onClick={handleSaveBank}
               disabled={
-                vendorData?.status === "PENDING" &&
-                !!vendorData?.bankAccountNumber
+                (vendorData?.status === "PENDING" &&
+                  !!vendorData?.bankAccountNumber) ||
+                (vendorData?.status === "VERIFIED" && !isBankFormChanged())
               }
               className="!h-11 !px-10 !rounded-full !bg-[#7C3AED] border-none shadow-lg shadow-purple-100 !font-bold disabled:!bg-gray-400 disabled:cursor-not-allowed">
               {vendorData?.status === "PENDING" &&

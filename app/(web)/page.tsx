@@ -7,14 +7,24 @@ import {
   HiOutlineMapPin,
   HiOutlineCalendar,
   HiOutlineMagnifyingGlass,
+  HiOutlineTag,
 } from "react-icons/hi2";
 import api from "@/lib/axios";
 import { BEKASI_DISTRICTS, EVENT_CATEGORIES } from "@/lib/constants";
+import { Select, DatePicker } from "antd";
+import dayjs from "dayjs";
+
+// IMPORT KOMPONEN
+import VenueCard from "@/components/reusable/VenueCard";
+import PromoCard from "@/components/reusable/Promocard";
+import Carousel from "@/components/reusable/Carousel";
+import EventCard from "@/components/reusable/EventCard";
 
 export default function HomePage() {
   const router = useRouter();
   const [venues, setVenues] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
+  const [promoVenues, setPromoVenues] = useState<any[]>([]);
   const [searchDistrict, setSearchDistrict] = useState("");
   const [searchType, setSearchType] = useState("");
   const [searchDate, setSearchDate] = useState(
@@ -22,13 +32,26 @@ export default function HomePage() {
   );
   const [loading, setLoading] = useState(true);
 
+  // FETCH DATA DARI API
   useEffect(() => {
-    Promise.all([api.get("/venues?limit=4"), api.get("/events?limit=4")])
-      .then(([venuesRes, eventsRes]) => {
+    setLoading(true);
+    Promise.all([
+      api.get("/venues?limit=4"),
+      api.get("/events?limit=4"),
+      api.get("/venues?limit=3&filter=promo"), // Untuk promo venues
+    ])
+      .then(([venuesRes, eventsRes, promoRes]) => {
         setVenues(venuesRes.data.data || venuesRes.data);
         setEvents(eventsRes.data.data || eventsRes.data);
+        setPromoVenues(promoRes.data.data || promoRes.data);
       })
-      .catch(console.error)
+      .catch((error) => {
+        console.error("Error fetching data:", error);
+        // Fallback ke dummy data jika API error
+        setVenues([]);
+        setEvents([]);
+        setPromoVenues([]);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -40,40 +63,12 @@ export default function HomePage() {
     router.push(`/venues?${params.toString()}`);
   };
 
-  const formatPrice = (price: number) =>
-    `Rp. ${price?.toLocaleString("id-ID")}`;
-
-  const getMinPrice = (fields: any[]) => {
-    if (!fields?.length) return 0;
-    return Math.min(...fields.map((f) => f.price));
-  };
-
-  const getAvgRating = (ratings: any[]) => {
-    if (!ratings?.length) return 0;
-    return (
-      ratings.reduce((a: number, r: any) => a + r.rating, 0) / ratings.length
-    );
-  };
-
-  const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <span
-        key={i}
-        className={
-          i < Math.round(rating) ? "text-purple-500" : "text-gray-300"
-        }>
-        ★
-      </span>
-    ));
-  };
-
   return (
     <div>
-      {/* Hero */}
+      {/* HERO SECTIONS */}
       <section className="relative h-72 md:h-96 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-black/30 z-10" />
         <img
-          src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1400"
+          src="/Hero.png"
           alt="hero"
           className="w-full h-full object-cover"
         />
@@ -81,70 +76,75 @@ export default function HomePage() {
           <h1 className="text-3xl md:text-5xl font-bold leading-tight">
             Main Lebih Seru di Venue Terbaik!
           </h1>
-          <p className="mt-2 text-lg md:text-xl text-white/80">
-            Temukan Lapangan Favoritmu Sekarang
-          </p>
         </div>
       </section>
 
-      {/* Search bar */}
-      <section className="relative z-30 -mt-8 px-4">
-        <div className="max-w-4xl mx-auto">
+      {/* SEARCH BAR */}
+      <section className="relative z-30 -mt-20 px-4 overflow-hidden shadow-none">
+        <div className="max-w-7xl mx-auto">
           <div
-            className="rounded-2xl shadow-xl overflow-hidden"
+            className="relative rounded-2xl shadow-xl overflow-hidden min-h-[160px] py-8 px-6"
             style={{ background: "linear-gradient(135deg, #5B21B6, #9333EA)" }}>
-            <p className="text-white text-center text-sm font-medium py-3">
-              Temukan Lapangan Favoritmu Sekarang
-            </p>
-            <div className="bg-white/10 backdrop-blur-sm px-4 pb-4">
-              <div className="flex flex-col md:flex-row gap-2">
-                <div className="flex-1 bg-white rounded-xl px-4 py-2.5 flex items-center gap-2">
-                  <HiOutlineMapPin
-                    size={18}
-                    className="text-purple-500 shrink-0"
-                  />
-                  <select
-                    value={searchDistrict}
-                    onChange={(e) => setSearchDistrict(e.target.value)}
-                    className="flex-1 text-sm text-gray-700 outline-none bg-transparent">
-                    <option value="">Pilih Kecamatan</option>
-                    {BEKASI_DISTRICTS.slice(1).map((d) => (
-                      <option key={d.value} value={d.value}>
-                        {d.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex-1 bg-white rounded-xl px-4 py-2.5 flex items-center gap-2">
-                  <span className="text-purple-500 text-lg shrink-0">⚽</span>
-                  <select
-                    value={searchType}
-                    onChange={(e) => setSearchType(e.target.value)}
-                    className="flex-1 text-sm text-gray-700 outline-none bg-transparent">
-                    <option value="">Pilih Olahraga</option>
-                    {EVENT_CATEGORIES.slice(1).map((s) => (
-                      <option key={s.value} value={s.value}>
-                        {s.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex-1 bg-white rounded-xl px-4 py-2.5 flex items-center gap-2">
-                  <HiOutlineCalendar
-                    size={18}
-                    className="text-purple-500 shrink-0"
-                  />
-                  <input
-                    type="date"
-                    value={searchDate}
-                    onChange={(e) => setSearchDate(e.target.value)}
-                    className="flex-1 text-sm text-gray-700 outline-none bg-transparent"
+            <img
+              alt="circle"
+              src="/CircleHalf.svg"
+              className="absolute right-0 -bottom-28 w-[300px] opacity-60 pointer-events-none select-none"
+            />
+            <img
+              alt="circle"
+              src="/Circle.svg"
+              className="absolute left-[-330px] -bottom-5 w-[500px] opacity-60 pointer-events-none select-none"
+            />
+
+            <div className="relative flex flex-col items-center text-center gap-6">
+              <p className="text-white text-1xl md:text-2xl font-bold tracking-tight">
+                Temukan Lapangan Favoritmu Sekarang
+              </p>
+
+              <div className="flex flex-wrap justify-center gap-3 w-full">
+                <div className="flex-1 min-w-[200px] h-[44px] bg-white rounded-xl px-4 flex items-center gap-2">
+                  <HiOutlineMapPin className="text-primary shrink-0" />
+                  <Select
+                    placeholder="Pilih Kecamatan"
+                    variant="borderless"
+                    className="flex-1 text-sm font-semibold"
+                    value={searchDistrict || undefined}
+                    onChange={setSearchDistrict}
+                    options={BEKASI_DISTRICTS.slice(1)}
                   />
                 </div>
+
+                <div className="flex-1 min-w-[200px] h-[44px] bg-white rounded-xl px-4 flex items-center gap-2">
+                  <HiOutlineTag className="text-primary shrink-0" />
+                  <Select
+                    placeholder="Pilih Olahraga"
+                    variant="borderless"
+                    className="flex-1 text-sm font-semibold"
+                    value={searchType || undefined}
+                    onChange={setSearchType}
+                    options={EVENT_CATEGORIES.slice(1)}
+                  />
+                </div>
+
+                <div className="flex-1 min-w-[200px] h-[44px] bg-white rounded-xl px-4 flex items-center gap-2">
+                  <HiOutlineCalendar className="text-primary shrink-0" />
+                  <DatePicker
+                    variant="borderless"
+                    className="flex-1 text-sm font-semibold"
+                    value={searchDate ? dayjs(searchDate) : null}
+                    suffixIcon={null}
+                    onChange={(date) =>
+                      setSearchDate(date ? date.format("YYYY-MM-DD") : "")
+                    }
+                    format="YYYY-MM-DD"
+                    placeholder="Pilih tanggal"
+                  />
+                </div>
+
                 <button
                   onClick={handleSearch}
-                  className="px-6 py-2.5 rounded-xl text-white font-semibold text-sm transition hover:opacity-90"
-                  style={{ background: "#EF4444" }}>
+                  className="flex-1 min-w-[200px] h-[44px] px-6 cursor-pointer rounded-xl bg-[#EF4444] text-white font-semibold text-sm hover:opacity-90 transition flex items-center justify-center gap-2">
+                  <HiOutlineMagnifyingGlass className="text-lg" />
                   Cek Jadwal
                 </button>
               </div>
@@ -153,15 +153,15 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Rekomendasi Venue */}
+      {/* REKOMENDASI VENUE */}
       <section className="max-w-7xl mx-auto px-6 mt-12">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-2xl font-bold text-gray-900">
-            Rekomendasi <span className="text-purple-600">Venue</span>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-black">
+            Rekomendasi <span className="text-primary">Venue</span>
           </h2>
           <Link
             href="/venues"
-            className="text-sm text-purple-600 font-semibold hover:underline flex items-center gap-1">
+            className="text-sm text-primary font-semibold hover:underline flex items-center gap-1">
             Lihat lebih lanjut →
           </Link>
         </div>
@@ -176,152 +176,191 @@ export default function HomePage() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {venues.map((venue) => (
-              <div
-                key={venue.id}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition">
-                <div className="aspect-video bg-gray-100 overflow-hidden">
-                  <img
-                    src={
-                      venue.images?.[0]?.url ||
-                      "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=400"
-                    }
-                    alt={venue.name}
-                    className="w-full h-full object-cover hover:scale-105 transition duration-300"
-                  />
-                </div>
-                <div className="p-3">
-                  <div className="flex text-sm mb-1">
-                    {renderStars(getAvgRating(venue.ratings))}
-                  </div>
-                  <h3 className="font-bold text-gray-900 text-sm uppercase">
-                    {venue.name}
-                  </h3>
-                  <p className="text-xs text-purple-600 font-medium mt-0.5">
-                    🏠 {venue.fields?.[0]?.type || "Olahraga"} ·{" "}
-                    <span className="font-semibold">
-                      {venue.fields?.length || 0} Lapangan
-                    </span>
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-                    <HiOutlineMapPin size={12} /> {venue.city}
-                  </p>
-                  <p className="text-xs text-gray-700 mt-1">
-                    Harga mulai{" "}
-                    <span className="text-purple-600 font-bold">
-                      {formatPrice(getMinPrice(venue.fields))}
-                    </span>
-                  </p>
-                  <Link
-                    href={`/venues/${venue.id}`}
-                    className="mt-2 block text-center py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:border-purple-500 hover:text-purple-600 transition">
-                    Lihat Lebih Selengkapnya
-                  </Link>
-                </div>
-              </div>
+              <VenueCard key={venue.id} venue={venue} />
             ))}
           </div>
         )}
       </section>
 
-      {/* Aktivitas Komunitas */}
-      <section
-        className="mt-16"
-        style={{
-          background: "linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)",
-        }}>
-        <div className="max-w-7xl mx-auto px-6 py-10">
-          <h2 className="text-2xl font-bold text-white mb-6">
-            Aktivitas Komunitas
-          </h2>
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {EVENT_CATEGORIES.map((cat) => (
-              <Link
-                key={cat.value}
-                href={`/activity?category=${cat.value}`}
-                className="flex flex-col items-center gap-2 shrink-0">
-                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl hover:bg-white/30 transition">
-                  {cat.icon}
-                </div>
-                <span className="text-white text-xs font-medium">
-                  {cat.label}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Acara Komunitas */}
-      <section className="max-w-7xl mx-auto px-6 mt-12 mb-16">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-2xl font-bold text-gray-900">
-            Acara <span className="text-purple-600">Komunitas</span>
+      {/* PROMO VENUE  */}
+      <section className="max-w-7xl mx-auto px-6 mt-16 mb-12">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-black">
+            Promo <span className="text-primary">Venue</span>
           </h2>
           <Link
-            href="/activity"
-            className="text-sm text-purple-600 font-semibold hover:underline">
+            href="/venues?filter=promo"
+            className="text-sm text-primary font-semibold hover:underline flex items-center gap-1">
             Lihat lebih lanjut →
           </Link>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 h-80">
+            <div className="bg-gray-100 rounded-2xl animate-pulse hidden md:block" />
+            {[...Array(3)].map((_, i) => (
               <div
                 key={i}
-                className="bg-gray-100 rounded-2xl h-64 animate-pulse"
+                className="bg-gray-100 rounded-2xl animate-pulse h-72"
               />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {events.map((event) => (
-              <div
-                key={event.id}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition">
-                <div className="relative aspect-video bg-gray-100 overflow-hidden">
-                  <img
-                    src={
-                      event.imageUrl ||
-                      "https://images.unsplash.com/photo-1553778263-73a83bab9b0c?w=400"
-                    }
-                    alt={event.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-2 right-2 bg-white/90 rounded-lg px-2 py-1 text-center">
-                    <p className="text-xs font-bold text-gray-800">
-                      {new Date(event.date).toLocaleDateString("id-ID", {
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </p>
-                  </div>
-                </div>
-                <div className="p-3">
-                  <h3 className="font-bold text-gray-900 text-sm uppercase line-clamp-2">
-                    {event.title}
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                    🕐{" "}
-                    {new Date(event.date).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                    , {event.startHour}:00 PM
-                  </p>
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <HiOutlineMapPin size={12} /> {event.city || event.location}
-                  </p>
-                  <Link
-                    href={`/activity/${event.id}`}
-                    className="mt-2 block text-center py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:border-purple-500 hover:text-purple-600 transition">
-                    Pesan Tiket
-                  </Link>
-                </div>
+          <>
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+              <div className="w-full h-full">
+                <PromoCard
+                  title="Booking sekarang, penawaran terbaik."
+                  description="Nikmati diskon hingga 50% untuk booking lapangan olahraga."
+                  ctaText="Lihat Promo"
+                  ctaLink="/venues?filter=promo"
+                />
               </div>
+
+              {promoVenues.map((venue) => (
+                <VenueCard key={venue.id} venue={venue} />
+              ))}
+            </div>
+            <div className="block md:hidden w-full overflow-visible">
+              <Carousel
+                itemsToShow={1.2}
+                gap={16}
+                autoplay
+                autoplayInterval={3000}>
+                {promoVenues.map((venue) => (
+                  <div key={venue.id} className="pb-4">
+                    <VenueCard venue={venue} />
+                  </div>
+                ))}
+              </Carousel>
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* AKTIVITAS KOMUNITAS */}
+      <section
+        className="mt-16 relative overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)",
+        }}>
+        <img
+          alt="circle"
+          src="/circle.svg"
+          className="absolute -top-70 -right-40  max-w-[500] opacity-60 group-hover:scale-105 pointer-events-none select-none"
+        />
+
+        <img
+          alt="circle"
+          src="/circle.svg"
+          className="absolute -left-100 -bottom-60  max-w-[600] opacity-60 group-hover:scale-105 pointer-events-none select-none"
+        />
+        <div className="max-w-7xl mx-auto px-6 py-6 relative z-10">
+          <h2 className="text-3xl font-semibold text-white mb-8">
+            Aktivitas Komunitas
+          </h2>
+
+          <div className="flex gap-6 overflow-x-auto pb-4 no-scrollbar justify-between px-4">
+            {EVENT_CATEGORIES.map((cat) => {
+              if (cat.value === "OTHER") return null;
+              let svgFileName = "Semua.svg";
+              let displayLabel: string = cat.label;
+
+              switch (cat.value) {
+                case "":
+                  svgFileName = "Semua.svg";
+                  displayLabel = "Semua";
+                  break;
+                case "MINI_SOCCER":
+                  svgFileName = "MiniSoccer.svg";
+                  displayLabel = "Mini Soccer";
+                  break;
+                case "SOCCER":
+                  svgFileName = "SepakBola.svg";
+                  displayLabel = "Sepak Bola";
+                  break;
+                case "BADMINTON":
+                  svgFileName = "BuluTangkis.svg";
+                  displayLabel = "Bulu Tangkis";
+                  break;
+                case "BASKETBALL":
+                  svgFileName = "Basket.svg";
+                  displayLabel = "Basket";
+                  break;
+                case "TENNIS":
+                  svgFileName = "Tenis.svg";
+                  displayLabel = "Tenis";
+                  break;
+                case "VOLLEYBALL":
+                  svgFileName = "Bola Voli.svg";
+                  displayLabel = "Bola Voli";
+                  break;
+                case "PADEL":
+                  svgFileName = "Padel.svg";
+                  displayLabel = "Padel";
+                  break;
+                case "FUTSAL":
+                  svgFileName = "SepakBola.svg";
+                  displayLabel = "Futsal";
+                  break;
+                default:
+                  svgFileName = "Semua.svg";
+                  break;
+              }
+              return (
+                <Link
+                  key={cat.value}
+                  href={`/activity?category=${cat.value}`}
+                  className="group flex flex-col items-center gap-3 shrink-0 bg-transparent">
+                  <div className="w-20 h-24 md:w-24 md:h-28 transition-transform group-hover:scale-105 shrink-0 bg-transparent">
+                    <img
+                      src={`/${svgFileName}`}
+                      alt={displayLabel}
+                      className="w-full h-full object-contain drop-shadow-lg"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/Semua.svg";
+                      }}
+                    />
+                  </div>
+
+                  <span className="text-white text-sm md:text-base font-medium tracking-wide whitespace-nowrap mt-1">
+                    {displayLabel}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ACARA KOMUNITAS */}
+      <section className="max-w-7xl mx-auto px-6 mt-12 mb-16">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-black">
+            Acara <span className="text-primary">Komunitas</span>
+          </h2>
+          <Link
+            href="/activity"
+            className="text-sm text-primary font-semibold hover:underline flex items-center gap-1">
+            Lihat lebih lanjut →
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div
+                key={i}
+                className="bg-gray-100 rounded-2xl h-[400px] animate-pulse"
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+            {events.map((event) => (
+              <EventCard key={event.id} event={event} />
             ))}
           </div>
         )}

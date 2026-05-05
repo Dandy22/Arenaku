@@ -74,7 +74,9 @@ export default function EventDynamicPage({
   const [event, setEvent] = useState<Event | null>(null);
   const [tickets, setTickets] = useState<EventTicketTier[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [searchDistrict, setSearchDistrict] = useState<string | undefined>(
+    undefined,
+  );
   // ---------------------------------------------------------------------------
   // STATE: FORM EVENT BARU
   // ---------------------------------------------------------------------------
@@ -649,30 +651,36 @@ export default function EventDynamicPage({
                   />
                 </div>
 
-                <div>
-                  <FormLabel text="Kecamatan" required />
-                  <Select
-                    placeholder="Pilih kecamatan"
-                    value={eventForm.district || undefined}
-                    onChange={(value) =>
-                      handleEventFormChange("district", value)
-                    }
-                    className="!w-full !h-[42px] [&_.ant-select-selector]:!rounded-lg text-sm text-slate-500 font-semibold"
-                    options={[
-                      { label: "Bantar Gebang", value: "Bantar Gebang" },
-                      { label: "Bekasi Barat", value: "Bekasi Barat" },
-                      { label: "Bekasi Selatan", value: "Bekasi Selatan" },
-                      { label: "Bekasi Timur", value: "Bekasi Timur" },
-                      { label: "Bekasi Utara", value: "Bekasi Utara" },
-                      { label: "Jatiasih", value: "Jatiasih" },
-                      { label: "Jatisampurna", value: "Jatisampurna" },
-                      { label: "Medan Satria", value: "Medan Satria" },
-                      { label: "Mustika Jaya", value: "Mustika Jaya" },
-                      { label: "Pondok Gede", value: "Pondok Gede" },
-                      { label: "Pondok Melati", value: "Pondok Melati" },
-                      { label: "Rawalumbu", value: "Rawalumbu" },
-                    ]}
+                <div className="flex-1 bg-white rounded-xl px-4 py-1 flex items-center gap-2">
+                  <HiOutlineMapPin
+                    size={18}
+                    className="text-purple-500 shrink-0"
                   />
+
+                  <div>
+                    <FormLabel text="Kecamatan" required />
+                    <Select
+                      placeholder="Pilih kecamatan"
+                      value={searchDistrict || undefined}
+                      onChange={(value) => setSearchDistrict(value)}
+                      showSearch={false}
+                      className="!w-full !h-[42px] cursor-pointer [&_.ant-select-selector]:!rounded-lg text-sm text-slate-500 font-semibold"
+                      options={[
+                        { label: "Bantar Gebang", value: "Bantar Gebang" },
+                        { label: "Bekasi Barat", value: "Bekasi Barat" },
+                        { label: "Bekasi Selatan", value: "Bekasi Selatan" },
+                        { label: "Bekasi Timur", value: "Bekasi Timur" },
+                        { label: "Bekasi Utara", value: "Bekasi Utara" },
+                        { label: "Jatiasih", value: "Jatiasih" },
+                        { label: "Jatisampurna", value: "Jatisampurna" },
+                        { label: "Medan Satria", value: "Medan Satria" },
+                        { label: "Mustika Jaya", value: "Mustika Jaya" },
+                        { label: "Pondok Gede", value: "Pondok Gede" },
+                        { label: "Pondok Melati", value: "Pondok Melati" },
+                        { label: "Rawalumbu", value: "Rawalumbu" },
+                      ]}
+                    />
+                  </div>
                 </div>
                 <div>
                   <FormLabel text="Deskripsi Event" required />

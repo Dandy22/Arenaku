@@ -101,7 +101,7 @@ export async function notifyBookingNew(orderId: string) {
         userId: member.userId,
         type: "BOOKING_NEW",
         target: "VENDOR",
-        title: "🎉 Booking Baru!",
+        title: "Booking Baru!",
         message: `${order.user?.name || "Someone"} baru saja memesan lapangan. Menunggu pembayaran.`,
         data: { orderId, vendorId },
       });
@@ -115,7 +115,7 @@ export async function notifyBookingNew(orderId: string) {
       userId: adminId,
       type: "BOOKING_NEW",
       target: "ADMIN",
-      title: "🏢 Booking Baru",
+      title: "Booking Baru",
       message: `Order baru dari ${order.user?.name || "Unknown"} dengan total Rp ${order.totalAmount.toLocaleString("id-ID")}`,
       data: { orderId },
     });
@@ -160,7 +160,7 @@ export async function notifyPaymentSuccess(orderId: string) {
         userId: member.userId,
         type: "PAYMENT_SUCCESS",
         target: "VENDOR",
-        title: "✅ Pembayaran Berhasil!",
+        title: "Pembayaran Berhasil!",
         message: `Order #${orderId.slice(-6).toUpperCase()} sudah lunas.`,
         data: { orderId, vendorId },
       });
@@ -173,7 +173,7 @@ export async function notifyPaymentSuccess(orderId: string) {
       userId: order.userId,
       type: "PAYMENT_SUCCESS",
       target: "USER",
-      title: "✅ Pembayaran Berhasil!",
+      title: "Pembayaran Berhasil!",
       message: `Pembayaran untuk order #${orderId.slice(-6).toUpperCase()} telah berhasil.`,
       data: { orderId },
     });
@@ -198,7 +198,7 @@ export async function notifyPaymentFailed(orderId: string) {
       userId: adminId,
       type: "PAYMENT_FAILED",
       target: "ADMIN",
-      title: "⚠️ Pembayaran Gagal",
+      title: "Pembayaran Gagal",
       message: `Order #${orderId.slice(-6).toUpperCase()} atas nama ${order.user?.name || "Unknown"} mengalami kegagalan pembayaran.`,
       data: { orderId },
     });
@@ -241,7 +241,7 @@ export async function notifyOrderCancelled(orderId: string, reason?: string) {
         userId: member.userId,
         type: "ORDER_CANCELLED",
         target: "VENDOR",
-        title: "❌ Booking Dibatalkan",
+        title: "Booking Dibatalkan",
         message: `Order #${orderId.slice(-6).toUpperCase()} oleh ${order.user?.name || "Customer"} telah dibatalkan${reason ? `: ${reason}` : "."}`,
         data: { orderId, vendorId },
       });
@@ -275,7 +275,7 @@ export async function notifyRatingNew(venueId: string) {
       userId: member.userId,
       type: "RATING_NEW",
       target: "VENDOR",
-      title: "⭐ Rating Baru!",
+      title: "Rating Baru!",
       message: `Seseorang memberikan bintang ${rating?.rating || 5} untuk venue ${venue.name}.`,
       data: { venueId },
     });
@@ -307,7 +307,7 @@ export async function notifyVendorStatusChange(
       userId: owner.userId,
       type: "VENDOR_VERIFIED",
       target: "VENDOR",
-      title: "📢 Verifikasi Berhasil!",
+      title: "Verifikasi Berhasil!",
       message: `Selamat! Vendor ${vendor.name} sudah diverifikasi oleh Admin dan sekarang sudah live.`,
       data: { vendorId },
     });
@@ -316,7 +316,7 @@ export async function notifyVendorStatusChange(
       userId: owner.userId,
       type: "VENDOR_VERIFIED",
       target: "VENDOR",
-      title: "📢 Verifikasi Ditolak",
+      title: "Verifikasi Ditolak",
       message: `Mohon maaf, vendor ${vendor.name} belum memenuhi persyaratan. Silakan hubungi admin untuk info lebih lanjut.`,
       data: { vendorId },
     });
@@ -348,7 +348,7 @@ export async function notifyTicketSold(eventId: string) {
       userId: member.userId,
       type: "TICKET_SOLD",
       target: "VENDOR",
-      title: "🎟️ Tiket Terjual!",
+      title: "Tiket Terjual!",
       message: `${ticketCount} Tiket untuk event "${event.title}" berhasil dibeli.`,
       data: { eventId },
     });
@@ -374,7 +374,7 @@ export async function notifyVendorRegister(vendorId: string) {
       userId: adminId,
       type: "VENDOR_REGISTER",
       target: "ADMIN",
-      title: "🏢 Vendor Baru!",
+      title: "Vendor Baru!",
       message: `${vendor.name} baru saja mendaftar. Segera periksa dan verifikasi.`,
       data: { vendorId },
     });
@@ -398,7 +398,7 @@ export async function notifyEventNew(eventId: string) {
       userId: adminId,
       type: "EVENT_NEW",
       target: "ADMIN",
-      title: "🗓️ Event Baru",
+      title: "Event Baru",
       message: `Vendor ${event.creator?.name || "Unknown"} baru saja mempublikasikan event "${event.title}".`,
       data: { eventId },
     });
@@ -421,7 +421,7 @@ export async function notifyUserSuspended(userId: string) {
       userId: adminId,
       type: "USER_SUSPENDED",
       target: "ADMIN",
-      title: "⚠️ Pengguna Disuspend",
+      title: "Pengguna Disuspend",
       message: `Pengguna ${user.name} (${user.email}) telah disuspend.`,
       data: { userId },
     });
@@ -446,7 +446,7 @@ export async function notifyRefundRequest(orderId: string) {
       userId: adminId,
       type: "ORDER_CANCELLED", // Reuse type or add new if you updated enum
       target: "ADMIN",
-      title: "📢 Permintaan Refund",
+      title: "Permintaan Refund",
       message: `User ${order.user.name} meminta refund untuk order #${orderId.slice(-6).toUpperCase()}`,
       data: { orderId },
     });

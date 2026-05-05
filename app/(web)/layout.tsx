@@ -15,6 +15,7 @@ import {
   HiChevronDown,
   HiArrowRightOnRectangle,
   HiOutlineUserCircle,
+  HiOutlineBars3,
 } from "react-icons/hi2";
 import { HiClipboardDocumentList } from "react-icons/hi2";
 import { useAuthStore } from "@/lib/store/auth.store";
@@ -41,6 +42,7 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // STATE NOTIFIKASI
   const [showNotifMenu, setShowNotifMenu] = useState(false);
@@ -235,6 +237,7 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
             />
           </Link>
 
+          {/* Desktop Navigation - Centered */}
           <div className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => {
               const isActive =
@@ -246,7 +249,7 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                   href={link.href}
                   className={`text-sm font-semibold tracking-wide transition ${
                     isActive
-                      ? "text-purple-700"
+                      ? "text-primary"
                       : "text-gray-500 hover:text-gray-800"
                   }`}>
                   {link.label}
@@ -277,11 +280,11 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                 {user.role === "CUSTOMER" && (
                   <button
                     onClick={handleCartClick}
-                    className="relative p-2 text-gray-500 hover:text-purple-600 transition"
+                    className="relative p-2 text-gray-500 hover:text-primary transition cursor-pointer"
                     title="Keranjang">
                     <HiOutlineShoppingCart size={24} />
                     {cartCount > 0 && (
-                      <span className="absolute top-1 right-0 w-4 h-4 rounded-full bg-purple-600 text-white text-[10px] flex items-center justify-center font-bold border-2 border-white box-content">
+                      <span className="absolute top-1 right-0 w-4 h-4 cursor-pointer rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-bold border-2 border-white box-content">
                         {cartCount}
                       </span>
                     )}
@@ -296,11 +299,11 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                       setDropdownOpen(false);
                       if (!showNotifMenu) fetchNotifications();
                     }}
-                    className="relative p-2 text-gray-500 cursor-pointer hover:text-purple-600 transition"
+                    className="relative p-2 text-gray-500 cursor-pointer hover:text-primary transition"
                     title="Notifikasi">
                     {unreadCount > 0 ? (
                       <>
-                        <HiBell size={24} className="text-purple-600" />
+                        <HiBell size={24} className="text-primary" />
                         <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#A855F7] text-white text-[10px] flex items-center justify-center font-bold border-2 border-white box-content">
                           {unreadCount}
                         </span>
@@ -345,7 +348,7 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                           notifications.map((notif) => (
                             <div
                               key={notif.id}
-                              onClick={() => handleNotificationClick(notif)} // 👈 MENGGUNAKAN FUNGSI BARU DI SINI
+                              onClick={() => handleNotificationClick(notif)}
                               className={`flex gap-3 p-3.5 rounded-xl transition cursor-pointer hover:bg-gray-50 border border-transparent ${
                                 !notif.isRead ? "bg-slate-50" : "bg-white"
                               }`}>
@@ -400,9 +403,7 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                   )}
                 </div>
 
-                <div className="w-[1px] h-8 bg-slate-200 rounded-full hidden sm:block mx-1"></div>
-
-                {/* Avatar + Profile Dropdown */}
+                {/* Avatar Profile Dropdown */}
                 <div className="relative profile-dropdown">
                   <button
                     onClick={() => {
@@ -432,7 +433,7 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                           <HiChevronDown size={14} className="text-gray-400" />
                         </div>
                       </div>
-                      <p className="text-[10px] font-bold text-purple-600 uppercase tracking-wider mt-0.5">
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-wider mt-0.5">
                         {user.role}
                       </p>
                     </div>
@@ -500,10 +501,44 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                     </div>
                   )}
                 </div>
+
+                {/* Mobile Hamburger Menu */}
+                <button
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="md:hidden p-2 text-gray-500 hover:text-primary transition"
+                  title="Menu">
+                  <HiOutlineBars3 size={24} />
+                </button>
               </>
             )}
           </div>
         </div>
+
+        {/* Mobile Navigation Menu */}
+        {mobileMenuOpen && user && (
+          <div className="md:hidden bg-white border-t border-gray-100">
+            <div className="max-w-7xl mx-auto px-6 py-3 flex flex-col gap-2">
+              {navLinks.map((link) => {
+                const isActive =
+                  pathname === link.href ||
+                  (link.href !== "/" && pathname.startsWith(link.href));
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`text-sm font-semibold tracking-wide transition py-2 px-3 rounded-lg ${
+                      isActive
+                        ? "text-primary bg-purple-50"
+                        : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                    }`}>
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </nav>
 
       <main className="flex-1">{children}</main>
@@ -589,7 +624,7 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                 <span className="text-sm font-semibold text-gray-700">
                   Total
                 </span>
-                <span className="text-lg font-bold text-purple-700">
+                <span className="text-lg font-bold text-primary">
                   Rp {cartTotal.toLocaleString("id-ID")}
                 </span>
               </div>
@@ -620,7 +655,7 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
             background: "radial-gradient(circle, #EC4899, transparent)",
           }}
         />
-        <div className="max-w-7xl mx-auto px-6 py-10 relative z-10">
+        <div className="max-w-7xl h-40 mx-auto px-6 py-10 relative z-10">
           <Image
             src="/LOGO-ARENAKU.svg"
             alt="Arenaku"
@@ -631,6 +666,11 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
           <p className="text-purple-200 text-sm">
             Booking venue olahraga dengan praktis dalam satu platform.
           </p>
+          <img
+            alt="circle"
+            src="/circle.svg"
+            className="absolute -top-65 -right-120  max-w-[500px] opacity-60 group-hover:scale-105 pointer-events-none select-none"
+          />
         </div>
       </footer>
     </div>
