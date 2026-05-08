@@ -135,11 +135,11 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
     return date.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
   };
 
-  // 👇 FUNGSI BARU: HANDLE KLIK NOTIFIKASI 👇
   const handleNotificationClick = async (notif: Notification) => {
     if (!notif.isRead) {
       await handleMarkAsRead(notif.id);
     }
+
     if (notif.type === "VENDOR_INVITE" && user?.role === "CUSTOMER") {
       const updatedUser = { ...user, role: "VENDOR" as "VENDOR" };
 
@@ -148,10 +148,17 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
 
       message.success("Berhasil bergabung! Mengalihkan ke dashboard...");
       setTimeout(() => {
-        window.location.href = notif.data.actionUrl;
+        // Tambahkan fallback URL (misal "/vendor") jika actionUrl tidak ada
+        window.location.href = notif.data?.actionUrl || "/vendor";
       }, 800);
     } else {
-      router.push(notif.data.actionUrl);
+      // PERBAIKAN: Cek apakah actionUrl benar-benar ada sebelum melakukan push
+      if (notif.data?.actionUrl) {
+        router.push(notif.data.actionUrl);
+      } else {
+        // Jika notifikasi tidak punya link, kita biarkan saja (tidak melakukan push)
+        console.warn("Notifikasi ini tidak memiliki link tujuan.");
+      }
     }
   };
 

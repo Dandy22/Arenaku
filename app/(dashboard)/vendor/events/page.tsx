@@ -262,7 +262,7 @@ export default function VendorEventsPage() {
       title: "Aksi",
       key: "aksi",
       fixed: "right",
-      align: "right",
+      align: "left",
       width: 280,
       render: (_, r) => (
         <div className="flex items-center justify-end gap-2">
@@ -288,7 +288,7 @@ export default function VendorEventsPage() {
             }
             icon={<HiOutlineTrash className="text-[18px]" />}
             className="!h-9 !rounded-full !border-[#F1F5F9] !bg-white !shadow-none !text-red-500 hover:!bg-red-50 hover:!border-red-200 [&_.ant-btn-icon]:!flex [&_.ant-btn-icon]:!items-center !font-semibold">
-            Delete
+            Hapus
           </Button>
         </div>
       ),

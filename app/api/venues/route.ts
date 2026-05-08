@@ -32,40 +32,45 @@ export async function POST(req: Request) {
   }
 }
 
-// GET /api/venues?name=arena&district=bekasi&type=futsal&page=1&limit=8
-// GET /api/venues?name=arena&district=bekasi&type=futsal&page=1&limit=8
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
 
+    const name = searchParams.get("name") || undefined;
+    const city = searchParams.get("city") || undefined;
+    const district = searchParams.get("district") || undefined;
+    const type = searchParams.get("type") || undefined;
+    const page = searchParams.get("page")
+      ? parseInt(searchParams.get("page")!)
+      : 1;
+    const limit = searchParams.get("limit")
+      ? parseInt(searchParams.get("limit")!)
+      : 8;
+
+    const isSearching = name || city || district || type;
+
     // Cek apakah ada token vendor
     try {
       const user = await getUserFromToken(req);
-      // PERBAIKAN: Jangan return 401 di sini. Lempar error agar ditangkap catch
-      // dan diteruskan ke "mode publik" di bawah
       if (!user) throw new Error("No user");
 
-      if (user.role === "VENDOR") {
+      if (user.role === "VENDOR" && !isSearching) {
         const myVenues = await venueService.getVendorVenues(
           user.userId,
           user.role,
         );
         return NextResponse.json(myVenues);
       }
-    } catch {
-      /* tidak ada token / token invalid → Lanjut ke mode publik */
-    }
+    } catch {}
 
     // Mode publik dengan filter
     const result = await venueService.getAllVenues({
-      name: searchParams.get("name") || undefined,
-      city: searchParams.get("city") || undefined,
-      district: searchParams.get("district") || undefined,
-      type: searchParams.get("type") || undefined,
-      page: searchParams.get("page") ? parseInt(searchParams.get("page")!) : 1,
-      limit: searchParams.get("limit")
-        ? parseInt(searchParams.get("limit")!)
-        : 8,
+      name,
+      city,
+      district,
+      type,
+      page,
+      limit,
     });
 
     return NextResponse.json(result);

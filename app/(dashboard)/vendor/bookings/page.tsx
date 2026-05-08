@@ -41,12 +41,19 @@ export default function VendorBookingsPage() {
   useEffect(() => {
     api
       .get("/vendor/bookings")
-      .then((res) => setBookings(res.data))
+      .then((res) => {
+        // MENGURUTKAN DATA MASUK DARI YANG TERBARU KE TERLAMA (Berdasarkan waktu pembuatan)
+        const sortedData = res.data.sort(
+          (a: Booking, b: Booking) =>
+            dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf(),
+        );
+        setBookings(sortedData);
+      })
       .catch(() => message.error("Gagal memuat data booking"))
       .finally(() => setLoading(false));
   }, []);
 
-  // Fungsi Badge Status (Murni UI logic, tidak mengandung Hooks)
+  // Fungsi Badge Status
   const statusBadge = (status: string) => {
     const map: Record<string, { text: string; className: string }> = {
       PENDING: { text: "Pending", className: "text-yellow-600 bg-yellow-50" },
@@ -69,7 +76,6 @@ export default function VendorBookingsPage() {
   };
 
   // LOGIKA PENCARIAN (Filtering)
-  // Menghitung ulang data yang ditampilkan hanya saat data asli atau keyword URL berubah
   const filteredBookings = useMemo(() => {
     if (!searchQuery) return bookings;
 
@@ -129,6 +135,8 @@ export default function VendorBookingsPage() {
     {
       title: "Tanggal Booking",
       key: "date",
+      // MENAMBAHKAN SORTER UNTUK TANGGAL BOOKING
+      sorter: (a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf(),
       render: (_, r) => (
         <span className="text-sm font-semibold text-slate-500">
           {dayjs(r.date).format("DD MMM YYYY")}
@@ -162,6 +170,12 @@ export default function VendorBookingsPage() {
     {
       title: "Waktu Transaksi",
       key: "transactionTime",
+      // MENAMBAHKAN SORTER JUGA PADA WAKTU TRANSAKSI (Opsional, tapi sangat direkomendasikan)
+      sorter: (a, b) => {
+        const timeA = a.order?.payment?.createdAt || a.createdAt;
+        const timeB = b.order?.payment?.createdAt || b.createdAt;
+        return dayjs(timeA).valueOf() - dayjs(timeB).valueOf();
+      },
       render: (_, r) => (
         <div className="flex flex-col">
           <span className="text-sm font-semibold text-slate-500">
@@ -190,6 +204,8 @@ export default function VendorBookingsPage() {
       dataIndex: "price",
       key: "price",
       align: "right",
+      // MENAMBAHKAN SORTER PADA HARGA
+      sorter: (a, b) => a.price - b.price,
       render: (price) => (
         <span className="font-semibold text-sm text-slate-500">
           Rp {price?.toLocaleString("id-ID")}

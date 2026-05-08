@@ -203,7 +203,7 @@ export default function VendorVenuesPage() {
       title: "Aksi",
       key: "aksi",
       fixed: "right",
-      align: "right",
+      align: "left",
       width: 320,
       render: (_, r) => (
         <div className="flex items-center justify-end gap-2">
@@ -223,7 +223,7 @@ export default function VendorVenuesPage() {
             onClick={() => setDeleteModal({ open: true, venueId: r.id })}
             icon={<HiOutlineTrash className="text-[18px]" />}
             className="!h-9 !rounded-full !border-[#F1F5F9] !bg-white !shadow-none !text-red-500 !font-semibold hover:!bg-red-50">
-            Delete
+            Hapus
           </Button>
         </div>
       ),
@@ -251,10 +251,9 @@ export default function VendorVenuesPage() {
         </Button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-white !w-full rounded-2xl shadow-sm border border-gray-100 p-6">
         <DataTable
           columns={columns}
-          // 3. Pastikan dataSource memakai hasil filter
           dataSource={filteredVenues}
           isLoading={loading}
           totalData={filteredVenues.length}

@@ -159,7 +159,9 @@ export default function AdminUsersPage() {
       key: "id",
       render: (_, r) => (
         <div className="flex flex-col">
-          <span className="font-semibold text-slate-500">{r.id.slice(-8)}</span>
+          <span className="font-semibold text-slate-500">
+            #{r.id.slice(-8)}
+          </span>
         </div>
       ),
     },

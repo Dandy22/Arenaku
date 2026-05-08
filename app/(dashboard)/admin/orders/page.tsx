@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Button, message, Select } from "antd";
 import { HiEye } from "react-icons/hi2";
 import { useSearchParams } from "next/navigation";
+import dayjs from "dayjs";
 
 import DataTable from "@/components/reusable/DataTable";
 import CustomDrawer from "@/components/reusable/CustomDrawer";
@@ -15,7 +16,7 @@ interface Order {
   customerName: string;
   customerEmail: string;
   totalAmount: number;
-  status: string; // PENDING, PAID, CANCELLED
+  status: string; // PENDING, PAID, CANCELLED, REFUND_REQUESTED, dll
   createdAt: string;
   items: { id: string }[];
   payment?: { status: string; method: string }; // PENDING, SUCCESS, FAILED, EXPIRED
@@ -36,11 +37,17 @@ export default function AdminOrdersPage() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      // Asumsi API mendukung query parameter filter status order
       const url =
         filter === "ALL" ? "/admin/orders" : `/admin/orders?status=${filter}`;
       const res = await api.get(url);
-      setOrders(res.data);
+
+      // MENGURUTKAN DATA MASUK DARI YANG TERBARU KE TERLAMA (Berdasarkan waktu pembuatan)
+      const sortedData = res.data.sort(
+        (a: Order, b: Order) =>
+          dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf(),
+      );
+
+      setOrders(sortedData);
     } catch {
       message.error("Gagal memuat data order");
     } finally {
@@ -63,47 +70,31 @@ export default function AdminOrdersPage() {
     );
   }, [orders, searchQuery]);
 
-  // --- BADGES ---
-  const orderStatusBadge = (status: string) => {
-    const map: Record<string, { text: string; className: string }> = {
-      PENDING: { text: "Pending", className: "text-amber-600 bg-amber-50" },
-      PAID: { text: "Paid", className: "text-green-600 bg-green-50" },
-      CANCELLED: { text: "Cancelled", className: "text-red-500 bg-red-50" },
-      REFUND_REQUESTED: {
-        text: "Refund Requested",
-        className: "text-blue-600 bg-blue-50",
-      },
-      REFUNDED: { text: "Refunded", className: "text-slate-600 bg-slate-100" },
-    };
-    const item = map[status] || {
-      text: status,
-      className: "text-gray-600 bg-gray-50",
-    };
-
-    return (
-      <div
-        className={`inline-flex items-center h-7 gap-1.5 rounded-full px-3 text-[10px] font-bold uppercase tracking-wider ${item.className}`}>
-        <div className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
-        <span>{item.text}</span>
-      </div>
-    );
-  };
-
-  const paymentStatusBadge = (status?: string) => {
-    if (!status)
+  // --- BADGES (Disamakan dengan style vendor) ---
+  const statusBadge = (status: string, isPayment = false) => {
+    if (!status && isPayment) {
       return (
         <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">
           Belum ada
         </span>
       );
+    }
 
     const map: Record<string, { text: string; className: string }> = {
-      PENDING: { text: "Pending", className: "text-amber-600 bg-amber-50" },
-      SUCCESS: { text: "Success", className: "text-green-600 bg-green-50" },
-      FAILED: { text: "Failed", className: "text-red-500 bg-red-50" },
+      PENDING: { text: "Pending", className: "text-yellow-600 bg-yellow-50" },
+      PAID: { text: "Lunas", className: "text-green-500 bg-green-50" },
+      SUCCESS: { text: "Berhasil", className: "text-green-500 bg-green-50" },
+      CANCELLED: { text: "Batal", className: "text-red-500 bg-red-50" },
+      FAILED: { text: "Gagal", className: "text-red-500 bg-red-50" },
       EXPIRED: { text: "Expired", className: "text-slate-500 bg-slate-100" },
+      REFUND_REQUESTED: {
+        text: "Refund Req",
+        className: "text-blue-600 bg-blue-50",
+      },
+      REFUNDED: { text: "Refunded", className: "text-slate-600 bg-slate-100" },
     };
-    const item = map[status] || {
+
+    const item = map[status?.toUpperCase()] || {
       text: status,
       className: "text-gray-600 bg-gray-50",
     };
@@ -117,74 +108,86 @@ export default function AdminOrdersPage() {
     );
   };
 
-  // --- TABLE COLUMNS ---
+  // --- TABLE COLUMNS (Dirombak mirip vendor) ---
   const columns: ColumnsType<Order> = [
     {
       title: "ID Order",
-      dataIndex: "id",
       key: "id",
-      render: (id) => (
+      render: (_, r) => (
+        <span className="text-sm font-semibold text-slate-500 uppercase">
+          #{r.id?.slice(-6) || "-"}
+        </span>
+      ),
+    },
+    {
+      title: "Customer",
+      key: "customerName",
+      render: (_, r) => (
+        <span className="font-semibold text-sm text-slate-500">
+          {r.customerName}
+        </span>
+      ),
+    },
+    {
+      title: "Email",
+      key: "customerEmail",
+      render: (_, r) => (
+        <span className="text-sm font-semibold text-slate-500">
+          {r.customerEmail}
+        </span>
+      ),
+    },
+    {
+      title: "Jumlah Item",
+      key: "items",
+      render: (_, r) => (
+        <span className="text-sm font-semibold text-slate-500">
+          {r.items?.length || 0} Item
+        </span>
+      ),
+    },
+    {
+      title: "Waktu Transaksi",
+      key: "transactionTime",
+      sorter: (a, b) =>
+        dayjs(a.createdAt).valueOf() - dayjs(b.createdAt).valueOf(),
+      render: (_, r) => (
         <div className="flex flex-col">
-          <span className="font-semibold text-slate-500">
-            {id.slice(-8).toUpperCase()}
+          <span className="text-sm font-semibold text-slate-500">
+            {dayjs(r.createdAt).format("DD/MM/YY")}
+          </span>
+          <span className="text-[10px] font-bold text-slate-400">
+            {dayjs(r.createdAt).format("HH:mm")} WIB
           </span>
         </div>
       ),
     },
     {
-      title: "Nama Customer",
-      dataIndex: "customerName",
-      key: "customerName",
-      render: (name) => (
-        <div className="flex flex-col">
-          <span className="font-semibold text-slate-500">{name}</span>
-        </div>
+      title: "Metode",
+      key: "paymentMethod",
+      render: (_, r) => (
+        <span className="text-sm font-semibold text-slate-500 uppercase">
+          {r.payment?.method?.replace(/_/g, " ") || "-"}
+        </span>
       ),
     },
     {
-      title: "Email",
-      dataIndex: "customerEmail",
-      key: "customerEmail",
-      render: (email) => (
-        <div className="flex flex-col">
-          <span className="text-sm font-semibold text-slate-500">{email}</span>
-        </div>
-      ),
-    },
-    {
-      title: "Total",
+      title: "Total Bayar",
       dataIndex: "totalAmount",
       key: "totalAmount",
-      render: (amount) => (
-        <span className="font-semibold text-slate-500">
-          Rp {amount?.toLocaleString("id-ID")}
+      align: "right",
+      sorter: (a, b) => a.totalAmount - b.totalAmount,
+      render: (price) => (
+        <span className="font-semibold text-sm text-slate-500">
+          Rp {price?.toLocaleString("id-ID")}
         </span>
       ),
     },
     {
-      title: "Items",
-      dataIndex: "items",
-      key: "items",
-      render: (items) => (
-        <span className="text-sm font-semibold text-slate-500">
-          {items?.length || 0} Lapangan
-        </span>
-      ),
-    },
-    {
-      title: "Status Order",
-      dataIndex: "status",
+      title: "Status",
       key: "status",
-      render: (status) => orderStatusBadge(status),
-    },
-    {
-      title: "Metode",
-      key: "payment",
-      render: (_, record) => (
-        <span className="text-sm font-bold text-slate-500 uppercase">
-          {record.payment?.method || "-"}
-        </span>
-      ),
+      align: "center",
+      render: (_, r) => statusBadge(r.status),
     },
     {
       title: "Aksi",
@@ -210,15 +213,8 @@ export default function AdminOrdersPage() {
   const renderDrawerContent = () => {
     if (!selectedOrder) return null;
 
-    const orderDate = new Date(selectedOrder.createdAt).toLocaleDateString(
-      "id-ID",
-      {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      },
+    const orderDate = dayjs(selectedOrder.createdAt).format(
+      "DD MMMM YYYY, HH:mm",
     );
 
     return (
@@ -251,22 +247,22 @@ export default function AdminOrdersPage() {
           </p>
           <div className="flex flex-col gap-4">
             <div>
-              <p className="text-sm font-semibold text-slate-600 mb-2">
+              <p className="text-sm font-semibold text-slate-500 mb-2">
                 ID Order
               </p>
               <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200">
-                <p className="font-semibold text-slate-600 text-sm break-all">
-                  {selectedOrder.id.toUpperCase()}
+                <p className="font-semibold text-slate-600 text-sm break-all uppercase">
+                  #{selectedOrder.id}
                 </p>
               </div>
             </div>
             <div>
               <p className="text-sm font-semibold text-slate-500 mb-2">
-                Tanggal Transaksi
+                Waktu Transaksi
               </p>
               <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200">
                 <p className="font-semibold text-sm text-slate-600">
-                  {orderDate}
+                  {orderDate} WIB
                 </p>
               </div>
             </div>
@@ -285,7 +281,7 @@ export default function AdminOrdersPage() {
               </p>
               <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200">
                 <p className="font-semibold text-sm text-slate-600">
-                  {selectedOrder.items?.length || 0} Lapangan
+                  {selectedOrder.items?.length || 0} Item
                 </p>
               </div>
             </div>
@@ -314,7 +310,7 @@ export default function AdminOrdersPage() {
               </p>
               <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200">
                 <p className="font-semibold text-slate-600 text-sm uppercase">
-                  {selectedOrder.payment?.method || "-"}
+                  {selectedOrder.payment?.method?.replace(/_/g, " ") || "-"}
                 </p>
               </div>
             </div>
@@ -323,7 +319,7 @@ export default function AdminOrdersPage() {
                 Status
               </p>
               <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200 flex items-center min-h-[46px]">
-                {paymentStatusBadge(selectedOrder.payment?.status)}
+                {statusBadge(selectedOrder.payment?.status || "", true)}
               </div>
             </div>
           </div>
@@ -370,7 +366,8 @@ export default function AdminOrdersPage() {
       <div>
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-500">List Order</h1>
+            {/* Header diubah warna text-nya agar mirip dengan vendor */}
+            <h1 className="text-2xl font-bold text-gray-800">Daftar Order</h1>
             <p className="mt-1 text-sm text-gray-500">
               Monitor semua transaksi pemesanan
             </p>
@@ -401,7 +398,7 @@ export default function AdminOrdersPage() {
             page={1}
             limit={10}
             showSearch
-            searchPlaceholder="Cari ID Order atau nama customer..."
+            searchPlaceholder="Cari nama customer, email, atau ID order..."
           />
         </div>
       </div>
@@ -413,7 +410,7 @@ export default function AdminOrdersPage() {
         open={drawerOpen}
         setOpen={setDrawerOpen}
         content={renderDrawerContent()}
-        extra={selectedOrder && orderStatusBadge(selectedOrder.status)}
+        extra={selectedOrder && statusBadge(selectedOrder.status)}
         footer={renderDrawerFooter()}
       />
     </>
