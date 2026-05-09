@@ -1,20 +1,174 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation"; // Tambahkan useRouter
 import Link from "next/link";
-import { HiOutlineMapPin } from "react-icons/hi2";
+import {
+  HiOutlineMapPin,
+  HiOutlineLink,
+  HiOutlineShare,
+  HiArrowLeft,
+  HiMapPin, // Tambahkan HiArrowLeft untuk icon kembali
+} from "react-icons/hi2";
+import { Empty } from "antd";
 import api from "@/lib/axios";
+import RatingDisplay from "@/components/reusable/RatingDisplay";
+import RatingList from "@/components/reusable/RatingList";
+
+type Tab = "lapangan" | "gallery";
+
+interface Field {
+  id: string;
+  name: string;
+  type: string;
+  length: number;
+  width: number;
+  price: number;
+  thumbnailUrl?: string;
+  images?: { url: string }[];
+}
+
+interface Rating {
+  id: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  user?: { id: string; name: string; email: string };
+}
+
+interface Venue {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  latitude?: number;
+  longitude?: number;
+  thumbnailUrl?: string;
+  images?: { id: string; url: string }[];
+  fields?: Field[];
+  ratings?: Rating[];
+  vendorId: string;
+}
+
+function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
+  return (
+    <div style={{ display: "flex", gap: 2 }}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <svg
+          key={i}
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill={i <= Math.round(rating) ? "#7C3AED" : "none"}
+          stroke="#7C3AED"
+          strokeWidth={1.5}
+          xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+        </svg>
+      ))}
+    </div>
+  );
+}
+
+function SlotBadge({ hour, booked }: { hour: number; booked?: boolean }) {
+  return (
+    <span
+      className={`text-xs px-1.5 py-0.5 rounded border ${
+        booked
+          ? "bg-slate-50 border-slate-200 text-slate-400"
+          : "bg-purple-50 border-purple-100 text-purple-500"
+      }`}>
+      {String(hour).padStart(2, "0")}:00
+    </span>
+  );
+}
+
+function FieldCard({ field, venueId }: { field: Field; venueId: string }) {
+  return (
+    <Link
+      href={`/venues/${venueId}/${field.id}`}
+      className="block cursor-pointer">
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:border-purple-200 transition-colors hover:shadow-md">
+        <div className="aspect-video bg-slate-100 overflow-hidden">
+          <img
+            src={
+              field.thumbnailUrl ||
+              field.images?.[0]?.url ||
+              "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=400"
+            }
+            alt={field.name}
+            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+          />
+        </div>
+        <div className="p-3">
+          <h3 className="font-semibold text-slate-900 text-sm">{field.name}</h3>
+          <p className="text-xs text-slate-400 mt-0.5">
+            {field.type} &middot; {field.length} x {field.width} m
+          </p>
+          <p className="text-xs text-purple-600 font-semibold mt-1">
+            Rp {field.price?.toLocaleString("id-ID")}
+          </p>
+          <button className="mt-2 w-full py-1.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 transition-colors cursor-pointer">
+            Jadwal mingguan
+          </button>
+          <div className="mt-2 flex flex-wrap gap-1">
+            {[8, 9, 10, 11, 12, 13, 14, 15].map((h) => (
+              <SlotBadge key={h} hour={h} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function ReviewItem({ review }: { review: Rating }) {
+  const initials = review.user?.name
+    ? review.user.name
+        .split(" ")
+        .slice(0, 2)
+        .map((w) => w[0])
+        .join("")
+        .toUpperCase()
+    : "?";
+
+  return (
+    <div className="py-4 border-b border-slate-100 last:border-0 last:pb-0 first:pt-0">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-xs font-semibold text-purple-700 flex-shrink-0">
+          {initials}
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-slate-900">
+            {review.user?.name || "Pengguna"}
+          </p>
+          <p className="text-xs text-slate-400">
+            {new Date(review.createdAt).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+          </p>
+        </div>
+      </div>
+      <StarRow rating={review.rating} size={12} />
+      {review.comment && (
+        <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+          {review.comment}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function VenueDetailPage() {
   const params = useParams();
+  const router = useRouter(); // Inisialisasi router
   const venueId = params.id as string;
 
-  const [venue, setVenue] = useState<any>(null);
+  const [venue, setVenue] = useState<Venue | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"lapangan" | "gallery">(
-    "lapangan",
-  );
+  const [activeTab, setActiveTab] = useState<Tab>("lapangan");
 
   useEffect(() => {
     api
@@ -24,30 +178,21 @@ export default function VenueDetailPage() {
       .finally(() => setLoading(false));
   }, [venueId]);
 
-  const renderStars = (rating: number) =>
-    Array.from({ length: 5 }, (_, i) => (
-      <span
-        key={i}
-        className={
-          i < Math.round(rating)
-            ? "text-purple-500 text-xl"
-            : "text-gray-300 text-xl"
-        }>
-        ★
-      </span>
-    ));
-
   const avgRating = venue?.ratings?.length
-    ? venue.ratings.reduce((a: number, r: any) => a + r.rating, 0) /
-      venue.ratings.length
+    ? venue.ratings.reduce((a, r) => a + r.rating, 0) / venue.ratings.length
     : 0;
+
+  const tabs: { key: Tab; label: string }[] = [
+    { key: "lapangan", label: "Lapangan" },
+    { key: "gallery", label: "Galeri" },
+  ];
 
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="bg-gray-100 rounded-2xl h-72 animate-pulse mb-6" />
-        <div className="bg-gray-100 rounded-xl h-8 w-48 animate-pulse mb-2" />
-        <div className="bg-gray-100 rounded-xl h-5 w-32 animate-pulse" />
+        <div className="bg-slate-100 rounded-2xl h-72 animate-pulse mb-6" />
+        <div className="bg-slate-100 rounded-xl h-8 w-48 animate-pulse mb-2" />
+        <div className="bg-slate-100 rounded-xl h-5 w-32 animate-pulse" />
       </div>
     );
   }
@@ -56,10 +201,18 @@ export default function VenueDetailPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-6">
+      {/* Breadcrumb / Tombol Kembali */}
+      <button
+        onClick={() => router.push("/venues")}
+        className="flex items-center gap-1 text-sm text-slate-500 hover:text-purple-600 mb-4 cursor-pointer transition-colors">
+        <HiArrowLeft size={16} /> Kembali
+      </button>
+
       {/* Hero image */}
-      <div className="rounded-2xl overflow-hidden h-64 md:h-80 bg-gray-100 mb-6">
+      <div className="rounded-2xl overflow-hidden h-64 md:h-80 bg-slate-100 mb-6 shadow-sm">
         <img
           src={
+            venue.thumbnailUrl ||
             venue.images?.[0]?.url ||
             "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=1200"
           }
@@ -68,160 +221,212 @@ export default function VenueDetailPage() {
         />
       </div>
 
-      {/* Rating + Name */}
-      <div className="flex items-start justify-between mb-4">
+      {/* Venue header */}
+      <div className="flex items-start justify-between mb-6">
         <div>
-          <div className="flex gap-0.5 mb-1">{renderStars(avgRating)}</div>
-
-          <h1 className="text-2xl font-bold text-gray-900 uppercase">
+          {avgRating > 0 && (
+            <div className="flex items-center gap-2 mb-2">
+              <StarRow rating={avgRating} size={15} />
+              <span className="text-sm font-semibold text-slate-700">
+                {avgRating.toFixed(1)}
+              </span>
+              <span className="text-sm text-slate-400">
+                ({venue.ratings?.length} ulasan)
+              </span>
+            </div>
+          )}
+          <h1 className="text-2xl font-bold text-slate-900 uppercase">
             {venue.name}
           </h1>
-
-          <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+          <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-1">
             <HiOutlineMapPin size={14} />
             {venue.address}, {venue.city}
           </p>
         </div>
 
-        <div className="text-right text-sm text-gray-500">
-          <p className="mb-1">Bagikan Venue</p>
-
+        <div className="flex flex-col items-end gap-2">
+          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-green-50 text-green-500 border border-green-200">
+            Buka hari ini
+          </span>
           <div className="flex gap-2">
-            {["📋", "📘", "✖️", "💬"].map((icon, i) => (
-              <button
-                key={i}
-                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 transition flex items-center justify-center text-sm">
-                {icon}
-              </button>
-            ))}
+            <button
+              onClick={() =>
+                navigator.clipboard?.writeText(window.location.href)
+              }
+              className="w-8 h-8 rounded-full border border-slate-200 hover:bg-slate-50 transition flex items-center justify-center cursor-pointer"
+              title="Salin tautan">
+              <HiOutlineLink size={14} className="text-slate-500" />
+            </button>
+            <button
+              className="w-8 h-8 rounded-full border border-slate-200 hover:bg-slate-50 transition flex items-center justify-center cursor-pointer"
+              title="Bagikan">
+              <HiOutlineShare size={14} className="text-slate-500" />
+            </button>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-6">
-        {(["lapangan", "gallery"] as const).map((tab) => (
+      <div className="flex border-b border-slate-200 mb-6">
+        {tabs.map((tab) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-3 text-sm font-semibold capitalize transition ${
-              activeTab === tab
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex-1 py-3 text-sm font-semibold transition cursor-pointer ${
+              activeTab === tab.key
                 ? "border-b-2 border-purple-600 text-purple-600"
-                : "text-gray-500 hover:text-gray-700"
+                : "text-slate-400 hover:text-slate-600"
             }`}>
-            {tab.toUpperCase()}
+            {tab.label.toUpperCase()}
           </button>
         ))}
       </div>
 
-      {/* TAB: LAPANGAN */}
+      {/* Tab: Lapangan (Berisi Daftar Lapangan, Ulasan, dan Lokasi) */}
       {activeTab === "lapangan" && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {venue.fields?.map((field: any) => (
-            <Link key={field.id} href={`/venues/${venueId}/${field.id}`}>
-              <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer">
-                <div className="aspect-video bg-gray-100 overflow-hidden">
-                  <img
-                    src={
-                      field.images?.[0]?.url ||
-                      "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=400"
-                    }
-                    alt={field.name}
-                    className="w-full h-full object-cover hover:scale-105 transition"
-                  />
+        <div className="space-y-12">
+          {/* Section: Lapangan */}
+          <div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {venue.fields?.map((field) => (
+                <FieldCard key={field.id} field={field} venueId={venueId} />
+              ))}
+              {!venue.fields?.length && (
+                <div className="col-span-full py-12">
+                  <Empty description="Belum ada lapangan tersedia" />
                 </div>
+              )}
+            </div>
+          </div>
 
-                <div className="p-3">
-                  <h3 className="font-bold text-gray-900 text-sm">
-                    {field.name}
-                  </h3>
-
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {field.type} · P {field.length} x L {field.width}
-                  </p>
-
-                  <p className="text-xs text-purple-600 font-bold mt-1">
-                    Rp. {field.price?.toLocaleString("id-ID")}
-                  </p>
-
-                  <button
-                    className="mt-2 w-full py-1.5 rounded-lg text-xs font-semibold text-white"
-                    style={{
-                      background: "linear-gradient(135deg, #7C3AED, #9333EA)",
-                    }}>
-                    Jadwal Mingguan
-                  </button>
-
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {[8, 9, 10, 11, 12, 13, 14, 15].map((h) => (
-                      <span
-                        key={h}
-                        className="text-xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-100">
-                        {String(h).padStart(2, "0")}:00
-                      </span>
-                    ))}
+          {/* Section: Rating & ulasan */}
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 mb-6">
+              Rating & Ulasan
+            </h2>
+            <div className="space-y-6">
+              {/* Rating Summary */}
+              <div className="bg-white border border-slate-200 rounded-xl p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-slate-900">
+                      {avgRating > 0 ? avgRating.toFixed(1) : "0.0"}
+                    </div>
+                    <StarRow rating={avgRating} size={16} />
+                    <div className="text-sm text-slate-500 mt-1">
+                      {venue.ratings?.length || 0} ulasan
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    {[5, 4, 3, 2, 1].map((star) => {
+                      const count =
+                        venue.ratings?.filter((r) => r.rating === star)
+                          .length || 0;
+                      const percentage = venue.ratings?.length
+                        ? (count / venue.ratings.length) * 100
+                        : 0;
+                      return (
+                        <div
+                          key={star}
+                          className="flex items-center gap-2 mb-1">
+                          <span className="text-sm text-slate-600 w-3">
+                            {star}
+                          </span>
+                          <div className="flex-1 bg-slate-200 rounded-full h-2">
+                            <div
+                              className="bg-purple-600 h-2 rounded-full"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                          <span className="text-sm text-slate-500 w-8">
+                            {count}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
-            </Link>
-          ))}
+
+              <div className="border-t border-slate-100" />
+              <div>
+                <h3 className="text-base font-semibold text-slate-900 mb-4">
+                  Semua ulasan
+                </h3>
+                {venue.ratings && venue.ratings.length > 0 ? (
+                  <div className="divide-y divide-slate-100">
+                    {venue.ratings.map((r) => (
+                      <ReviewItem key={r.id} review={r} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Empty description="Belum ada ulasan untuk venue ini" />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Lokasi */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-slate-900">Lokasi Venue</h2>
+              {venue.latitude && venue.longitude && (
+                <a
+                  href={`https://www.google.com/maps?q=${venue.latitude},${venue.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 transition-colors cursor-pointer">
+                  <HiMapPin size={13} />
+                  Panduan ke lokasi
+                </a>
+              )}
+            </div>
+
+            <p className="text-sm text-slate-600 flex items-center gap-1.5 mb-4">
+              <HiOutlineMapPin size={16} className="text-purple-600" />
+              {venue.address}, {venue.city}
+            </p>
+
+            {venue.latitude && venue.longitude ? (
+              <div className="rounded-xl overflow-hidden h-64 bg-slate-100 shadow-sm border border-slate-100">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  loading="lazy"
+                  title="Lokasi venue"
+                  src={`https://maps.google.com/maps?q=${venue.latitude},${venue.longitude}&z=15&output=embed`}
+                />
+              </div>
+            ) : (
+              <div className="py-12 bg-slate-50 rounded-xl border border-slate-100">
+                <Empty description="Koordinat lokasi belum tersedia" />
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* TAB: GALLERY */}
+      {/* Tab: Gallery */}
       {activeTab === "gallery" && (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {venue.images?.map((img: any) => (
+          {venue.images?.map((img) => (
             <div
               key={img.id}
-              className="aspect-video rounded-xl overflow-hidden bg-gray-100">
+              className="aspect-video rounded-xl overflow-hidden bg-slate-100">
               <img
                 src={img.url}
-                alt="venue"
-                className="w-full h-full object-cover"
+                alt="foto venue"
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
               />
             </div>
           ))}
-
           {!venue.images?.length && (
-            <p className="text-gray-400 text-sm col-span-full">
+            <p className="text-slate-400 text-sm col-span-full py-12 text-center">
               Belum ada foto
             </p>
           )}
-        </div>
-      )}
-
-      {/* LOKASI */}
-      {venue.latitude && venue.longitude && (
-        <div className="mt-10">
-          <h2 className="text-xl font-bold text-gray-900 mb-3">Lokasi Venue</h2>
-
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm text-gray-600 flex items-center gap-1">
-              <HiOutlineMapPin size={16} className="text-purple-600" />
-              {venue.address}
-            </p>
-
-            <a
-              href={`https://www.google.com/maps?q=${venue.latitude},${venue.longitude}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-white text-xs font-semibold"
-              style={{
-                background: "linear-gradient(135deg, #7C3AED, #9333EA)",
-              }}>
-              📍 Panduan Ke Lokasi
-            </a>
-          </div>
-
-          <div className="rounded-xl overflow-hidden h-56 bg-gray-100">
-            <iframe
-              width="100%"
-              height="100%"
-              loading="lazy"
-              src={`https://maps.google.com/maps?q=${venue.latitude},${venue.longitude}&z=15&output=embed`}
-            />
-          </div>
         </div>
       )}
     </div>

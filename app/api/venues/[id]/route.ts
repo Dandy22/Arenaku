@@ -39,8 +39,8 @@ export async function PATCH(
       city: body.city,
       district: body.district,
       address: body.address,
-      latitude: body.latitude,
-      longitude: body.longitude,
+      latitude: body.latitude ? parseFloat(body.latitude) : undefined,
+      longitude: body.longitude ? parseFloat(body.longitude) : undefined,
       thumbnailUrl: body.thumbnailUrl,
     });
 

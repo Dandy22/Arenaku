@@ -36,7 +36,99 @@ export const paymentService = {
       throw new Error("You are not authorized to pay this order");
     }
 
-    if (order.payment) {
+    const now = new Date();
+    const currentPayment = order.payment;
+
+    if (currentPayment) {
+      const isStillPending =
+        currentPayment.status === "PENDING" && currentPayment.expiredAt > now;
+      const isRetryable =
+        ["FAILED", "EXPIRED"].includes(currentPayment.status) ||
+        (currentPayment.status === "PENDING" &&
+          currentPayment.expiredAt <= now);
+
+      if (isStillPending) {
+        let snapToken = "";
+        let redirectUrl = "";
+
+        try {
+          const midtransResult = await createMidtransTransaction({
+            id: order.id,
+            totalAmount: order.totalAmount,
+            user: {
+              name: order.user.name,
+              email: order.user.email,
+              phone: order.user.phone,
+            },
+          });
+          snapToken = midtransResult.snapToken;
+          redirectUrl = midtransResult.redirectUrl;
+        } catch (error: any) {
+          console.warn(
+            "⚠️ Midtrans unavailable, using simulation:",
+            error.message,
+          );
+        }
+
+        return {
+          ...currentPayment,
+          snapToken,
+          redirectUrl,
+          midtransConfig: getMidtransConfig(),
+        };
+      }
+
+      if (isRetryable) {
+        if (order.status !== "PENDING") {
+          throw new Error(
+            `Cannot create payment for order with status: ${order.status}`,
+          );
+        }
+
+        const expiredAt = new Date();
+        expiredAt.setMinutes(expiredAt.getMinutes() + PAYMENT_EXPIRY_MINUTES);
+
+        let snapToken = "";
+        let redirectUrl = "";
+        let qrCode = "";
+
+        try {
+          const midtransResult = await createMidtransTransaction({
+            id: order.id,
+            totalAmount: order.totalAmount,
+            user: {
+              name: order.user.name,
+              email: order.user.email,
+              phone: order.user.phone,
+            },
+          });
+          snapToken = midtransResult.snapToken;
+          redirectUrl = midtransResult.redirectUrl;
+          qrCode = redirectUrl;
+        } catch (error: any) {
+          console.warn(
+            "⚠️ Midtrans unavailable, using simulation:",
+            error.message,
+          );
+          qrCode = generateQRCode(data.orderId, order.totalAmount, data.method);
+        }
+
+        const payment = await paymentRepository.update(currentPayment.id, {
+          method: data.method,
+          qrCode,
+          expiredAt,
+          status: "PENDING",
+          paidAt: null,
+        });
+
+        return {
+          ...payment,
+          snapToken,
+          redirectUrl,
+          midtransConfig: getMidtransConfig(),
+        };
+      }
+
       throw new Error("Payment already exists for this order");
     }
 

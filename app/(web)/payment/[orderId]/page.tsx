@@ -15,7 +15,7 @@ declare global {
 export default function PaymentPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, isInitialized } = useAuthStore();
   const orderId = params.orderId as string;
 
   const [order, setOrder] = useState<any>(null);
@@ -40,6 +40,8 @@ export default function PaymentPage() {
   }, []);
 
   useEffect(() => {
+    if (!isInitialized) return; // Wait for auth initialization
+
     if (!user) {
       router.push("/login");
       return;
@@ -143,7 +145,9 @@ export default function PaymentPage() {
           onClick={handlePayNow}
           loading={creating}
           className="h-14 rounded-xl text-lg font-bold bg-red-600 hover:bg-red-700 border-none">
-          BAYAR SEKARANG
+          {order.payment?.status === "PENDING"
+            ? "Lanjutkan Pembayaran"
+            : "Bayar Sekarang"}
         </Button>
       </div>
 

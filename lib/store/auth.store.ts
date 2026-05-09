@@ -13,6 +13,7 @@ interface User {
 interface AuthStore {
   user: User | null;
   token: string | null;
+  isInitialized: boolean;
   setAuth: (user: User, token: string) => void;
   clearAuth: () => void;
   initAuth: () => void;
@@ -21,6 +22,7 @@ interface AuthStore {
 export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
   token: null,
+  isInitialized: false,
 
   setAuth: (user, token) => {
     localStorage.setItem("token", token);
@@ -38,7 +40,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   clearAuth: () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    set({ user: null, token: null });
+    set({ user: null, token: null, isInitialized: true });
 
     // Bersihkan cart saat logout
     import("./cart.store").then(({ useCartStore }) => {
@@ -53,7 +55,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     if (token && userStr) {
       try {
         const user = JSON.parse(userStr);
-        set({ user, token });
+        set({ user, token, isInitialized: true });
 
         // Restore cart saat halaman di-refresh (hanya CUSTOMER)
         if (user.role === "CUSTOMER") {
@@ -65,7 +67,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
         console.error("[AuthStore] Failed to parse user:", error);
         localStorage.removeItem("token");
         localStorage.removeItem("user");
+        set({ user: null, token: null, isInitialized: true });
       }
+    } else {
+      set({ isInitialized: true });
     }
   },
 }));

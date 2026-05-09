@@ -16,6 +16,7 @@ import jwt from "jsonwebtoken";
 import { userRepository } from "@/lib/repositories/user.repository";
 import { prisma } from "@/lib/prisma";
 import { notificationService } from "@/lib/services/notification.service";
+import { sendVerificationEmail } from "@/lib/mail";
 
 // JWT Secret dari environment variable
 const SECRET = process.env.JWT_SECRET || "SECRET_KEY_DEV_ONLY";
@@ -88,6 +89,20 @@ export const authService = {
       address: data.address,
       district: data.district,
     });
+
+    // Step 8: Generate token verifikasi email dan kirim email
+    const emailVerificationToken = jwt.sign(
+      {
+        userId: newUser.id,
+        type: "email_verification",
+      },
+      SECRET,
+      {
+        expiresIn: "24h",
+      },
+    );
+
+    await sendVerificationEmail(newUser.email, emailVerificationToken);
 
     // Jika user register sebagai VENDOR, trigger notifikasi ke Admin
     if (data.role === "VENDOR" && newUser) {

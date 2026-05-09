@@ -115,6 +115,7 @@ model User {
   eventTickets      EventTicket[]
   events            Event[]
   ratings           VenueRating[]
+  vendorRatings     VendorRating[]
 }
 
 // Menggantikan VendorProfile menjadi entitas Organisasi
@@ -137,9 +138,9 @@ model Vendor {
 
   members           VendorMember[]
   venues            Venue[]
+  ratings           VendorRating[]
 }
 
-// Tabel Perantara (Jembatan User ke Vendor)
 model VendorMember {
   id        String     @id @default(cuid())
   userId    String
@@ -182,8 +183,24 @@ model VenueRating {
 
   venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
 
-  @@unique([venueId, userId])
+model VendorRating {
+  id        String   @id @default(cuid())
+  vendorId  String
+  userId    String
+  orderId   String   @unique  // Satu rating per order
+  rating    Int      // 1-5
+  comment   String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([userId])
 }
 
 model VenueImage {
@@ -264,6 +281,7 @@ model Order {
   items        OrderItem[]
   payment      Payment?
   eventTickets EventTicket[]
+  vendorRating VendorRating?
 
   @@index([status, expiresAt])
 }

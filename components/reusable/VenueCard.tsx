@@ -9,6 +9,7 @@ interface VenueProps {
     // TAMBAHAN: Pastikan tipe data ini dimasukkan agar bisa dibaca dari backend
     district?: string;
     address?: string;
+    thumbnailUrl?: string;
     images?: any[];
     ratings?: any[];
     fields?: any[];
@@ -69,6 +70,7 @@ export default function VenueCard({
       <div className="aspect-video bg-gray-100 overflow-hidden relative">
         <img
           src={
+            venue.thumbnailUrl ||
             venue.images?.[0]?.url ||
             "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=400"
           }

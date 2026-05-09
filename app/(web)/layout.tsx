@@ -36,7 +36,7 @@ interface Notification {
 export default function WebLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, clearAuth, initAuth } = useAuthStore();
+  const { user, clearAuth, initAuth, isInitialized } = useAuthStore();
   const { items: cartItems, removeItem } = useCartStore();
 
   const [mounted, setMounted] = useState(false);
@@ -72,12 +72,12 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
-  // Load notifikasi saat user tersedia
+  // Load notifikasi saat user tersedia dan auth sudah diinisialisasi
   useEffect(() => {
-    if (user) {
+    if (isInitialized && user) {
       fetchNotifications();
     }
-  }, [user, fetchNotifications]);
+  }, [user, isInitialized, fetchNotifications]);
 
   // Mark single notification as read
   const handleMarkAsRead = async (notifId: string) => {

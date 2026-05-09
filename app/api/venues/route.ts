@@ -14,8 +14,8 @@ export async function POST(req: Request) {
       description: body.description,
       city: body.city,
       address: body.address,
-      latitude: body.latitude,
-      longitude: body.longitude,
+      latitude: body.latitude ? parseFloat(body.latitude) : undefined,
+      longitude: body.longitude ? parseFloat(body.longitude) : undefined,
       district: body.district,
       thumbnailUrl: body.thumbnailUrl,
     });

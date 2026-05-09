@@ -21,8 +21,7 @@ export const paymentRepository = {
     method: string;
     qrCode: string;
     expiredAt: Date;
-  }) =>
-    prisma.payment.create({ data }),
+  }) => prisma.payment.create({ data }),
 
   // ----------------------------------------------------------
   // findByOrderId
@@ -43,6 +42,25 @@ export const paymentRepository = {
     prisma.payment.findUnique({
       where: { id },
       include: { order: true },
+    }),
+
+  // ----------------------------------------------------------
+  // update
+  // Update payment record data, used for retrying expired or failed payments.
+  // ----------------------------------------------------------
+  update: (
+    id: string,
+    data: {
+      method?: string;
+      qrCode?: string;
+      expiredAt?: Date;
+      status?: "PENDING" | "SUCCESS" | "FAILED" | "EXPIRED";
+      paidAt?: Date | null;
+    },
+  ) =>
+    prisma.payment.update({
+      where: { id },
+      data,
     }),
 
   // ----------------------------------------------------------

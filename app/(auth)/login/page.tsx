@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/axios";
 import { HiEye, HiEyeSlash } from "react-icons/hi2";
@@ -11,12 +11,34 @@ import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const setAuth = useAuthStore((s) => s.setAuth);
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Tangkap query parameter dari URL
+  useEffect(() => {
+    const isRegistered = searchParams.get("registered");
+    const isVerified = searchParams.get("verified");
+
+    if (isRegistered === "1") {
+      message.info({
+        content:
+          "Akun berhasil dibuat! Silakan verifikasi email Anda sebelum login. Periksa folder SPAM jika tidak menemukan email verifikasi.",
+        duration: 5,
+      });
+    }
+
+    if (isVerified === "1") {
+      message.success({
+        content: "Email berhasil diverifikasi! Silakan login dengan akun Anda.",
+        duration: 5,
+      });
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

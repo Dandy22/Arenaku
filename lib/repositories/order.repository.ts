@@ -87,6 +87,25 @@ export const orderRepository = {
       },
     }),
 
+  getOrderById: (id: string) =>
+    prisma.order.findUnique({
+      where: { id },
+      include: {
+        user: true,
+        items: {
+          include: {
+            field: { include: { venue: true } },
+          },
+        },
+        eventTickets: {
+          include: {
+            event: true,
+          },
+        },
+        payment: true,
+      },
+    }),
+
   // HANYA ADA SATU updateStatus DI SINI
   updateStatus: (
     id: string,

@@ -183,6 +183,28 @@ export const orderService = {
       throw new Error("Only paid orders can be refunded");
     }
 
+    // Check if user has already rated this order
+    const { ratingRepository } =
+      await import("@/lib/repositories/rating.repository");
+    const existingRating = await ratingRepository.checkExistingRating(orderId);
+    if (existingRating) {
+      throw new Error(
+        "Cannot request refund for orders that have already been rated",
+      );
+    }
+
+    // Check if 24 hours have passed since order creation
+    const orderCreatedAt = new Date(order.createdAt);
+    const now = new Date();
+    const hoursSinceOrder =
+      (now.getTime() - orderCreatedAt.getTime()) / (1000 * 60 * 60);
+
+    if (hoursSinceOrder > 24) {
+      throw new Error(
+        "Refund requests are only allowed within 24 hours of order creation",
+      );
+    }
+
     // Update status to REFUND_REQUESTED
     const updatedOrder = await orderRepository.updateStatus(
       orderId,

@@ -3,7 +3,14 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { message, Modal } from "antd";
-import { HiArrowLeft, HiOutlineMapPin } from "react-icons/hi2";
+import {
+  HiArrowLeft,
+  HiOutlineMapPin,
+  HiOutlineLink,
+  HiOutlineShare,
+  HiOutlineInformationCircle,
+  HiOutlinePhone,
+} from "react-icons/hi2";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useCartStore } from "@/lib/store/cart.store";
 import api from "@/lib/axios";
@@ -154,12 +161,12 @@ export default function FieldDetailPage() {
       {/* Breadcrumb */}
       <button
         onClick={() => router.push(`/venues/${venueId}`)}
-        className="flex items-center gap-1 text-sm text-gray-500 hover:text-purple-600 mb-4">
+        className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-purple-500 mb-4 cursor-pointer transition-colors">
         <HiArrowLeft size={16} /> {venue?.name}
       </button>
 
       {/* Hero */}
-      <div className="rounded-2xl overflow-hidden h-64 md:h-80 bg-gray-100 mb-6">
+      <div className="rounded-2xl overflow-hidden h-64 md:h-80 bg-gray-100 mb-6 shadow-sm">
         <img
           src={
             field.images?.[0]?.url ||
@@ -176,13 +183,19 @@ export default function FieldDetailPage() {
         <div className="text-right text-sm text-gray-500">
           <p className="mb-1">Bagikan Venue</p>
           <div className="flex gap-2">
-            {["📋", "📘", "✖️", "💬"].map((icon, i) => (
-              <button
-                key={i}
-                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 transition flex items-center justify-center text-sm">
-                {icon}
-              </button>
-            ))}
+            <button
+              onClick={() =>
+                navigator.clipboard?.writeText(window.location.href)
+              }
+              className="w-8 h-8 rounded-full border border-gray-200 hover:bg-gray-50 transition flex items-center justify-center cursor-pointer"
+              title="Salin tautan">
+              <HiOutlineLink size={14} className="text-gray-500" />
+            </button>
+            <button
+              className="w-8 h-8 rounded-full border border-gray-200 hover:bg-gray-50 transition flex items-center justify-center cursor-pointer"
+              title="Bagikan">
+              <HiOutlineShare size={14} className="text-gray-500" />
+            </button>
           </div>
         </div>
       </div>
@@ -190,18 +203,21 @@ export default function FieldDetailPage() {
       {/* Description */}
       {field.description && (
         <div className="mb-4">
-          <h2 className="font-semibold text-gray-800 flex items-center gap-2 mb-2">
-            🏢 Deskripsi Lapangan
+          <h2 className="font-semibold text-slate-800 flex items-center gap-2 mb-2">
+            <HiOutlineInformationCircle className="text-purple-500" size={20} />
+            Deskripsi Lapangan
           </h2>
-          <p className="text-sm text-gray-600">{field.description}</p>
-          <div className="grid grid-cols-4 gap-4 mt-3">
+          <p className="text-sm text-slate-500">{field.description}</p>
+
+          {/* PERBAIKAN: Menggunakan flex justify-between agar rapi menyebar */}
+          <div className="flex justify-between items-center mt-4">
             {[
               { label: "Field Type", value: field.type },
               { label: "Floor Type", value: field.floorType || "-" },
               { label: "Length", value: `${field.length} M` },
               { label: "Width", value: `${field.width} M` },
             ].map((item) => (
-              <div key={item.label}>
+              <div key={item.label} className="text-left">
                 <p className="text-xs text-gray-400">{item.label}</p>
                 <p className="text-sm font-semibold text-gray-800">
                   {item.value}
@@ -215,13 +231,14 @@ export default function FieldDetailPage() {
       {/* Contacts */}
       {field.contacts?.length > 0 && (
         <div className="mb-4 p-4 bg-gray-50 rounded-xl">
-          <h2 className="font-semibold text-gray-800 flex items-center gap-2 mb-2">
-            📋 Informasi Narahubung
+          <h2 className="font-semibold text-slate-800 flex items-center gap-2 mb-2">
+            <HiOutlinePhone className="text-purple-500" size={18} />
+            Informasi Narahubung
           </h2>
           {field.contacts.map((c: any) => (
             <ul
               key={c.id}
-              className="text-sm text-gray-600 list-disc list-inside space-y-0.5">
+              className="text-sm text-slate-500 list-disc list-inside space-y-0.5">
               <li>Nama: {c.name}</li>
               {c.email && <li>Email: {c.email}</li>}
               {c.phone && <li>Phone: {c.phone}</li>}
@@ -236,10 +253,10 @@ export default function FieldDetailPage() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-3 text-sm font-semibold uppercase transition ${
+            className={`flex-1 py-3 text-sm font-semibold uppercase transition cursor-pointer ${
               activeTab === tab
-                ? "border-b-2 border-purple-600 text-purple-600"
-                : "text-gray-500 hover:text-gray-700"
+                ? "border-b-2 border-purple-500 text-purple-500"
+                : "text-slate-500 hover:text-slate-700"
             }`}>
             {tab}
           </button>
@@ -249,12 +266,14 @@ export default function FieldDetailPage() {
       {/* Tab Jadwal */}
       {activeTab === "jadwal" && (
         <div>
-          <p className="text-sm text-gray-600 mb-4">Pilih Lapangan:</p>
-          <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold text-gray-800 mb-6">
+          <p className="text-sm text-slate-500 mb-4">Pilih Lapangan:</p>
+          <div className="bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 mb-6">
             {field.name}
           </div>
-          <div className="overflow-x-auto">
-            <div className="flex gap-2 min-w-max mb-4">
+
+          {/* PERBAIKAN: Memberikan px-1 / px-2 agar ring fokus tidak terpotong border */}
+          <div className="overflow-x-auto pb-4 px-1 -mx-1">
+            <div className="flex gap-3 min-w-max mb-4">
               {schedule.map((day) => {
                 const isToday =
                   day.date === new Date().toISOString().split("T")[0];
@@ -280,11 +299,11 @@ export default function FieldDetailPage() {
                 );
               })}
             </div>
-            <div className="flex gap-2 min-w-max">
+            <div className="flex gap-3 min-w-max py-1">
               {schedule.map((day) => (
                 <div
                   key={day.date}
-                  className="w-32 shrink-0 flex flex-col gap-1.5">
+                  className="w-32 shrink-0 flex flex-col gap-2">
                   {day.slots.map((slot) => {
                     const selected = isSelected(day.date, slot.startHour);
                     return (
@@ -292,14 +311,14 @@ export default function FieldDetailPage() {
                         key={slot.startHour}
                         onClick={() => toggleSlot(day.date, slot)}
                         disabled={slot.status !== "AVAILABLE"}
-                        className={`w-full rounded-lg p-2 text-center transition text-xs ${
+                        className={`w-full rounded-lg p-2 text-center h-20 flex flex-col justify-center items-center transition text-xs border ${
                           slot.status === "PAST"
-                            ? "bg-gray-50 text-gray-300 cursor-not-allowed"
+                            ? "bg-slate-100 text-slate-400 cursor-not-allowed border-transparent opacity-60"
                             : slot.status === "BOOKED"
-                              ? "bg-red-50 text-red-400 cursor-not-allowed"
+                              ? "bg-red-100 text-red-400 cursor-not-allowed border-red-200"
                               : selected
-                                ? "ring-2 ring-purple-500 text-purple-700 bg-purple-50"
-                                : "bg-white border border-gray-200 text-gray-700 hover:border-purple-300"
+                                ? "ring-2 ring-purple-500 text-purple-700 bg-purple-100 border-transparent cursor-pointer"
+                                : "bg-white border-slate-200 text-slate-700 hover:border-purple-300 hover:shadow-sm cursor-pointer"
                         }`}>
                         <p
                           className={`font-semibold ${
@@ -307,31 +326,31 @@ export default function FieldDetailPage() {
                               ? "text-purple-700"
                               : slot.status === "BOOKED"
                                 ? "text-red-500"
-                                : ""
+                                : "text-slate-800"
                           }`}>
                           {slot.label.split(" - ")[0]} -{" "}
                           {slot.label.split(" - ")[1]}
                         </p>
                         <p
                           className={`text-xs mt-0.5 ${
-                            selected ? "text-purple-600" : "text-gray-500"
+                            selected ? "text-purple-500" : "text-slate-500"
                           }`}>
-                          Rp. {slot.price?.toLocaleString("id-ID")}
+                          Rp {slot.price?.toLocaleString("id-ID")}
                         </p>
                         <p
-                          className={`text-xs font-medium mt-0.5 ${
+                          className={`text-xs font-medium mt-0.5 min-h-[16px] flex items-center ${
                             slot.status === "BOOKED"
                               ? "text-red-500"
                               : slot.status === "PAST"
-                                ? "text-gray-300"
+                                ? "text-slate-400"
                                 : selected
-                                  ? "text-purple-600"
-                                  : "text-green-600"
+                                  ? "text-purple-500"
+                                  : "text-green-500"
                           }`}>
                           {slot.status === "BOOKED"
                             ? "Booked"
                             : slot.status === "PAST"
-                              ? ""
+                              ? "Selesai"
                               : "Tersedia"}
                         </p>
                       </button>
@@ -367,14 +386,15 @@ export default function FieldDetailPage() {
       )}
 
       {/* Location */}
-      {/* Location */}
       {venue?.latitude && venue?.longitude ? (
         <div className="mt-10">
-          <h2 className="text-xl font-bold text-gray-900 mb-3">Lokasi Venue</h2>
+          <h2 className="text-xl font-bold text-slate-900 mb-3">
+            Lokasi Venue
+          </h2>
 
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm text-gray-600 flex items-center gap-1">
-              <HiOutlineMapPin size={16} className="text-purple-600" />
+            <p className="text-sm text-slate-500 flex items-center gap-1.5">
+              <HiOutlineMapPin size={16} className="text-purple-500" />
               {venue.address}
             </p>
 
@@ -382,15 +402,15 @@ export default function FieldDetailPage() {
               href={`https://www.google.com/maps?q=${venue.latitude},${venue.longitude}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-white text-xs font-semibold"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold cursor-pointer hover:opacity-90 transition-opacity"
               style={{
                 background: "linear-gradient(135deg, #7C3AED, #9333EA)",
               }}>
-              📍 Panduan Ke Lokasi
+              <HiOutlineMapPin size={14} /> Panduan Ke Lokasi
             </a>
           </div>
 
-          <div className="rounded-xl overflow-hidden h-56 bg-gray-100">
+          <div className="rounded-xl overflow-hidden h-56 bg-gray-100 shadow-sm border border-gray-100">
             <iframe
               width="100%"
               height="100%"
@@ -400,22 +420,23 @@ export default function FieldDetailPage() {
           </div>
         </div>
       ) : null}
+
       {/* Sticky bottom bar */}
       {selectedSlots.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 px-6 py-4">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 px-6 py-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-slate-500">
                 {selectedSlots.length} slot dipilih
               </p>
               <p className="text-lg font-bold text-purple-700">
-                Rp. {totalPrice.toLocaleString("id-ID")}
+                Rp {totalPrice.toLocaleString("id-ID")}
               </p>
             </div>
             <button
               onClick={handleAddToCart}
               disabled={addingToCart}
-              className="px-8 py-3 rounded-xl text-white font-bold text-sm hover:opacity-90 transition disabled:opacity-60"
+              className="px-8 py-3 rounded-xl text-white font-bold text-sm transition-all disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed hover:shadow-lg hover:-translate-y-0.5"
               style={{
                 background: "linear-gradient(135deg, #EF4444, #DC2626)",
               }}>
@@ -427,7 +448,9 @@ export default function FieldDetailPage() {
 
       {/* Confirmation Modal */}
       <Modal
-        title="Konfirmasi Pemesanan"
+        title={
+          <span className="font-bold text-slate-800">Konfirmasi Pemesanan</span>
+        }
         open={confirmModal}
         onOk={confirmAddToCart}
         onCancel={() => setConfirmModal(false)}
@@ -435,25 +458,30 @@ export default function FieldDetailPage() {
         cancelText="Batal"
         okButtonProps={{
           style: { backgroundColor: "#7C3AED", borderColor: "#7C3AED" },
+          className: "cursor-pointer",
+        }}
+        cancelButtonProps={{
+          className: "cursor-pointer",
         }}>
-        <p className="text-gray-600 mb-4">
+        <p className="text-slate-500 mb-4 mt-2">
           Anda akan memesan <strong>{selectedSlots.length} slot</strong> dengan
           total:
         </p>
-        <div className="bg-gray-50 p-4 rounded-lg mb-4">
+        <div className="bg-purple-50 p-4 rounded-xl mb-4 border border-purple-100">
           <p className="text-2xl font-bold text-purple-700">
-            Rp. {totalPrice.toLocaleString("id-ID")}
+            Rp {totalPrice.toLocaleString("id-ID")}
           </p>
         </div>
-        <ul className="text-sm text-gray-600 space-y-1">
+        <ul className="text-sm text-slate-500 space-y-1.5">
           {selectedSlots.slice(0, 3).map((slot: SelectedSlot, i: number) => (
-            <li key={i}>
-              • {slot.date} | {String(slot.startHour).padStart(2, "0")}:00 -{" "}
+            <li key={i} className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+              {slot.date} | {String(slot.startHour).padStart(2, "0")}:00 -{" "}
               {String(slot.endHour).padStart(2, "0")}:00
             </li>
           ))}
           {selectedSlots.length > 3 && (
-            <li className="text-gray-400">
+            <li className="text-slate-400 italic mt-2">
               ...dan {selectedSlots.length - 3} slot lainnya
             </li>
           )}

@@ -11,7 +11,7 @@ import api from "@/lib/axios";
 
 export default function CartPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, isInitialized } = useAuthStore();
   const {
     items: cart,
     loading,
@@ -24,12 +24,14 @@ export default function CartPage() {
   const [form] = Form.useForm();
 
   useEffect(() => {
+    if (!isInitialized) return; // Wait for auth initialization
+
     if (!user) {
       router.push("/login");
       return;
     }
     fetchCart();
-  }, [user]);
+  }, [user, isInitialized]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -77,28 +79,27 @@ export default function CartPage() {
   if (loading)
     return (
       <div className="max-w-3xl mx-auto px-6 py-16">
-        <div className="bg-gray-100 rounded-2xl h-40 animate-pulse" />
+        <div className="bg-slate-100 rounded-2xl h-40 animate-pulse" />
       </div>
     );
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-3xl font-bold text-slate-900">
           Periksa Pesanan Anda
         </h1>
-        <p className="text-gray-500 text-sm mt-1">
+        <p className="text-slate-500 text-sm mt-1">
           Pastikan detail pemesanan sudah sesuai dan benar.
         </p>
       </div>
 
       {cart.length === 0 ? (
         <div className="text-center py-20">
-          <p className="text-gray-400 text-lg">Cart kosong</p>
+          <p className="text-slate-400 text-lg">Cart kosong</p>
           <button
             onClick={() => router.push("/venues")}
-            className="mt-4 px-6 py-2.5 rounded-xl text-white font-semibold text-sm"
-            style={{ background: "linear-gradient(135deg, #7C3AED, #9333EA)" }}>
+            className="mt-4 px-6 py-2.5 rounded-xl text-white bg-purple-500 font-semibold text-sm cursor-pointer hover:bg-purple-700 transition">
             Cari Venue
           </button>
         </div>
@@ -112,27 +113,27 @@ export default function CartPage() {
                 return (
                   <div
                     key={item.id}
-                    className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+                    className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-bold text-gray-800">
+                      <h3 className="font-bold text-slate-800">
                         Booking Lapangan
                       </h3>
                       <button
                         onClick={() => handleDelete(item.id)}
-                        className="text-red-500 hover:text-red-600 flex items-center gap-1 text-sm">
-                        <HiOutlineTrash size={16} /> Delete
+                        className="text-red-500 hover:text-red-600 cursor-pointer flex items-center gap-1 text-sm">
+                        <HiOutlineTrash size={16} /> Hapus
                       </button>
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-xs text-gray-400">Nama Venue</p>
-                        <p className="font-semibold text-gray-800">
+                        <p className="text-xs text-slate-400">Nama Venue</p>
+                        <p className="font-semibold text-slate-800">
                           {item.field?.venue?.name || "-"}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-400">Tanggal</p>
-                        <p className="font-semibold text-gray-800">
+                        <p className="text-xs text-slate-400">Tanggal</p>
+                        <p className="font-semibold text-slate-800">
                           {new Date(item.date).toLocaleDateString("id-ID", {
                             day: "numeric",
                             month: "short",
@@ -141,20 +142,20 @@ export default function CartPage() {
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-400">Nama Lapangan</p>
-                        <p className="font-semibold text-gray-800">
+                        <p className="text-xs text-slate-400">Nama Lapangan</p>
+                        <p className="font-semibold text-slate-800">
                           {item.field?.name}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-400">Subtotal</p>
-                        <p className="font-semibold text-gray-800">
+                        <p className="text-xs text-slate-400">Subtotal</p>
+                        <p className="font-semibold text-slate-800">
                           Rp. {subtotal?.toLocaleString("id-ID")}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-400">Jam</p>
-                        <p className="font-semibold text-gray-800">
+                        <p className="text-xs text-slate-400">Jam</p>
+                        <p className="font-semibold text-slate-800">
                           {String(item.startHour).padStart(2, "0")}:00 -{" "}
                           {String(item.endHour).padStart(2, "0")}:00
                         </p>
@@ -170,9 +171,9 @@ export default function CartPage() {
                 return (
                   <div
                     key={item.id}
-                    className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+                    className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-bold text-gray-800">Tiket Event</h3>
+                      <h3 className="font-bold text-slate-800">Tiket Event</h3>
                       <button
                         onClick={() => handleDelete(item.id)}
                         className="text-red-500 hover:text-red-600 flex items-center gap-1 text-sm">
@@ -181,14 +182,14 @@ export default function CartPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-xs text-gray-400">Nama Event</p>
-                        <p className="font-semibold text-gray-800">
+                        <p className="text-xs text-slate-400">Nama Event</p>
+                        <p className="font-semibold text-slate-800">
                           {item.event?.title || "-"}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-400">Tanggal Event</p>
-                        <p className="font-semibold text-gray-800">
+                        <p className="text-xs text-slate-400">Tanggal Event</p>
+                        <p className="font-semibold text-slate-800">
                           {new Date(item.event?.date).toLocaleDateString(
                             "id-ID",
                             {
@@ -200,20 +201,20 @@ export default function CartPage() {
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-400">Jumlah Tiket</p>
-                        <p className="font-semibold text-gray-800">
+                        <p className="text-xs text-slate-400">Jumlah Tiket</p>
+                        <p className="font-semibold text-slate-800">
                           {item.quantity} Tiket
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-400">Subtotal</p>
-                        <p className="font-semibold text-gray-800">
+                        <p className="text-xs text-slate-400">Subtotal</p>
+                        <p className="font-semibold text-slate-800">
                           Rp. {subtotal?.toLocaleString("id-ID")}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-400">Waktu</p>
-                        <p className="font-semibold text-gray-800">
+                        <p className="text-xs text-slate-400">Waktu</p>
+                        <p className="font-semibold text-slate-800">
                           {String(item.startHour).padStart(2, "0")}:00 -{" "}
                           {String(item.endHour).padStart(2, "0")}:00
                         </p>
@@ -227,9 +228,9 @@ export default function CartPage() {
             })}
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <div className="flex justify-between items-center">
-              <span className="font-semibold text-gray-800">Total</span>
+              <span className="font-semibold text-slate-800">Total</span>
               <span className="text-xl font-bold text-purple-700">
                 Rp. {total.toLocaleString("id-ID")}
               </span>
@@ -239,7 +240,7 @@ export default function CartPage() {
       )}
 
       {cart.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 z-50">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-4 z-50">
           <div className="max-w-3xl mx-auto">
             <button
               onClick={() => {

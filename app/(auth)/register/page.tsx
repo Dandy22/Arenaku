@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { HiEye, HiEyeSlash, HiChevronDown } from "react-icons/hi2";
+import { message } from "antd";
 
 import api from "@/lib/axios";
 import { BEKASI_DISTRICTS } from "@/lib/constants";
@@ -154,11 +155,23 @@ export default function RegisterPage() {
         name: formattedName,
         role,
       });
-      router.push("/login?registered=1");
+
+      // Tampilkan pesan sukses yang jelas
+      message.success({
+        content:
+          "Registrasi Berhasil! Silakan cek email Anda untuk verifikasi.",
+        duration: 4,
+      });
+
+      // Beri jeda agar user sempat baca pesan sukses
+      setTimeout(() => {
+        router.push("/login?registered=1");
+      }, 2500);
     } catch (err: any) {
-      setGeneralError(
-        err.response?.data?.error || "Registrasi gagal. Coba lagi.",
-      );
+      const errorMsg =
+        err.response?.data?.error || "Registrasi gagal. Coba lagi.";
+      setGeneralError(errorMsg);
+      message.error(errorMsg);
     } finally {
       setLoading(false);
     }
