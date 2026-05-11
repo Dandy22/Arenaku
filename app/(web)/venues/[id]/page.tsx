@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation"; // Tambahkan useRouter
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   HiOutlineMapPin,
-  HiOutlineLink,
-  HiOutlineShare,
   HiArrowLeft,
-  HiMapPin, // Tambahkan HiArrowLeft untuk icon kembali
+  HiMapPin,
+  HiOutlineLink,
 } from "react-icons/hi2";
-import { Empty } from "antd";
+import { Empty, message } from "antd";
 import api from "@/lib/axios";
 import RatingDisplay from "@/components/reusable/RatingDisplay";
 import RatingList from "@/components/reusable/RatingList";
@@ -76,7 +75,7 @@ function SlotBadge({ hour, booked }: { hour: number; booked?: boolean }) {
       className={`text-xs px-1.5 py-0.5 rounded border ${
         booked
           ? "bg-slate-50 border-slate-200 text-slate-400"
-          : "bg-purple-50 border-purple-100 text-purple-500"
+          : "bg-purple-50 border-purple-100 text-primary"
       }`}>
       {String(hour).padStart(2, "0")}:00
     </span>
@@ -103,9 +102,9 @@ function FieldCard({ field, venueId }: { field: Field; venueId: string }) {
         <div className="p-3">
           <h3 className="font-semibold text-slate-900 text-sm">{field.name}</h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            {field.type} &middot; {field.length} x {field.width} m
+            {field.type} · {field.length} x {field.width} m
           </p>
-          <p className="text-xs text-purple-600 font-semibold mt-1">
+          <p className="text-xs text-primary font-semibold mt-1">
             Rp {field.price?.toLocaleString("id-ID")}
           </p>
           <button className="mt-2 w-full py-1.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 transition-colors cursor-pointer">
@@ -135,7 +134,7 @@ function ReviewItem({ review }: { review: Rating }) {
   return (
     <div className="py-4 border-b border-slate-100 last:border-0 last:pb-0 first:pt-0">
       <div className="flex items-center gap-3 mb-2">
-        <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-xs font-semibold text-purple-700 flex-shrink-0">
+        <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-xs font-semibold text-primary flex-shrink-0">
           {initials}
         </div>
         <div>
@@ -163,7 +162,7 @@ function ReviewItem({ review }: { review: Rating }) {
 
 export default function VenueDetailPage() {
   const params = useParams();
-  const router = useRouter(); // Inisialisasi router
+  const router = useRouter();
   const venueId = params.id as string;
 
   const [venue, setVenue] = useState<Venue | null>(null);
@@ -177,6 +176,11 @@ export default function VenueDetailPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [venueId]);
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(window.location.href);
+    message.success("Link venue berhasil disalin!");
+  };
 
   const avgRating = venue?.ratings?.length
     ? venue.ratings.reduce((a, r) => a + r.rating, 0) / venue.ratings.length
@@ -222,7 +226,7 @@ export default function VenueDetailPage() {
       </div>
 
       {/* Venue header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-col md:flex-row items-start justify-between gap-6 mb-6">
         <div>
           {avgRating > 0 && (
             <div className="flex items-center gap-2 mb-2">
@@ -244,24 +248,48 @@ export default function VenueDetailPage() {
           </p>
         </div>
 
-        <div className="flex flex-col items-end gap-2">
-          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-green-50 text-green-500 border border-green-200">
-            Buka hari ini
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() =>
-                navigator.clipboard?.writeText(window.location.href)
-              }
-              className="w-8 h-8 rounded-full border border-slate-200 hover:bg-slate-50 transition flex items-center justify-center cursor-pointer"
-              title="Salin tautan">
-              <HiOutlineLink size={14} className="text-slate-500" />
-            </button>
-            <button
-              className="w-8 h-8 rounded-full border border-slate-200 hover:bg-slate-50 transition flex items-center justify-center cursor-pointer"
-              title="Bagikan">
-              <HiOutlineShare size={14} className="text-slate-500" />
-            </button>
+        <div className="flex flex-col items-end gap-3 shrink-0">
+          <div className="flex flex-col items-start2">
+            <span className="text-[11px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">
+              Bagikan Venue
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={copyToClipboard}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 transition flex items-center justify-center cursor-pointer text-slate-600">
+                <HiOutlineLink size={16} />
+              </button>
+              {/* Dummy FB Icon */}
+              <button className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 transition flex items-center justify-center cursor-pointer text-white">
+                <svg
+                  width="14"
+                  height="14"
+                  fill="currentColor"
+                  viewBox="0 0 24 24">
+                  <path d="M22.675 0H1.325C.593 0 0 .593 0 1.325v21.351C0 23.407.593 24 1.325 24H12.82v-9.294H9.692v-3.622h3.128V8.413c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12V24h6.116c.73 0 1.323-.593 1.323-1.325V1.325C24 .593 23.407 0 22.675 0z" />
+                </svg>
+              </button>
+              {/* Dummy X Icon */}
+              <button className="w-8 h-8 rounded-full bg-black hover:bg-slate-800 transition flex items-center justify-center cursor-pointer text-white">
+                <svg
+                  width="14"
+                  height="14"
+                  fill="currentColor"
+                  viewBox="0 0 24 24">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+              </button>
+              {/* Dummy WA Icon */}
+              <button className="w-8 h-8 rounded-full bg-green-500 hover:bg-green-600 transition flex items-center justify-center cursor-pointer text-white">
+                <svg
+                  width="16"
+                  height="16"
+                  fill="currentColor"
+                  viewBox="0 0 24 24">
+                  <path d="M12.031 2c-5.5 0-9.972 4.475-9.972 9.976 0 1.758.455 3.473 1.322 4.98L2 22l5.166-1.353c1.455.808 3.101 1.233 4.865 1.233 5.498 0 9.969-4.475 9.969-9.976S17.53 2 12.031 2zm5.498 14.368c-.227.638-1.322 1.205-1.821 1.261-.468.053-1.077.067-1.808-.178-.458-.153-1.096-.381-2.22-1.055-1.503-.902-2.457-2.433-2.528-2.528-.071-.096-1.503-2.001-1.503-3.818 0-1.817.946-2.712 1.282-3.045.337-.333.727-.419.968-.419.24 0 .48.001.693.01.235.011.551-.095.862.664.325.808 1.096 2.673 1.192 2.864.095.192.161.419.019.706-.142.287-.213.468-.426.719-.213.251-.444.536-.639.719-.213.21-.439.439-.199.827.24.388 1.066 1.705 2.261 2.704 1.545 1.29 2.825 1.69 3.223 1.882.397.192.628.163.864-.096.236-.259.988-1.15 1.253-1.545.265-.395.53-.328.892-.192.362.136 2.29.988 2.687 1.18.397.192.662.287.758.45.096.163.096.945-.131 1.583z" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -370,22 +398,22 @@ export default function VenueDetailPage() {
 
           {/* Section: Lokasi */}
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <h2 className="text-xl font-bold text-slate-900">Lokasi Venue</h2>
               {venue.latitude && venue.longitude && (
                 <a
                   href={`https://www.google.com/maps?q=${venue.latitude},${venue.longitude}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 transition-colors cursor-pointer">
-                  <HiMapPin size={13} />
+                  className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-white text-xs font-semibold bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 transition-colors cursor-pointer w-fit shrink-0">
+                  <HiMapPin size={14} />
                   Panduan ke lokasi
                 </a>
               )}
             </div>
 
             <p className="text-sm text-slate-600 flex items-center gap-1.5 mb-4">
-              <HiOutlineMapPin size={16} className="text-purple-600" />
+              <HiOutlineMapPin size={18} className="text-purple-600" />
               {venue.address}, {venue.city}
             </p>
 

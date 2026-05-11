@@ -74,9 +74,6 @@ export default function EventDynamicPage({
   const [event, setEvent] = useState<Event | null>(null);
   const [tickets, setTickets] = useState<EventTicketTier[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchDistrict, setSearchDistrict] = useState<string | undefined>(
-    undefined,
-  );
   // ---------------------------------------------------------------------------
   // STATE: FORM EVENT BARU
   // ---------------------------------------------------------------------------
@@ -97,6 +94,8 @@ export default function EventDynamicPage({
     contactName: "",
     contactEmail: "",
     contactPhone: "",
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
     limitPerEmail: true,
     maxTicketsPerTransaction: 1,
     capacity: 1000,
@@ -233,10 +232,13 @@ export default function EventDynamicPage({
     if (
       !eventForm.title ||
       !eventForm.location ||
+      !eventForm.district ||
       !eventForm.date ||
-      !eventForm.category
+      !eventForm.category ||
+      eventForm.latitude === undefined ||
+      eventForm.longitude === undefined
     ) {
-      message.error("Mohon lengkapi field wajib!");
+      message.error("Mohon lengkapi field wajib dan koordinat lokasi!");
       return;
     }
 
@@ -255,6 +257,8 @@ export default function EventDynamicPage({
       );
       const eventPayload = {
         ...eventForm,
+        latitude: eventForm.latitude,
+        longitude: eventForm.longitude,
         capacity: totalCapacity,
         date: eventForm.date?.[0]?.toISOString?.() || new Date().toISOString(),
         endDate:
@@ -326,6 +330,8 @@ export default function EventDynamicPage({
           data.contactPhone && data.contactPhone !== "-"
             ? data.contactPhone
             : "",
+        latitude: data.latitude,
+        longitude: data.longitude,
         limitPerEmail: data.limitPerEmail ?? true,
         maxTicketsPerTransaction: data.maxTicketsPerTransaction || 1,
         capacity: data.capacity || 0,
@@ -661,8 +667,10 @@ export default function EventDynamicPage({
                     <FormLabel text="Kecamatan" required />
                     <Select
                       placeholder="Pilih kecamatan"
-                      value={searchDistrict || undefined}
-                      onChange={(value) => setSearchDistrict(value)}
+                      value={eventForm.district || undefined}
+                      onChange={(value) =>
+                        handleEventFormChange("district", value)
+                      }
                       showSearch={false}
                       className="!w-full !h-[42px] cursor-pointer [&_.ant-select-selector]:!rounded-lg text-sm text-slate-500 font-semibold"
                       options={[
@@ -679,6 +687,42 @@ export default function EventDynamicPage({
                         { label: "Pondok Melati", value: "Pondok Melati" },
                         { label: "Rawalumbu", value: "Rawalumbu" },
                       ]}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <FormLabel text="Latitude" required />
+                    <Input
+                      type="number"
+                      placeholder="Contoh: -6.23456"
+                      value={eventForm.latitude ?? ""}
+                      onChange={(e) =>
+                        handleEventFormChange(
+                          "latitude",
+                          e.target.value === ""
+                            ? undefined
+                            : Number(e.target.value),
+                        )
+                      }
+                      className="!rounded-lg !py-2.5 !border-gray-200 text-sm text-slate-500 font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <FormLabel text="Longitude" required />
+                    <Input
+                      type="number"
+                      placeholder="Contoh: 107.12345"
+                      value={eventForm.longitude ?? ""}
+                      onChange={(e) =>
+                        handleEventFormChange(
+                          "longitude",
+                          e.target.value === ""
+                            ? undefined
+                            : Number(e.target.value),
+                        )
+                      }
+                      className="!rounded-lg !py-2.5 !border-gray-200 text-sm text-slate-500 font-semibold"
                     />
                   </div>
                 </div>

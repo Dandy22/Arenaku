@@ -47,14 +47,27 @@ function ActivityContent() {
   ); // Filter Turnamen/Olahraga
   const [page, setPage] = useState(Number(searchParams.get("page")) || 1);
 
-  const fetchEvents = async (p = page) => {
+  const fetchEvents = async (
+    p = page,
+    override: {
+      name?: string;
+      category?: string;
+      district?: string;
+      eventType?: string;
+    } = {},
+  ) => {
     setLoading(true);
     try {
+      const queryName = override.name ?? name;
+      const queryCategory = override.category ?? category;
+      const queryDistrict = override.district ?? district;
+      const queryEventType = override.eventType ?? eventType;
+
       const params = new URLSearchParams();
-      if (name) params.set("name", name);
-      if (category) params.set("category", category);
-      if (district) params.set("district", district);
-      if (eventType) params.set("eventType", eventType);
+      if (queryName) params.set("name", queryName);
+      if (queryCategory) params.set("category", queryCategory);
+      if (queryDistrict) params.set("district", queryDistrict);
+      if (queryEventType) params.set("eventType", queryEventType);
       params.set("page", String(p));
       params.set("limit", "8");
 
@@ -85,20 +98,30 @@ function ActivityContent() {
   };
 
   useEffect(() => {
-    setName(searchParams.get("name") || "");
-    setCategory(searchParams.get("category") || "");
-    setDistrict(searchParams.get("district") || "");
-    setEventType(searchParams.get("eventType") || "");
-    setPage(Number(searchParams.get("page")) || 1);
-  }, [searchParams]);
+    const nextName = searchParams.get("name") || "";
+    const nextCategory = searchParams.get("category") || "";
+    const nextDistrict = searchParams.get("district") || "";
+    const nextEventType = searchParams.get("eventType") || "";
+    const nextPage = Number(searchParams.get("page")) || 1;
 
-  useEffect(() => {
-    fetchEvents();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    setName(nextName);
+    setCategory(nextCategory);
+    setDistrict(nextDistrict);
+    setEventType(nextEventType);
+    setPage(nextPage);
+
+    fetchEvents(nextPage, {
+      name: nextName,
+      category: nextCategory,
+      district: nextDistrict,
+      eventType: nextEventType,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const handleSearch = () => {
     setPage(1);
-    fetchEvents(1);
+    fetchEvents(1, { name, category, district, eventType });
 
     const params = new URLSearchParams();
     if (name) params.set("name", name);
@@ -118,9 +141,7 @@ function ActivityContent() {
     if (eventType) params.set("eventType", eventType);
     router.push(`/activity?${params.toString()}`);
 
-    setTimeout(() => {
-      fetchEvents(1);
-    }, 50);
+    fetchEvents(1, { category: catValue, name, district, eventType });
   };
 
   return (
@@ -265,7 +286,7 @@ function ActivityContent() {
             <div
               key={event.id}
               onClick={() => router.push(`/activity/${event.id}`)}
-              className="cursor-pointer bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-lg hover:border-purple-200 hover:-translate-y-1 transition-all duration-300 flex flex-col">
+              className="cursor-pointer bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-lg hover:border-purple-200 transition-all duration-300 flex flex-col">
               {/* Image Section */}
               <div className="relative aspect-video bg-gray-100 overflow-hidden">
                 <img
@@ -276,6 +297,9 @@ function ActivityContent() {
                   alt={event.title}
                   className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                 />
+                <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-[10px] uppercase font-bold tracking-wider text-slate-700 shadow-sm">
+                  {event.topic || event.category || "Aktivitas"}
+                </div>
                 <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm shadow-sm rounded-lg px-2.5 py-1.5 text-center">
                   <p className="text-xs font-bold text-purple-700">
                     {new Date(event.date).toLocaleDateString("id-ID", {

@@ -68,6 +68,7 @@ export const eventRepository = {
       include: {
         participants: true,
         creator: { select: { id: true, name: true, email: true } },
+        ticketTiers: true,
       },
     }),
 
@@ -77,7 +78,9 @@ export const eventRepository = {
     }),
 
   findAll: async (params: {
+    name?: string;
     category?: string;
+    eventType?: string;
     city?: string;
     district?: string;
     page?: number;
@@ -87,19 +90,53 @@ export const eventRepository = {
     const limit = params.limit || 8;
     const skip = (page - 1) * limit;
 
-    // --- FIX: Hanya tampilkan status ACTIVE ke publik ---
     const where: any = {
       status: "ACTIVE",
     };
 
+    const filters: any[] = [];
+
     if (params.category) {
-      where.category = { contains: params.category, mode: "insensitive" };
+      filters.push({
+        topic: { contains: params.category, mode: "insensitive" },
+      });
     }
+
+    if (params.eventType) {
+      const mappedType =
+        params.eventType === "TURNAMEN"
+          ? "TOURNAMENT"
+          : params.eventType === "OLAHRAGA"
+            ? "SPORTS"
+            : params.eventType;
+
+      filters.push({
+        category: { contains: mappedType, mode: "insensitive" },
+      });
+    }
+
+    if (params.name) {
+      filters.push({
+        OR: [
+          { title: { contains: params.name, mode: "insensitive" } },
+          { location: { contains: params.name, mode: "insensitive" } },
+          { topic: { contains: params.name, mode: "insensitive" } },
+        ],
+      });
+    }
+
     if (params.city) {
-      where.city = { contains: params.city, mode: "insensitive" };
+      filters.push({ city: { contains: params.city, mode: "insensitive" } });
     }
+
     if (params.district) {
-      where.district = { contains: params.district, mode: "insensitive" };
+      filters.push({
+        district: { contains: params.district, mode: "insensitive" },
+      });
+    }
+
+    if (filters.length > 0) {
+      where.AND = filters;
     }
 
     const [data, total] = await Promise.all([

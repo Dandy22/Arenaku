@@ -145,6 +145,8 @@ export async function PATCH(
         contactName: body.contactName,
         contactEmail: body.contactEmail,
         contactPhone: body.contactPhone,
+        latitude: body.latitude,
+        longitude: body.longitude,
         status: body.status,
       },
     });

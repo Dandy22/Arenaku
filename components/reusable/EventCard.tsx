@@ -15,6 +15,9 @@ interface EventProps {
     endHour?: string | number;
     city?: string;
     location?: string;
+    district?: string;
+    category?: string;
+    topic?: string;
   };
 }
 
@@ -46,6 +49,10 @@ export default function EventCard({ event }: EventProps) {
         ? `${formatHour(event.startHour)} WIB`
         : "";
 
+  const eventLabel = event.topic || event.category || "Aktivitas";
+  const locationLabel =
+    event.district || event.location || event.city || "Lokasi TBA";
+
   return (
     <Link
       href={`/activity/${event.id}`}
@@ -60,7 +67,9 @@ export default function EventCard({ event }: EventProps) {
           alt={event.title}
           className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
         />
-        {/* Badge Kalender Putih Floating (Diperkecil agar proporsional) */}
+        <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-[10px] uppercase font-bold tracking-wider text-slate-700 shadow-sm">
+          {eventLabel}
+        </div>
         <div className="absolute top-3 right-3 bg-white border border-slate-200 rounded-md p-1.5 px-2.5 flex flex-col items-center justify-center shadow-md z-10">
           <HiOutlineCalendar size={18} className="text-slate-400 mb-0.5" />
           <span className="text-[11px] font-bold text-gray-500 text-center leading-tight whitespace-nowrap">
@@ -87,9 +96,7 @@ export default function EventCard({ event }: EventProps) {
           </p>
           <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
             <HiOutlineMapPin size={12} className="shrink-0" />
-            <span className="truncate">
-              {event.city || event.location || "Lokasi TBA"}
-            </span>
+            <span className="truncate">{locationLabel}</span>
           </p>
         </div>
 

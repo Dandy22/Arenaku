@@ -97,6 +97,8 @@ export default function VendorEventDynamicPage({
     contactName: "",
     contactEmail: "",
     contactPhone: "",
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
     limitPerEmail: true,
     maxTicketsPerTransaction: 1,
     capacity: 1000,
@@ -238,9 +240,13 @@ export default function VendorEventDynamicPage({
       !eventForm.description ||
       !eventForm.date ||
       !eventForm.date[0] ||
-      !eventForm.date[1]
+      !eventForm.date[1] ||
+      eventForm.latitude === undefined ||
+      eventForm.longitude === undefined
     ) {
-      message.error("Mohon lengkapi semua field yang bertanda bintang (*)!");
+      message.error(
+        "Mohon lengkapi semua field yang bertanda bintang (*) dan koordinat lokasi!",
+      );
       return;
     }
 
@@ -266,6 +272,8 @@ export default function VendorEventDynamicPage({
         city: eventForm.city,
         category: eventForm.category,
         topic: eventForm.topic,
+        latitude: eventForm.latitude,
+        longitude: eventForm.longitude,
         contactName: eventForm.contactName,
         contactEmail: eventForm.contactEmail,
         contactPhone: eventForm.contactPhone,
@@ -345,6 +353,8 @@ export default function VendorEventDynamicPage({
           data.contactPhone && data.contactPhone !== "-"
             ? data.contactPhone
             : "",
+        latitude: data.latitude,
+        longitude: data.longitude,
         limitPerEmail: data.limitPerEmail ?? true,
         maxTicketsPerTransaction: data.maxTicketsPerTransaction || 1,
         capacity: data.capacity || 0,
@@ -700,6 +710,43 @@ export default function VendorEventDynamicPage({
                       { label: "Rawalumbu", value: "Rawalumbu" },
                     ]}
                   />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <FormLabel text="Latitude" required />
+                    <Input
+                      type="number"
+                      placeholder="Contoh: -6.23456"
+                      value={eventForm.latitude ?? ""}
+                      onChange={(e) =>
+                        handleEventFormChange(
+                          "latitude",
+                          e.target.value === ""
+                            ? undefined
+                            : Number(e.target.value),
+                        )
+                      }
+                      className="!rounded-lg !py-2.5 !border-gray-200 text-slate-500 font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <FormLabel text="Longitude" required />
+                    <Input
+                      type="number"
+                      placeholder="Contoh: 107.12345"
+                      value={eventForm.longitude ?? ""}
+                      onChange={(e) =>
+                        handleEventFormChange(
+                          "longitude",
+                          e.target.value === ""
+                            ? undefined
+                            : Number(e.target.value),
+                        )
+                      }
+                      className="!rounded-lg !py-2.5 !border-gray-200 text-slate-500 font-semibold"
+                    />
+                  </div>
                 </div>
 
                 <div>

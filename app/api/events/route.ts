@@ -86,7 +86,9 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
 
     const result = await eventService.getAllEvents({
+      name: searchParams.get("name") || undefined,
       category: searchParams.get("category") || undefined,
+      eventType: searchParams.get("eventType") || undefined,
       city: searchParams.get("city") || undefined,
       district: searchParams.get("district") || undefined,
       page: searchParams.get("page") ? parseInt(searchParams.get("page")!) : 1,

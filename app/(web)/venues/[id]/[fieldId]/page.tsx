@@ -7,7 +7,6 @@ import {
   HiArrowLeft,
   HiOutlineMapPin,
   HiOutlineLink,
-  HiOutlineShare,
   HiOutlineInformationCircle,
   HiOutlinePhone,
 } from "react-icons/hi2";
@@ -142,10 +141,15 @@ export default function FieldDetailPage() {
     }
   };
 
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(window.location.href);
+    message.success("Link lapangan berhasil disalin!");
+  };
+
   if (loading)
     return (
       <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="bg-gray-100 rounded-2xl h-72 animate-pulse mb-6" />
+        <div className="bg-slate-100 rounded-2xl h-72 animate-pulse mb-6" />
       </div>
     );
 
@@ -161,12 +165,12 @@ export default function FieldDetailPage() {
       {/* Breadcrumb */}
       <button
         onClick={() => router.push(`/venues/${venueId}`)}
-        className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-purple-500 mb-4 cursor-pointer transition-colors">
+        className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-purple-500 mb-4 cursor-pointer transition-colors">
         <HiArrowLeft size={16} /> {venue?.name}
       </button>
 
       {/* Hero */}
-      <div className="rounded-2xl overflow-hidden h-64 md:h-80 bg-gray-100 mb-6 shadow-sm">
+      <div className="rounded-2xl overflow-hidden h-64 md:h-80 bg-slate-100 mb-6 shadow-sm border border-slate-100">
         <img
           src={
             field.images?.[0]?.url ||
@@ -178,23 +182,48 @@ export default function FieldDetailPage() {
       </div>
 
       {/* Field info */}
-      <div className="flex items-start justify-between mb-4">
-        <h1 className="text-2xl font-bold text-gray-900">{field.name}</h1>
-        <div className="text-right text-sm text-gray-500">
-          <p className="mb-1">Bagikan Venue</p>
+      <div className="flex flex-col md:flex-row items-start justify-between gap-6 mb-4">
+        <h1 className="text-2xl font-extrabold text-slate-900">{field.name}</h1>
+
+        <div className="flex flex-col items-start shrink-0">
+          <span className="text-[11px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">
+            Bagikan Lapangan
+          </span>
           <div className="flex gap-2">
             <button
-              onClick={() =>
-                navigator.clipboard?.writeText(window.location.href)
-              }
-              className="w-8 h-8 rounded-full border border-gray-200 hover:bg-gray-50 transition flex items-center justify-center cursor-pointer"
-              title="Salin tautan">
-              <HiOutlineLink size={14} className="text-gray-500" />
+              onClick={copyToClipboard}
+              className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 transition flex items-center justify-center cursor-pointer text-slate-600">
+              <HiOutlineLink size={16} />
             </button>
-            <button
-              className="w-8 h-8 rounded-full border border-gray-200 hover:bg-gray-50 transition flex items-center justify-center cursor-pointer"
-              title="Bagikan">
-              <HiOutlineShare size={14} className="text-gray-500" />
+            {/* Dummy FB Icon */}
+            <button className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 transition flex items-center justify-center cursor-pointer text-white">
+              <svg
+                width="14"
+                height="14"
+                fill="currentColor"
+                viewBox="0 0 24 24">
+                <path d="M22.675 0H1.325C.593 0 0 .593 0 1.325v21.351C0 23.407.593 24 1.325 24H12.82v-9.294H9.692v-3.622h3.128V8.413c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12V24h6.116c.73 0 1.323-.593 1.323-1.325V1.325C24 .593 23.407 0 22.675 0z" />
+              </svg>
+            </button>
+            {/* Dummy X Icon */}
+            <button className="w-8 h-8 rounded-full bg-black hover:bg-slate-800 transition flex items-center justify-center cursor-pointer text-white">
+              <svg
+                width="14"
+                height="14"
+                fill="currentColor"
+                viewBox="0 0 24 24">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+            </button>
+            {/* Dummy WA Icon */}
+            <button className="w-8 h-8 rounded-full bg-green-500 hover:bg-green-600 transition flex items-center justify-center cursor-pointer text-white">
+              <svg
+                width="16"
+                height="16"
+                fill="currentColor"
+                viewBox="0 0 24 24">
+                <path d="M12.031 2c-5.5 0-9.972 4.475-9.972 9.976 0 1.758.455 3.473 1.322 4.98L2 22l5.166-1.353c1.455.808 3.101 1.233 4.865 1.233 5.498 0 9.969-4.475 9.969-9.976S17.53 2 12.031 2zm5.498 14.368c-.227.638-1.322 1.205-1.821 1.261-.468.053-1.077.067-1.808-.178-.458-.153-1.096-.381-2.22-1.055-1.503-.902-2.457-2.433-2.528-2.528-.071-.096-1.503-2.001-1.503-3.818 0-1.817.946-2.712 1.282-3.045.337-.333.727-.419.968-.419.24 0 .48.001.693.01.235.011.551-.095.862.664.325.808 1.096 2.673 1.192 2.864.095.192.161.419.019.706-.142.287-.213.468-.426.719-.213.251-.444.536-.639.719-.213.21-.439.439-.199.827.24.388 1.066 1.705 2.261 2.704 1.545 1.29 2.825 1.69 3.223 1.882.397.192.628.163.864-.096.236-.259.988-1.15 1.253-1.545.265-.395.53-.328.892-.192.362.136 2.29.988 2.687 1.18.397.192.662.287.758.45.096.163.096.945-.131 1.583z" />
+              </svg>
             </button>
           </div>
         </div>
@@ -209,7 +238,6 @@ export default function FieldDetailPage() {
           </h2>
           <p className="text-sm text-slate-500">{field.description}</p>
 
-          {/* PERBAIKAN: Menggunakan flex justify-between agar rapi menyebar */}
           <div className="flex justify-between items-center mt-4">
             {[
               { label: "Field Type", value: field.type },
@@ -218,8 +246,8 @@ export default function FieldDetailPage() {
               { label: "Width", value: `${field.width} M` },
             ].map((item) => (
               <div key={item.label} className="text-left">
-                <p className="text-xs text-gray-400">{item.label}</p>
-                <p className="text-sm font-semibold text-gray-800">
+                <p className="text-xs text-slate-400">{item.label}</p>
+                <p className="text-sm font-semibold text-slate-800">
                   {item.value}
                 </p>
               </div>
@@ -230,7 +258,7 @@ export default function FieldDetailPage() {
 
       {/* Contacts */}
       {field.contacts?.length > 0 && (
-        <div className="mb-4 p-4 bg-gray-50 rounded-xl">
+        <div className="mb-4 p-4 bg-slate-50 rounded-xl">
           <h2 className="font-semibold text-slate-800 flex items-center gap-2 mb-2">
             <HiOutlinePhone className="text-purple-500" size={18} />
             Informasi Narahubung
@@ -248,7 +276,7 @@ export default function FieldDetailPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-6">
+      <div className="flex border-b border-slate-200 mb-6">
         {(["jadwal", "gallery"] as const).map((tab) => (
           <button
             key={tab}
@@ -271,7 +299,6 @@ export default function FieldDetailPage() {
             {field.name}
           </div>
 
-          {/* PERBAIKAN: Memberikan px-1 / px-2 agar ring fokus tidak terpotong border */}
           <div className="overflow-x-auto pb-4 px-1 -mx-1">
             <div className="flex gap-3 min-w-max mb-4">
               {schedule.map((day) => {
@@ -369,7 +396,7 @@ export default function FieldDetailPage() {
           {field.images?.map((img: any) => (
             <div
               key={img.id}
-              className="aspect-video rounded-xl overflow-hidden bg-gray-100">
+              className="aspect-video rounded-xl overflow-hidden bg-slate-100">
               <img
                 src={img.url}
                 alt="field"
@@ -378,7 +405,7 @@ export default function FieldDetailPage() {
             </div>
           ))}
           {!field.images?.length && (
-            <p className="text-gray-400 text-sm col-span-full">
+            <p className="text-slate-400 text-sm col-span-full text-center py-10">
               Belum ada foto
             </p>
           )}
@@ -388,21 +415,14 @@ export default function FieldDetailPage() {
       {/* Location */}
       {venue?.latitude && venue?.longitude ? (
         <div className="mt-10">
-          <h2 className="text-xl font-bold text-slate-900 mb-3">
-            Lokasi Venue
-          </h2>
-
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm text-slate-500 flex items-center gap-1.5">
-              <HiOutlineMapPin size={16} className="text-purple-500" />
-              {venue.address}
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <h2 className="text-xl font-bold text-slate-900">Lokasi Venue</h2>
 
             <a
               href={`https://www.google.com/maps?q=${venue.latitude},${venue.longitude}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold cursor-pointer hover:opacity-90 transition-opacity"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-white text-xs font-semibold cursor-pointer hover:opacity-90 hover:shadow-md transition-all shrink-0"
               style={{
                 background: "linear-gradient(135deg, #7C3AED, #9333EA)",
               }}>
@@ -410,7 +430,12 @@ export default function FieldDetailPage() {
             </a>
           </div>
 
-          <div className="rounded-xl overflow-hidden h-56 bg-gray-100 shadow-sm border border-gray-100">
+          <p className="text-sm text-slate-600 flex items-center gap-1.5 mb-4">
+            <HiOutlineMapPin size={18} className="text-purple-500 shrink-0" />
+            {venue.address}
+          </p>
+
+          <div className="rounded-xl overflow-hidden h-56 bg-slate-100 shadow-sm border border-slate-100">
             <iframe
               width="100%"
               height="100%"
@@ -423,7 +448,7 @@ export default function FieldDetailPage() {
 
       {/* Sticky bottom bar */}
       {selectedSlots.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 px-6 py-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 px-6 py-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
             <div>
               <p className="text-sm text-slate-500">
@@ -436,10 +461,11 @@ export default function FieldDetailPage() {
             <button
               onClick={handleAddToCart}
               disabled={addingToCart}
-              className="px-8 py-3 rounded-xl text-white font-bold text-sm transition-all disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed hover:shadow-lg hover:-translate-y-0.5"
-              style={{
-                background: "linear-gradient(135deg, #EF4444, #DC2626)",
-              }}>
+              className={`px-8 py-3 rounded-xl text-white font-bold text-sm transition-colors disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed ${
+                addingToCart
+                  ? "bg-[#D1D5DB]"
+                  : "bg-gradient-to-r from-[#EF4444] to-[#DC2626] hover:from-[#DC2626] hover:to-[#B91C1C]"
+              }`}>
               {addingToCart ? "Memproses..." : "LANJUT PEMBAYARAN"}
             </button>
           </div>

@@ -179,7 +179,9 @@ export const eventService = {
   },
 
   async getAllEvents(params: {
+    name?: string;
     category?: string;
+    eventType?: string;
     city?: string;
     district?: string;
     page?: number;

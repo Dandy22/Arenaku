@@ -6,7 +6,6 @@ interface VenueProps {
     id: string | number;
     name: string;
     city: string;
-    // TAMBAHAN: Pastikan tipe data ini dimasukkan agar bisa dibaca dari backend
     district?: string;
     address?: string;
     thumbnailUrl?: string;
