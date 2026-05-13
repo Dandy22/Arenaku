@@ -34,9 +34,9 @@ export class RatingService {
     }
 
     // Check if order has refund request
-    if (order.status === "REFUND_REQUESTED") {
-      throw new Error("Cannot rate orders that have refund requests");
-    }
+    // if (order.status === "REFUND_REQUESTED") {
+    //   throw new Error("Cannot rate orders that have refund requests");
+    // }
 
     // Check if rating sudah ada
     const existingRating = await ratingRepository.checkExistingRating(orderId);

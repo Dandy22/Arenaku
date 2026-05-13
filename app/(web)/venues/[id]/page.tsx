@@ -107,7 +107,7 @@ function FieldCard({ field, venueId }: { field: Field; venueId: string }) {
           <p className="text-xs text-primary font-semibold mt-1">
             Rp {field.price?.toLocaleString("id-ID")}
           </p>
-          <button className="mt-2 w-full py-1.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 transition-colors cursor-pointer">
+          <button className="mt-2 w-full py-1.5 rounded-lg text-xs font-semibold text-white bg-primary  transition-colors cursor-pointer">
             Jadwal mingguan
           </button>
           <div className="mt-2 flex flex-wrap gap-1">

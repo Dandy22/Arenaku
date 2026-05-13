@@ -25,7 +25,7 @@ export const cartService = {
       date: string;
       startHour: number;
       endHour: number;
-    }
+    },
   ) {
     if (userRole !== "CUSTOMER") {
       throw new Error("Only customers can add items to cart");
@@ -46,17 +46,26 @@ export const cartService = {
     }
 
     const cartConflict = await cartRepository.findConflict(
-      userId, data.fieldId, bookingDate, data.startHour, data.endHour
+      userId,
+      data.fieldId,
+      bookingDate,
+      data.startHour,
+      data.endHour,
     );
     if (cartConflict) {
       throw new Error("This time slot is already in your cart");
     }
 
     const bookingConflict = await cartRepository.findBookingConflict(
-      data.fieldId, bookingDate, data.startHour, data.endHour
+      data.fieldId,
+      bookingDate,
+      data.startHour,
+      data.endHour,
     );
     if (bookingConflict) {
-      throw new Error(`Time slot ${data.startHour}:00 - ${data.endHour}:00 is already booked`);
+      throw new Error(
+        `Time slot ${data.startHour}:00 - ${data.endHour}:00 is already booked`,
+      );
     }
 
     return cartRepository.create({
@@ -83,27 +92,35 @@ export const cartService = {
     userRole: string,
     data: {
       eventId: string;
+      ticketTierId?: string;
       quantity: number;
-    }
+    },
   ) {
     if (userRole !== "CUSTOMER") {
       throw new Error("Only customers can buy event tickets");
     }
 
-    // Check if user already has a ticket for this event (in cart or already bought)
-    const cartConflict = await cartRepository.findEventConflict(userId, data.eventId);
-    if (cartConflict) {
-      throw new Error("You already have a ticket for this event in your cart");
-    }
+    const { prisma } = await import("@/lib/prisma");
 
     // Get event details to validate
-    const { prisma } = await import("@/lib/prisma");
     const event = await prisma.event.findUnique({
       where: { id: data.eventId },
     });
 
     if (!event) {
       throw new Error("Event not found");
+    }
+
+    if (!event.allowMultiplePurchases) {
+      const cartConflict = await cartRepository.findEventConflict(
+        userId,
+        data.eventId,
+      );
+      if (cartConflict) {
+        throw new Error(
+          "You already have a ticket for this event in your cart",
+        );
+      }
     }
 
     if (event.status === "CANCELLED") {
@@ -123,19 +140,44 @@ export const cartService = {
       throw new Error("Event is full");
     }
 
-    // Check if user already has a confirmed ticket
-    const existingTicket = await prisma.eventTicket.findUnique({
-      where: { eventId_userId: { eventId: data.eventId, userId } },
-    });
+    // Check if user already has a confirmed ticket (only if multiple purchases not allowed)
+    if (!event.allowMultiplePurchases) {
+      const existingTicket = await prisma.eventTicket.findFirst({
+        where: {
+          eventId: data.eventId,
+          userId,
+          status: "CONFIRMED",
+        },
+      });
 
-    if (existingTicket && existingTicket.status === "CONFIRMED") {
-      throw new Error("You already have a confirmed ticket for this event");
+      if (existingTicket) {
+        throw new Error("You already have a confirmed ticket for this event");
+      }
+    }
+
+    let ticketPrice = event.ticketPrice || 0;
+    let ticketTierId = undefined as string | undefined;
+
+    if (data.ticketTierId) {
+      const tier = await prisma.eventTicketTier.findUnique({
+        where: { id: data.ticketTierId },
+      });
+      if (!tier || tier.eventId !== data.eventId) {
+        throw new Error("Selected ticket tier is invalid");
+      }
+      if (tier.stock < data.quantity) {
+        throw new Error("Not enough ticket stock for the selected tier");
+      }
+      ticketPrice = tier.price;
+      ticketTierId = tier.id;
     }
 
     // Add to cart - use event date as the booking date
     return cartRepository.createEventTicket({
       userId,
       eventId: data.eventId,
+      ticketTierId,
+      ticketPrice,
       date: event.date, // Use event date
       startHour: event.startHour,
       endHour: event.endHour,

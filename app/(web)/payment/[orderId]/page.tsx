@@ -97,7 +97,9 @@ export default function PaymentPage() {
           message.error("Pembayaran Gagal!");
         },
         onClose: () => {
-          message.warning("Anda menutup jendela pembayaran sebelum selesai.");
+          message.warning(
+            "Pembayaran belum selesai. Klik 'Lanjutkan Pembayaran' untuk melanjutkan.",
+          );
         },
       });
     } catch (err: any) {
@@ -144,7 +146,7 @@ export default function PaymentPage() {
           block
           onClick={handlePayNow}
           loading={creating}
-          className="h-14 rounded-xl text-lg font-bold bg-red-600 hover:bg-red-700 border-none">
+          className="h-14 rounded-xl text-lg font-bold bg-red-600 hover:bg-red-700 border-none cursor-pointer">
           {order.payment?.status === "PENDING"
             ? "Lanjutkan Pembayaran"
             : "Bayar Sekarang"}

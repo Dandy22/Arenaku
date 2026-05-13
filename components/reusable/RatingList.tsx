@@ -320,7 +320,7 @@ export default function RatingList({
           <Pagination
             current={page}
             total={total}
-            pageSize={LIMIT}
+            pageSize={LIMIT}  
             onChange={(p) => fetchRatings(p)}
             disabled={loading}
           />

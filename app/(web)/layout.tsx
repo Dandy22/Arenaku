@@ -148,15 +148,12 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
 
       message.success("Berhasil bergabung! Mengalihkan ke dashboard...");
       setTimeout(() => {
-        // Tambahkan fallback URL (misal "/vendor") jika actionUrl tidak ada
         window.location.href = notif.data?.actionUrl || "/vendor";
       }, 800);
     } else {
-      // PERBAIKAN: Cek apakah actionUrl benar-benar ada sebelum melakukan push
       if (notif.data?.actionUrl) {
         router.push(notif.data.actionUrl);
       } else {
-        // Jika notifikasi tidak punya link, kita biarkan saja (tidak melakukan push)
         console.warn("Notifikasi ini tidak memiliki link tujuan.");
       }
     }
@@ -183,7 +180,8 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
       return acc + (item.field?.price || 0) * (item.endHour - item.startHour);
     }
     if (item.eventId) {
-      return acc + (item.event?.ticketPrice || 0) * (item.quantity || 1);
+      const ticketPrice = item.ticketPrice ?? item.event?.ticketPrice ?? 0;
+      return acc + ticketPrice * (item.quantity || 1);
     }
     return acc;
   }, 0);
@@ -553,9 +551,9 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
       {/* Cart Drawer */}
       <Drawer
         title={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-slate-800">
             <HiOutlineShoppingCart size={20} />
-            <span>Keranjang Saya</span>
+            <span className="font-semibold">Keranjang Saya</span>
           </div>
         }
         placement="right"
@@ -563,72 +561,93 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
         open={cartDrawerOpen}
         size={400}>
         {cartItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+          <div className="flex flex-col items-center justify-center h-64 text-slate-400">
             <HiOutlineShoppingCart size={48} className="mb-4 opacity-50" />
-            <p>Keranjang Anda kosong</p>
+            <p className="font-medium text-sm">Keranjang Anda kosong</p>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
             {cartItems.map((item) => (
               <div
                 key={item.id}
-                className="flex gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                <div className="w-16 h-16 rounded-lg bg-gray-200 overflow-hidden shrink-0">
-                  {item.field?.imageUrl ? (
-                    <img
-                      src={item.field.imageUrl}
-                      alt={item.field.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                      🏟️
-                    </div>
-                  )}
+                className="bg-white border border-slate-200 rounded-xl p-4 ">
+                {/* Header (Nama Venue / Event + Delete Button) */}
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                  <h3 className="font-bold text-slate-800 uppercase text-[13px] tracking-wide truncate pr-2">
+                    {item.field?.venue?.name ||
+                      item.event?.title ||
+                      item.field?.name ||
+                      "Booking"}
+                  </h3>
+                  <button
+                    onClick={() => handleRemoveFromCart(item.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 border border-red-200 text-red-500 rounded-lg text-xs font-semibold hover:bg-red-50 transition cursor-pointer shrink-0">
+                    <HiOutlineTrash size={14} />
+                    Hapus
+                  </button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">
-                    {item.field?.name || item.event?.title || "Item"}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {new Date(item.date).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {item.startHour}:00 - {item.endHour}:00
-                  </p>
-                  {item.fieldId && (
-                    <p className="text-sm font-bold text-purple-600 mt-1">
-                      Rp{" "}
-                      {(
-                        item.field?.price *
-                        (item.endHour - item.startHour)
+
+                {/* Grid Content 2x2 */}
+                <div className="grid grid-cols-2 gap-y-4 gap-x-4 pt-3">
+                  {/* Kolom Kiri Atas */}
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">
+                      {item.fieldId ? "Nama Lapangan" : "Kategori Tiket"}
+                    </p>
+                    <p className="text-sm font-semibold text-slate-800">
+                      {item.field?.name ||
+                        item.ticketTier?.name ||
+                        item.event?.title ||
+                        "Item"}
+                    </p>
+                  </div>
+
+                  {/* Kolom Kanan Atas */}
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Tanggal</p>
+                    <p className="text-sm font-semibold text-slate-800">
+                      {new Date(item.date)
+                        .toLocaleDateString("id-ID", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
+                        .replace(/ /g, "-")}
+                    </p>
+                  </div>
+
+                  {/* Kolom Kiri Bawah */}
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">
+                      {item.fieldId ? "Jam" : "Kuantitas"}
+                    </p>
+                    <p className="text-sm font-semibold text-slate-800">
+                      {item.fieldId
+                        ? `${item.startHour}:00 - ${item.endHour}:00`
+                        : `${item.quantity || 1} Tiket`}
+                    </p>
+                  </div>
+
+                  {/* Kolom Kanan Bawah */}
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Subtotal</p>
+                    <p className="text-sm font-semibold text-slate-800">
+                      Rp.{" "}
+                      {(item.fieldId
+                        ? (item.field?.price || 0) *
+                          (item.endHour - item.startHour)
+                        : (item.ticketPrice ?? item.event?.ticketPrice ?? 0) *
+                          (item.quantity || 1)
                       )?.toLocaleString("id-ID")}
                     </p>
-                  )}
-                  {item.eventId && (
-                    <p className="text-sm font-bold text-purple-600 mt-1">
-                      Rp{" "}
-                      {(
-                        item.event?.ticketPrice * (item.quantity || 1)
-                      )?.toLocaleString("id-ID")}
-                    </p>
-                  )}
+                  </div>
                 </div>
-                <button
-                  onClick={() => handleRemoveFromCart(item.id)}
-                  className="self-start p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition">
-                  <HiOutlineTrash size={16} />
-                </button>
               </div>
             ))}
 
-            <div className="border-t border-gray-200 pt-4 mt-4">
+            <div className="border-t border-slate-200 pt-4 mt-2">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-semibold text-gray-700">
+                <span className="text-sm font-semibold text-slate-700">
                   Total
                 </span>
                 <span className="text-lg font-bold text-primary">
@@ -640,10 +659,7 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                   setCartDrawerOpen(false);
                   router.push("/cart");
                 }}
-                className="w-full py-3 rounded-lg font-semibold text-white text-sm transition"
-                style={{
-                  background: "linear-gradient(135deg, #7C3AED, #9333EA)",
-                }}>
+                className="w-full py-3 rounded-lg font-semibold text-white text-sm transition cursor-pointer bg-primary hover:bg-purple-600">
                 Lihat Keranjang Lengkap
               </button>
             </div>

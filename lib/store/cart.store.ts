@@ -5,8 +5,11 @@ interface CartItem {
   id: string;
   fieldId?: string;
   eventId?: string;
+  ticketTierId?: string;
+  ticketPrice?: number;
   field?: any;
   event?: any;
+  ticketTier?: any;
   date: string;
   startHour: number;
   endHour: number;

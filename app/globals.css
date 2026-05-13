@@ -67,3 +67,62 @@ body.ant-scrolling-effect {
 ::-webkit-scrollbar-thumb:hover {
   background: #cbd5e1;
 }
+
+/* Fix Quill HTML output di detail page */
+.quill-content p {
+  margin-bottom: 0.75rem;
+}
+.quill-content strong {
+  font-weight: 700;
+}
+.quill-content em {
+  font-style: italic;
+}
+.quill-content ul,
+.quill-content ol {
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+.quill-content ul {
+  list-style: disc;
+}
+.quill-content ol {
+  list-style: decimal;
+}
+.quill-content li {
+  margin-bottom: 0.25rem;
+}
+.quill-content h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+.quill-content h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+.quill-content h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.quill-content s {
+  text-decoration: line-through;
+}
+.quill-content u {
+  text-decoration: underline;
+}
+.quill-content a {
+  color: #7c3aed;
+  text-decoration: underline;
+}
+.quill-content .ql-align-center {
+  text-align: center;
+}
+.quill-content .ql-align-right {
+  text-align: right;
+}
+.quill-content .ql-align-justify {
+  text-align: justify;
+}

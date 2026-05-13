@@ -207,10 +207,14 @@ export const venueRepository = {
   deleteImage: (imageId: string) =>
     prisma.venueImage.delete({ where: { id: imageId } }),
 
-  // Ratings
+  // ==========================================
+  // PERBAIKAN DI BAGIAN RATING:
+  // Menggunakan findFirst karena VenueRating
+  // tidak memiliki @@unique([venueId, userId])
+  // ==========================================
   findRating: (venueId: string, userId: string) =>
-    prisma.venueRating.findUnique({
-      where: { venueId_userId: { venueId, userId } },
+    prisma.venueRating.findFirst({
+      where: { venueId, userId },
     }),
 
   createRating: (
@@ -223,16 +227,27 @@ export const venueRepository = {
       data: { venueId, userId, rating, comment },
     }),
 
-  updateRating: (
+  updateRating: async (
     venueId: string,
     userId: string,
     rating: number,
     comment: string,
-  ) =>
-    prisma.venueRating.update({
-      where: { venueId_userId: { venueId, userId } },
+  ) => {
+    // Cari ID rating-nya terlebih dahulu
+    const existingRating = await prisma.venueRating.findFirst({
+      where: { venueId, userId },
+    });
+
+    if (!existingRating) {
+      throw new Error("Rating not found");
+    }
+
+    // Update berdasarkan ID yang ditemukan
+    return prisma.venueRating.update({
+      where: { id: existingRating.id },
       data: { rating, comment },
-    }),
+    });
+  },
 
   getAverageRating: async (venueId: string) => {
     const result = await prisma.venueRating.aggregate({

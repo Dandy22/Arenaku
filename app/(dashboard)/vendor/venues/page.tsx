@@ -298,7 +298,7 @@ export default function VendorVenuesPage() {
             name="name"
             label={
               <span className="text-sm font-semibold text-slate-500">
-                Nama Venue *
+                Nama Venue <span className="text-red-500">*</span>
               </span>
             }
             rules={[{ required: true, message: "Nama wajib diisi" }]}>
@@ -311,7 +311,7 @@ export default function VendorVenuesPage() {
           <Form.Item
             label={
               <span className="text-sm font-semibold text-slate-500">
-                Foto Utama (Thumbnail) *
+                Foto Utama (Thumbnail) <span className="text-red-500">*</span>
               </span>
             }
             required>
@@ -370,7 +370,7 @@ export default function VendorVenuesPage() {
             name="description"
             label={
               <span className="text-sm font-semibold text-slate-500">
-                Deskripsi *
+                Deskripsi <span className="text-red-500">*</span>
               </span>
             }
             rules={[{ required: true, message: "Deskripsi wajib diisi" }]}>
@@ -385,7 +385,7 @@ export default function VendorVenuesPage() {
             name="district"
             label={
               <span className="text-sm font-semibold text-slate-500">
-                Kecamatan *
+                Kecamatan <span className="text-red-500">*</span>
               </span>
             }
             rules={[{ required: true }]}>
@@ -402,7 +402,7 @@ export default function VendorVenuesPage() {
             name="address"
             label={
               <span className="text-sm font-semibold text-slate-500">
-                Alamat Lengkap *
+                Alamat Lengkap <span className="text-red-500">*</span>
               </span>
             }
             rules={[{ required: true }]}>

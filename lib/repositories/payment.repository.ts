@@ -20,6 +20,7 @@ export const paymentRepository = {
     amount: number;
     method: string;
     qrCode: string;
+    snapToken: string;
     expiredAt: Date;
   }) => prisma.payment.create({ data }),
 
@@ -56,6 +57,7 @@ export const paymentRepository = {
       expiredAt?: Date;
       status?: "PENDING" | "SUCCESS" | "FAILED" | "EXPIRED";
       paidAt?: Date | null;
+      snapToken?: string;
     },
   ) =>
     prisma.payment.update({

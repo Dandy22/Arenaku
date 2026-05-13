@@ -4,13 +4,13 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   HiOutlineMapPin,
-  HiOutlineClock,
   HiOutlineMagnifyingGlass,
   HiOutlineTag,
 } from "react-icons/hi2";
 import { Select } from "antd";
 import api from "@/lib/axios";
 import { BEKASI_DISTRICTS } from "@/lib/constants";
+import EventCard from "@/components/reusable/EventCard";
 
 // Kategori disesuaikan menggunakan asset SVG dari Landing Page
 const SPORT_CATEGORIES = [
@@ -201,8 +201,8 @@ function ActivityContent() {
               onChange={(val) => setEventType(val || "")}
               allowClear
               options={[
-                { label: "Turnamen", value: "TURNAMEN" },
-                { label: "Olahraga", value: "OLAHRAGA" },
+                { label: "Turnamen", value: "TOURNAMENT" },
+                { label: "Olahraga", value: "SPORTS" },
               ]}
             />
           </div>
@@ -283,69 +283,8 @@ function ActivityContent() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {events.map((event) => (
-            <div
-              key={event.id}
-              onClick={() => router.push(`/activity/${event.id}`)}
-              className="cursor-pointer bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-lg hover:border-purple-200 transition-all duration-300 flex flex-col">
-              {/* Image Section */}
-              <div className="relative aspect-video bg-gray-100 overflow-hidden">
-                <img
-                  src={
-                    event.imageUrl ||
-                    "https://images.unsplash.com/photo-1553778263-73a83bab9b0c?w=400"
-                  }
-                  alt={event.title}
-                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                />
-                <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-[10px] uppercase font-bold tracking-wider text-slate-700 shadow-sm">
-                  {event.topic || event.category || "Aktivitas"}
-                </div>
-                <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm shadow-sm rounded-lg px-2.5 py-1.5 text-center">
-                  <p className="text-xs font-bold text-purple-700">
-                    {new Date(event.date).toLocaleDateString("id-ID", {
-                      day: "2-digit",
-                      month: "short",
-                    })}
-                  </p>
-                </div>
-              </div>
-
-              {/* Body Section */}
-              <div className="p-4 flex flex-col flex-1">
-                <h3 className="font-bold text-gray-900 text-sm uppercase line-clamp-2 mb-2">
-                  {event.title}
-                </h3>
-
-                <div className="space-y-1.5 mt-auto mb-4">
-                  <p className="text-xs text-gray-500 flex items-center gap-1.5">
-                    <HiOutlineClock size={14} className="text-purple-500" />
-                    {new Date(event.date).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                    , {event.startHour}:00 WIB
-                  </p>
-                  <p className="text-xs text-gray-500 flex items-start gap-1.5">
-                    <HiOutlineMapPin
-                      size={14}
-                      className="text-purple-500 shrink-0 mt-0.5"
-                    />
-                    <span className="line-clamp-1">
-                      {event.district || event.location}
-                    </span>
-                  </p>
-                </div>
-
-                <button
-                  className="cursor-pointer mt-auto w-full block text-center py-2 rounded-xl text-xs font-bold text-white transition-opacity hover:opacity-90 shadow-sm"
-                  style={{
-                    background: "linear-gradient(135deg, #7C3AED, #9333EA)",
-                  }}>
-                  Pesan Tiket
-                </button>
-              </div>
-            </div>
+            /* Di sini kita langsung panggil komponen EventCard-nya */
+            <EventCard key={event.id} event={event} />
           ))}
         </div>
       )}

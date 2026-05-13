@@ -150,7 +150,7 @@ export default function OrderRatingCard({
           </div>
           <button
             onClick={() => setIsFormOpen(true)}
-            className="flex-shrink-0 px-4 py-2 rounded-lg bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition-colors">
+            className="flex-shrink-0 px-4 py-2 rounded-lg bg-primary cursor-pointer text-white text-xs font-semibold hover:bg-purple-800 transition-colors">
             Beri rating
           </button>
         </div>

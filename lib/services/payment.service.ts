@@ -48,12 +48,21 @@ export const paymentService = {
           currentPayment.expiredAt <= now);
 
       if (isStillPending) {
+        if (currentPayment.snapToken) {
+          return {
+            ...currentPayment,
+            snapToken: currentPayment.snapToken,
+            redirectUrl: currentPayment.qrCode,
+            midtransConfig: getMidtransConfig(),
+          };
+        }
+
+        // Fallback jika karena alasan tertentu token tidak ada di DB
         let snapToken = "";
         let redirectUrl = "";
-
         try {
           const midtransResult = await createMidtransTransaction({
-            id: order.id,
+            id: `${order.id}-${Date.now()}`,
             totalAmount: order.totalAmount,
             user: {
               name: order.user.name,
@@ -63,6 +72,12 @@ export const paymentService = {
           });
           snapToken = midtransResult.snapToken;
           redirectUrl = midtransResult.redirectUrl;
+
+          // Update DB dengan snapToken yang baru didapat
+          await paymentRepository.update(currentPayment.id, {
+            snapToken,
+            qrCode: redirectUrl,
+          });
         } catch (error: any) {
           console.warn(
             "⚠️ Midtrans unavailable, using simulation:",
@@ -94,7 +109,7 @@ export const paymentService = {
 
         try {
           const midtransResult = await createMidtransTransaction({
-            id: order.id,
+            id: `${order.id}-${Date.now()}`,
             totalAmount: order.totalAmount,
             user: {
               name: order.user.name,
@@ -116,6 +131,7 @@ export const paymentService = {
         const payment = await paymentRepository.update(currentPayment.id, {
           method: data.method,
           qrCode,
+          snapToken, // Simpan token
           expiredAt,
           status: "PENDING",
           paidAt: null,
@@ -147,7 +163,7 @@ export const paymentService = {
 
     try {
       const midtransResult = await createMidtransTransaction({
-        id: order.id,
+        id: `${order.id}-${Date.now()}`,
         totalAmount: order.totalAmount,
         user: {
           name: order.user.name,
@@ -168,6 +184,7 @@ export const paymentService = {
       amount: order.totalAmount,
       method: data.method,
       qrCode,
+      snapToken, // Simpan token
       expiredAt,
     });
 
@@ -183,14 +200,11 @@ export const paymentService = {
     const payment = await paymentRepository.findByOrderId(orderId);
     if (!payment) throw new Error("Payment not found");
 
-    // Security: pastikan order milik user yang request
     if (payment.order.userId !== userId) {
       throw new Error("You are not authorized to view this payment");
     }
 
-    // Cek apakah payment sudah expired
     if (payment.status === "PENDING" && new Date() > payment.expiredAt) {
-      // Auto-update ke EXPIRED jika sudah lewat waktu
       await paymentRepository.updateStatus(payment.id, "EXPIRED");
       await orderRepository.updateStatus(orderId, "CANCELLED");
       return { ...payment, status: "EXPIRED" };
@@ -199,17 +213,20 @@ export const paymentService = {
     return payment;
   },
 
-  async confirmPayment(paymentId: string) {
+  // Ubah parameter menjadi orderId
+  async confirmPayment(orderId: string) {
     const { prisma } = await import("@/lib/prisma");
 
-    const payment = await paymentRepository.findById(paymentId);
+    // UBAH DI SINI: Gunakan findByOrderId, bukan findById
+    const payment = await paymentRepository.findByOrderId(orderId);
     if (!payment) throw new Error("Payment not found");
 
     if (payment.status !== "PENDING") {
       throw new Error(`Payment already ${payment.status}`);
     }
 
-    await paymentRepository.updateStatus(paymentId, "SUCCESS");
+    // Gunakan payment.id untuk update status
+    await paymentRepository.updateStatus(payment.id, "SUCCESS");
     await orderRepository.updateStatus(payment.orderId, "PAID");
     const order = await orderRepository.findById(payment.orderId);
 
@@ -219,7 +236,6 @@ export const paymentService = {
     // If order has event tickets, confirm them and add to EventParticipant
     if (order && order.eventTickets && order.eventTickets.length > 0) {
       for (const ticket of order.eventTickets) {
-        // Update ticket status to CONFIRMED
         await prisma.eventTicket.update({
           where: { id: ticket.id },
           data: {
@@ -228,7 +244,6 @@ export const paymentService = {
           },
         });
 
-        // Add user to event participants
         await prisma.eventParticipant.upsert({
           where: {
             eventId_userId: {
@@ -240,11 +255,10 @@ export const paymentService = {
             eventId: ticket.eventId,
             userId: ticket.userId,
           },
-          update: {}, // Already exists, no update needed
+          update: {},
         });
       }
 
-      // Trigger notifikasi Tiket Terjual
       if (order.eventTickets[0]) {
         await notificationService.notifyTicketSold(
           order.eventTickets[0].eventId,
@@ -267,9 +281,7 @@ function generateQRCode(
   method: string,
 ): string {
   if (method === "QRIS") {
-    // Format simulasi QRIS — di production diganti response dari payment gateway
     return `QRIS-${orderId}-${amount}-${Date.now()}`;
   }
-  // Untuk metode lain, return info rekening/instruksi
   return `${method}-${orderId}-${amount}`;
 }

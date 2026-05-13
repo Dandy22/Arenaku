@@ -53,7 +53,7 @@ export default function CartPage() {
         notes: values.notes || "",
       });
       message.success("Order berhasil dibuat!");
-      clearCart(); // ← tambahkan ini
+      clearCart();
       setCheckoutModal(false);
       router.push(`/payment/${res.data.id}`);
     } catch (err: any) {
@@ -71,7 +71,8 @@ export default function CartPage() {
       return acc + (item.field?.price || 0) * hours;
     }
     if (item.eventId) {
-      return acc + (item.event?.ticketPrice || 0) * (item.quantity || 1);
+      const ticketPrice = item.ticketPrice ?? item.event?.ticketPrice ?? 0;
+      return acc + ticketPrice * (item.quantity || 1);
     }
     return acc;
   }, 0);
@@ -84,7 +85,7 @@ export default function CartPage() {
     );
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
+    <div className="max-w-3xl mx-auto px-6 py-10 min-h-[calc(100vh-250px)]">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-slate-900">
           Periksa Pesanan Anda
@@ -105,7 +106,8 @@ export default function CartPage() {
         </div>
       ) : (
         <>
-          <div className="flex flex-col gap-4 mb-6">
+          {/* List Item Cart */}
+          <div className="flex flex-col gap-4 mb-8">
             {cart.map((item) => {
               if (item.fieldId) {
                 const hours = item.endHour - item.startHour;
@@ -166,8 +168,9 @@ export default function CartPage() {
               }
 
               if (item.eventId) {
-                const subtotal =
-                  (item.event?.ticketPrice || 0) * (item.quantity || 1);
+                const ticketPrice =
+                  item.ticketPrice ?? item.event?.ticketPrice ?? 0;
+                const subtotal = ticketPrice * (item.quantity || 1);
                 return (
                   <div
                     key={item.id}
@@ -176,7 +179,7 @@ export default function CartPage() {
                       <h3 className="font-bold text-slate-800">Tiket Event</h3>
                       <button
                         onClick={() => handleDelete(item.id)}
-                        className="text-red-500 hover:text-red-600 flex items-center gap-1 text-sm">
+                        className="text-red-500 hover:text-red-600 cursor-pointer flex items-center gap-1 text-sm">
                         <HiOutlineTrash size={16} /> Delete
                       </button>
                     </div>
@@ -185,6 +188,12 @@ export default function CartPage() {
                         <p className="text-xs text-slate-400">Nama Event</p>
                         <p className="font-semibold text-slate-800">
                           {item.event?.title || "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400">Jenis Tiket</p>
+                        <p className="font-semibold text-slate-800">
+                          {item.ticketTier?.name || "Standar"}
                         </p>
                       </div>
                       <div>
@@ -228,20 +237,17 @@ export default function CartPage() {
             })}
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <div className="flex justify-between items-center">
-              <span className="font-semibold text-slate-800">Total</span>
-              <span className="text-xl font-bold text-purple-700">
+          {/* Kotak Total & Tombol Checkout (Sudah digabung & tidak fixed) */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-10">
+            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+              <span className="font-semibold text-slate-800">
+                Total Pembayaran
+              </span>
+              <span className="text-2xl font-bold text-primary">
                 Rp. {total.toLocaleString("id-ID")}
               </span>
             </div>
-          </div>
-        </>
-      )}
 
-      {cart.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-4 z-50">
-          <div className="max-w-3xl mx-auto">
             <button
               onClick={() => {
                 form.setFieldsValue({
@@ -250,16 +256,17 @@ export default function CartPage() {
                 });
                 setCheckoutModal(true);
               }}
-              className="w-full py-3 rounded-xl text-white font-bold text-sm hover:opacity-90 transition"
+              className="w-full py-3.5 rounded-xl text-white font-bold text-sm hover:opacity-90 transition cursor-pointer shadow-sm"
               style={{
                 background: "linear-gradient(135deg, #EF4444, #DC2626)",
               }}>
               KONFIRMASI PEMESANAN
             </button>
           </div>
-        </div>
+        </>
       )}
 
+      {/* Modal Form */}
       <Modal
         title="Detail Pemesanan"
         open={checkoutModal}

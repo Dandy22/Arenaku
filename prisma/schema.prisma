@@ -250,19 +250,22 @@ model FieldContact {
 }
 
 model CartItem {
-  id        String   @id @default(cuid())
-  userId    String
-  fieldId   String?  
-  eventId   String?  
-  date      DateTime
-  startHour Int
-  endHour   Int
-  quantity  Int      @default(1)
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  userId       String
+  fieldId      String?
+  eventId      String?
+  ticketTierId String?
+  ticketPrice  Int?     @default(0)
+  date         DateTime
+  startHour    Int
+  endHour      Int
+  quantity     Int      @default(1)
+  createdAt    DateTime @default(now())
 
-  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  field Field? @relation(fields: [fieldId], references: [id], onDelete: Cascade)
-  event Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  field      Field?           @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  event      Event?           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticketTier EventTicketTier? @relation(fields: [ticketTierId], references: [id], onDelete: Cascade)
 }
 
 model Order {
@@ -309,7 +312,7 @@ model Payment {
   expiredAt DateTime
   paidAt    DateTime?
   createdAt DateTime      @default(now())
-
+  snapToken String?
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
@@ -339,6 +342,7 @@ model Event {
   latitude        Float?
   longitude       Float?
   ticketPrice     Int         @default(0)
+  allowMultiplePurchases Boolean @default(false)
   
   creator         User               @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   ticketTiers     EventTicketTier[]  @relation("EventToTickets")
@@ -357,7 +361,8 @@ model EventTicketTier {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  event Event @relation("EventToTickets", fields: [eventId], references: [id], onDelete: Cascade)
+  event     Event      @relation("EventToTickets", fields: [eventId], references: [id], onDelete: Cascade)
+  cartItems CartItem[]
 
   @@index([eventId])
 }
@@ -387,6 +392,4 @@ model EventTicket {
   event Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
-
-  @@unique([eventId, userId])
 }

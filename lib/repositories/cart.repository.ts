@@ -3,7 +3,6 @@
 // ------------------------------------------------------------
 // TIER 3 — Data Access Layer: Cart Repository
 
-
 import { prisma } from "@/lib/prisma";
 
 export const cartRepository = {
@@ -15,6 +14,7 @@ export const cartRepository = {
           include: { venue: true },
         },
         event: true,
+        ticketTier: true,
       },
       orderBy: { createdAt: "asc" },
     }),
@@ -22,20 +22,23 @@ export const cartRepository = {
   findById: (id: string) =>
     prisma.cartItem.findUnique({
       where: { id },
-      include: { field: true, event: true },
+      include: { field: true, event: true, ticketTier: true },
     }),
 
   // Conflict check for field bookings
-  findConflict: (userId: string, fieldId: string, date: Date, startHour: number, endHour: number) =>
+  findConflict: (
+    userId: string,
+    fieldId: string,
+    date: Date,
+    startHour: number,
+    endHour: number,
+  ) =>
     prisma.cartItem.findFirst({
       where: {
         userId,
         fieldId,
         date,
-        AND: [
-          { startHour: { lt: endHour } },
-          { endHour: { gt: startHour } },
-        ],
+        AND: [{ startHour: { lt: endHour } }, { endHour: { gt: startHour } }],
       },
     }),
 
@@ -49,16 +52,18 @@ export const cartRepository = {
     }),
 
   // Cek konflik dengan order PAID orang lain
-  findBookingConflict: (fieldId: string, date: Date, startHour: number, endHour: number) =>
+  findBookingConflict: (
+    fieldId: string,
+    date: Date,
+    startHour: number,
+    endHour: number,
+  ) =>
     prisma.orderItem.findFirst({
       where: {
         fieldId,
         date,
         order: { status: "PAID" },
-        AND: [
-          { startHour: { lt: endHour } },
-          { endHour: { gt: startHour } },
-        ],
+        AND: [{ startHour: { lt: endHour } }, { endHour: { gt: startHour } }],
       },
     }),
 
@@ -69,22 +74,21 @@ export const cartRepository = {
     date: Date;
     startHour: number;
     endHour: number;
-  }) =>
-    prisma.cartItem.create({ data }),
+  }) => prisma.cartItem.create({ data }),
 
   // Create event ticket
   createEventTicket: (data: {
     userId: string;
     eventId: string;
+    ticketTierId?: string;
+    ticketPrice?: number;
     date: Date;
     startHour: number;
     endHour: number;
     quantity: number;
-  }) =>
-    prisma.cartItem.create({ data }),
+  }) => prisma.cartItem.create({ data }),
 
-  deleteById: (id: string) =>
-    prisma.cartItem.delete({ where: { id } }),
+  deleteById: (id: string) => prisma.cartItem.delete({ where: { id } }),
 
   deleteByUserId: (userId: string) =>
     prisma.cartItem.deleteMany({ where: { userId } }),

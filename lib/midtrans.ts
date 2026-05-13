@@ -42,12 +42,20 @@ export async function createMidtransTransaction(order: {
     phone: order.user.phone,
   };
 
+  const appBaseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    (process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000");
+
   const payload = {
     transaction_details: transactionDetails,
     customer_details: customerDetails,
     credit_card: {
       secure: true,
     },
+    notification_url: `${appBaseUrl.replace(/\/$/, "")}/api/payments/webhook`,
   };
 
   // Encode untuk Basic Auth
@@ -95,13 +103,8 @@ export async function handleMidtransWebhook(payload: {
   status_code: string;
   gross_amount: string;
 }) {
-  const {
-    order_id,
-    transaction_status,
-    transaction_id,
-    status_code,
-    gross_amount,
-  } = payload;
+  const { order_id, transaction_status, transaction_id, gross_amount } =
+    payload;
 
   console.log("📥 Midtrans Webhook received:", {
     orderId: order_id,
@@ -245,7 +248,21 @@ export async function handleMidtransWebhook(payload: {
 // ============================================================
 // lib/midtrans.ts
 
-async function processVendorPayout(payment: any, total: number) {
+async function processVendorPayout(
+  payment: {
+    orderId: string;
+    order?: {
+      items?: Array<{
+        field?: {
+          venue?: {
+            vendorId: string;
+          };
+        };
+      }>;
+    };
+  },
+  total: number,
+) {
   // Hitung pembagian (90% Vendor, 10% Platform)
   const platformFee = Math.floor(total * 0.1);
   const vendorAmount = total - platformFee;

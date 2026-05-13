@@ -139,6 +139,11 @@ export const orderRepository = {
             field: { include: { venue: true } },
           },
         },
+        eventTickets: {
+          include: {
+            event: true,
+          },
+        },
         payment: true,
       },
       orderBy: { createdAt: "desc" },

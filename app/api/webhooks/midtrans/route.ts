@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       transactionStatus: body.transaction_status,
     });
 
-    const orderId = body.order_id;
+    const orderId = body.order_id.split("-")[0];
     const transactionStatus = body.transaction_status;
     const statusCode = body.status_code;
 

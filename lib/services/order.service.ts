@@ -90,7 +90,8 @@ export const orderService = {
 
     // Event ticket total
     for (const item of eventItems) {
-      totalAmount += (item.event?.ticketPrice || 0) * item.quantity;
+      const ticketPrice = item.ticketPrice ?? item.event?.ticketPrice ?? 0;
+      totalAmount += ticketPrice * item.quantity;
     }
 
     let order;
@@ -115,7 +116,7 @@ export const orderService = {
         eventTickets: eventItems.map((item) => ({
           eventId: item.eventId!,
           quantity: item.quantity,
-          price: item.event?.ticketPrice || 0,
+          price: (item.ticketPrice ?? item.event?.ticketPrice) || 0,
         })),
       });
     } else if (eventItems.length > 0) {
@@ -130,7 +131,7 @@ export const orderService = {
         eventTickets: eventItems.map((item) => ({
           eventId: item.eventId!,
           quantity: item.quantity,
-          price: item.event?.ticketPrice || 0,
+          price: (item.ticketPrice ?? item.event?.ticketPrice) || 0,
         })),
       });
     } else {

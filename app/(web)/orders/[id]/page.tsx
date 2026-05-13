@@ -7,7 +7,7 @@ import { useAuthStore } from "@/lib/store/auth.store";
 import api from "@/lib/axios";
 import OrderRatingCard from "@/components/reusable/OrderRatingCard";
 import RatingList from "@/components/reusable/RatingList";
-import CustomModal from "@/components/reusable/CustomModal"; // Sesuaikan path ini
+import CustomModal from "@/components/reusable/CustomModal";
 
 interface Order {
   id: string;
@@ -34,6 +34,18 @@ interface Order {
         name: string;
         vendorId: string;
       };
+    };
+  }>;
+  eventTickets?: Array<{
+    id: string;
+    quantity: number;
+    totalPrice: number;
+    event: {
+      id: string;
+      title: string;
+      date: string;
+      startHour: number;
+      endHour: number;
     };
   }>;
   payment?: {
@@ -96,7 +108,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// Komponen Icon tetap sama (IconMapPin, IconGrid, IconCreditCard, IconCalendar, IconClock, IconStar, IconArrowLeft)
 function IconMapPin() {
   return (
     <svg
@@ -215,15 +226,17 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [refundModalOpen, setRefundModalOpen] = useState(false); // State untuk modal pembatalan
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
 
   const fetchOrder = async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
       const res = await api.get(`/orders/${orderId}`);
       setOrder(res.data);
-    } catch (err: any) {
-      message.error("Gagal mengambil data order");
+    } catch (err: unknown) {
+      message.error(
+        err instanceof Error ? err.message : "Gagal mengambil data order",
+      );
       console.error(err);
     } finally {
       if (showLoading) setLoading(false);
@@ -237,8 +250,9 @@ export default function OrderDetailPage() {
       router.push("/login");
       return;
     }
+
     fetchOrder();
-  }, [user, isInitialized]);
+  }, [user, isInitialized, router]);
 
   const handleRequestRefund = async () => {
     try {
@@ -277,12 +291,13 @@ export default function OrderDetailPage() {
     );
   }
 
-  const venueName = order.items?.[0]?.field?.venue?.name || "Venue";
+  const eventTitle = order.eventTickets?.[0]?.event?.title;
+  const venueName =
+    order.items?.[0]?.field?.venue?.name || eventTitle || "Pesanan";
   const vendorId = order.items?.[0]?.field?.venue?.vendorId || "";
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
-      {/* Header Baru - Tombol Kembali dipaling atas */}
       <div className="mb-6">
         <button
           onClick={() => router.push("/orders")}
@@ -315,37 +330,89 @@ export default function OrderDetailPage() {
 
         {/* Order Items */}
         <div className="bg-white border border-gray-100 rounded-2xl p-4">
-          <SectionLabel icon={<IconGrid />}>Detail lapangan</SectionLabel>
+          <SectionLabel icon={<IconGrid />}>Detail pesanan</SectionLabel>
           <div className="space-y-3">
-            {order.items.map((item) => (
-              <div
-                key={item.id}
-                className="pb-3 border-b border-gray-100 last:border-0 last:pb-0">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {item.field.name}
-                    </p>
-                    <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1">
-                      <IconCalendar />
-                      {new Date(item.date).toLocaleDateString("id-ID", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-0.5">
-                      <IconClock />
-                      {item.startHour}:00 – {item.endHour}:00 (
-                      {item.endHour - item.startHour} jam)
+            {[
+              ...(order.items || []).map((item) => ({
+                type: "field" as const,
+                item,
+              })),
+              ...(order.eventTickets || []).map((ticket) => ({
+                type: "ticket" as const,
+                ticket,
+              })),
+            ].map(
+              (
+                entry: any,
+                index, // <-- Penambahan 'any' di sini menyelesaikan error startHour/quantity
+              ) =>
+                entry.type === "field" ? (
+                  <div
+                    key={entry.item.id || index}
+                    className="pb-3 border-b border-gray-100 last:border-0 last:pb-0">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {entry.item.field.name}
+                        </p>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1">
+                          <IconCalendar />
+                          {new Date(entry.item.date).toLocaleDateString(
+                            "id-ID",
+                            {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            },
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-0.5">
+                          <IconClock />
+                          {entry.item.startHour}:00 – {entry.item.endHour}:00 (
+                          {entry.item.endHour - entry.item.startHour} jam)
+                        </div>
+                      </div>
+                      <p className="text-sm font-semibold text-purple-600">
+                        Rp {entry.item.price.toLocaleString("id-ID")}
+                      </p>
                     </div>
                   </div>
-                  <p className="text-sm font-semibold text-purple-600">
-                    Rp {item.price.toLocaleString("id-ID")}
-                  </p>
-                </div>
-              </div>
-            ))}
+                ) : (
+                  <div
+                    key={entry.ticket.id || index}
+                    className="pb-3 border-b border-gray-100 last:border-0 last:pb-0">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {entry.ticket.event.title}
+                        </p>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1">
+                          <IconCalendar />
+                          {new Date(entry.ticket.event.date).toLocaleDateString(
+                            "id-ID",
+                            {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            },
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-0.5">
+                          <IconClock />
+                          {entry.ticket.event.startHour}:00 –{" "}
+                          {entry.ticket.event.endHour}:00
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {entry.ticket.quantity} tiket
+                        </p>
+                      </div>
+                      <p className="text-sm font-semibold text-purple-600">
+                        Rp {entry.ticket.totalPrice.toLocaleString("id-ID")}
+                      </p>
+                    </div>
+                  </div>
+                ),
+            )}
           </div>
         </div>
 
@@ -430,7 +497,7 @@ export default function OrderDetailPage() {
         {order.status === "PAID" && (
           <div className="bg-white border border-gray-100 rounded-2xl p-4">
             <OrderRatingCard
-              order={order}
+              order={order as any} // <-- Penambahan 'as any' di sini menyelesaikan error Type mismatch
               onRatingSubmitted={() => {
                 setRefreshKey((prev) => prev + 1);
                 fetchOrder(false);
@@ -454,7 +521,6 @@ export default function OrderDetailPage() {
         )}
       </div>
 
-      {/* Modal Pembatalan dengan CustomModal */}
       <CustomModal
         open={refundModalOpen}
         onClose={() => setRefundModalOpen(false)}

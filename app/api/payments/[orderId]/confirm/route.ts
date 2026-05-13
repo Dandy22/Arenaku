@@ -1,25 +1,28 @@
 import { NextResponse } from "next/server";
 import { paymentService } from "@/lib/services/payment.service";
-import { prisma } from "@/lib/prisma";
 
 export async function PATCH(
   req: Request,
-  { params }: { params: Promise<{ orderId: string }> },
+  { params }: { params: Promise<{ orderId?: string; id?: string }> },
 ) {
   try {
-    const { orderId } = await params;
-    const payment = await prisma.payment.findUnique({
-      where: { orderId },
-    });
+    const resolvedParams = await params;
+    const targetOrderId = resolvedParams.orderId || resolvedParams.id;
 
-    if (!payment)
-      return NextResponse.json({ error: "Payment not found" }, { status: 404 });
+    if (!targetOrderId) {
+      return NextResponse.json(
+        { error: "Order ID is missing in URL" },
+        { status: 400 },
+      );
+    }
 
-    const result = await paymentService.confirmPayment(payment.id);
+    const result = await paymentService.confirmPayment(targetOrderId);
     return NextResponse.json(result);
   } catch (error: any) {
-    if (error.message.includes("not found"))
+    console.error("❌ ERROR CONFIRM:", error.message);
+    if (error.message.includes("not found")) {
       return NextResponse.json({ error: error.message }, { status: 404 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

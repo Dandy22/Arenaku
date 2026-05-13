@@ -22,9 +22,11 @@ export async function GET(req: Request) {
     }
     const cart = await cartService.getCart(user.userId);
     return NextResponse.json(cart);
-  } catch (error: any) {
-    if (error.message.includes("token")) {
-      return NextResponse.json({ error: error.message }, { status: 401 });
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to fetch cart";
+    if (errorMessage.includes("token")) {
+      return NextResponse.json({ error: errorMessage }, { status: 401 });
     }
     return NextResponse.json(
       { error: "Failed to fetch cart" },
@@ -51,6 +53,7 @@ export async function POST(req: Request) {
     if (body.eventId) {
       item = await cartService.addEventToCart(user.userId, user.role, {
         eventId: body.eventId,
+        ticketTierId: body.ticketTierId,
         quantity: body.quantity || 1,
       });
     } else {
@@ -64,13 +67,15 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(item, { status: 201 });
-  } catch (error: any) {
-    if (error.message.includes("token")) {
-      return NextResponse.json({ error: error.message }, { status: 401 });
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    if (errorMessage.includes("token")) {
+      return NextResponse.json({ error: errorMessage }, { status: 401 });
     }
-    if (error.message.includes("Only customers")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
+    if (errorMessage.includes("Only customers")) {
+      return NextResponse.json({ error: errorMessage }, { status: 403 });
     }
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ error: errorMessage }, { status: 400 });
   }
 }
