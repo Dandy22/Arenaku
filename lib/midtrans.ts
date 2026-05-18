@@ -191,7 +191,9 @@ export async function handleMidtransWebhook(payload: {
     try {
       await prisma.eventTicket.updateMany({
         where: {
-          id: { in: payment.order.eventTickets.map((t) => t.id) },
+          id: {
+            in: payment.order.eventTickets.map((t: { id: string }) => t.id),
+          },
         },
         data: { status: "CANCELLED" },
       });
