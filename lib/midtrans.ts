@@ -276,7 +276,7 @@ async function processVendorPayout(
 
   // Ambil vendorId dari relasi baru: order -> items -> field -> venue -> vendorId
   // (Pastikan field venue.vendorId merujuk ke ID model Vendor)
-  const vendorId = payment.order.items?.[0]?.field?.venue?.vendorId;
+  const vendorId = payment.order?.items?.[0]?.field?.venue?.vendorId;
 
   if (!vendorId) {
     console.error("❌ Vendor ID not found for order:", payment.orderId);

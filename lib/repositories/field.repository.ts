@@ -85,7 +85,6 @@ export const fieldRepository = {
       data: {
         fieldId,
         url,
-        title: title || "",
       },
     }),
 
