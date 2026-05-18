@@ -234,7 +234,7 @@ export default function RegisterPage() {
                   setFieldErrors({});
                   setGeneralError("");
                 }}
-                className={`flex-1 py-2 rounded-md text-sm font-semibold transition ${
+                className={`flex-1 py-2 rounded-md text-sm font-semibold transition cursor-pointer ${
                   role === r
                     ? "bg-white text-purple-700 shadow-sm"
                     : "text-gray-500"
