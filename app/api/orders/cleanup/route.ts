@@ -72,7 +72,7 @@ export async function POST(req: Request) {
       if (order.eventTickets.length > 0) {
         await prisma.eventTicket.updateMany({
           where: {
-            id: { in: order.eventTickets.map((t) => t.id) },
+            id: { in: order.eventTickets.map((t: { id: string }) => t.id) },
           },
           data: { status: "CANCELLED" },
         });
