@@ -5,9 +5,10 @@ import { getAuth } from "@/lib/auth";
 // PUT - Update rating
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const user = await getAuth(req);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -23,14 +24,10 @@ export async function PUT(
       );
     }
 
-    const updatedRating = await ratingService.updateRating(
-      params.id,
-      user.userId,
-      {
-        rating,
-        comment,
-      },
-    );
+    const updatedRating = await ratingService.updateRating(id, user.userId, {
+      rating,
+      comment,
+    });
 
     return NextResponse.json({
       success: true,
@@ -49,15 +46,16 @@ export async function PUT(
 // DELETE - Delete rating
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const user = await getAuth(req);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await ratingService.deleteRating(params.id, user.userId);
+    await ratingService.deleteRating(id, user.userId);
 
     return NextResponse.json({
       success: true,
