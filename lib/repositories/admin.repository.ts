@@ -188,7 +188,7 @@ export const adminRepository = {
       await tx.vendor.delete({ where: { id } });
 
       // 3. Hapus User terkait jika mereka hanya berperan sebagai Vendor
-      const userIds = members.map((m) => m.userId);
+      const userIds = members.map((m: any) => m.userId);
       await tx.user.deleteMany({
         where: {
           id: { in: userIds },

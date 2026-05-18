@@ -14,7 +14,7 @@ async function getAdminUserIds(): Promise<string[]> {
     where: { role: "ADMIN" },
     select: { id: true },
   });
-  return admins.map((a) => a.id);
+  return admins.map((a: any) => a.id);
 }
 
 // Helper: Get vendor members by venue/field
@@ -26,7 +26,7 @@ async function getVendorMembersByFieldId(fieldId: string): Promise<string[]> {
 
   if (!field?.venue?.vendor) return [];
 
-  return field.venue.vendor.members.map((m) => m.userId);
+  return field.venue.vendor.members.map((m: any) => m.userId);
 }
 
 // Helper: Get vendor members by event
@@ -51,7 +51,7 @@ async function getVendorMembersByEventId(eventId: string): Promise<string[]> {
     select: { userId: true },
   });
 
-  return members.map((m) => m.userId);
+  return members.map((m: any) => m.userId);
 }
 
 // Helper: Get vendor owner ID by vendorId
