@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 // GET /api/fields/[id]/schedule?startDate=2026-02-11   → jadwal 7 hari (mingguan)
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -16,7 +16,7 @@ export async function GET(
     if (!dateStr && !startDateStr) {
       return NextResponse.json(
         { error: "date or startDate query parameter is required (YYYY-MM-DD)" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -77,7 +77,10 @@ export async function GET(
         days.push({
           date: currentDate.toISOString().split("T")[0],
           dayName: currentDate.toLocaleDateString("id-ID", { weekday: "long" }),
-          dayDate: currentDate.toLocaleDateString("id-ID", { day: "numeric", month: "long" }),
+          dayDate: currentDate.toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "long",
+          }),
           slots,
         });
       }
@@ -135,7 +138,6 @@ export async function GET(
       date: dateStr,
       slots,
     });
-
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

@@ -165,6 +165,9 @@ model Venue {
   longitude    Float?
   vendorId     String
   thumbnailUrl String  @default("")
+  openHour     Int     @default(8)   // Jam buka (0-23)
+  closeHour    Int     @default(22)  // Jam tutup (0-23)
+  isOpen       Boolean @default(true) // Status Buka/Tutup renovasi
 
   // Relasi diubah menunjuk ke model Vendor (bukan VendorProfile)
   vendor  Vendor        @relation(fields: [vendorId], references: [id], onDelete: Cascade)
@@ -234,6 +237,7 @@ model Field {
 model FieldImage {
   id      String @id @default(cuid())
   fieldId String
+  title   String
   url     String
 
   field Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)

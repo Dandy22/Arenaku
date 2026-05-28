@@ -21,6 +21,7 @@ import {
   HiOutlineTrash,
   HiArrowLeft,
   HiOutlineArrowUpTray,
+  HiXMark,
 } from "react-icons/hi2";
 import api from "@/lib/axios";
 import DeleteModal from "@/components/reusable/DeleteModal";
@@ -35,6 +36,7 @@ interface Field {
   price: number;
   description: string;
   thumbnailUrl?: string;
+  images?: { id?: string; url: string; title: string }[];
 }
 
 interface Venue {
@@ -83,7 +85,6 @@ export default function VendorVenueDetailPage() {
 
   const fetchVenue = async () => {
     try {
-      // ✅ TAMBAHIN ?t=... BIAR NEXT.JS GAK BISA NGASIH DATA BASI!
       const timestamp = new Date().getTime();
       const res = await api.get(`/venues/${venueId}?t=${timestamp}`);
 
@@ -121,6 +122,9 @@ export default function VendorVenueDetailPage() {
         width: Number(field.width),
         price: Number(field.price),
         description: field.description,
+        images:
+          field.images?.map((img) => ({ url: img.url, title: img.title })) ||
+          [],
       });
     }, 100);
   };
@@ -693,6 +697,174 @@ export default function VendorVenueDetailPage() {
               placeholder="Ketik deskripsi lapangan..."
             />
           </Form.Item>
+
+          {/* GALERI LAPANGAN - FIX PADDING & LAYOUT */}
+          <div className="pt-4 mt-4 border-t border-slate-200">
+            <h3 className="text-sm font-bold text-slate-800 mb-2">
+              Galeri Lapangan (Opsional, Maks. 4)
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Tambahkan foto detail lapangan seperti Area Bench, Kondisi Lantai,
+              dll.
+            </p>
+
+            <Form.List
+              name="images"
+              rules={[
+                {
+                  validator: async (_, images) => {
+                    if (images && images.length > 4) {
+                      return Promise.reject(
+                        new Error("Maksimal hanya 4 foto galeri"),
+                      );
+                    }
+                  },
+                },
+              ]}>
+              {(fields, { add, remove }, { errors }) => (
+                <div className="space-y-4">
+                  {fields.map(({ key, name, ...restField }) => (
+                    <div
+                      key={key}
+                      className="flex gap-4 items-start p-4 bg-slate-50 rounded-xl border border-slate-200 relative  mt-2">
+                      <button
+                        type="button"
+                        onClick={() => remove(name)}
+                        className="absolute -top-3 -right-3 bg-white border border-red-200 text-red-500 rounded-full w-7 h-7 flex items-center justify-center hover:bg-red-50 hover:text-red-600 cursor-pointer z-10 shadow-sm font-bold text-sm transition-all">
+                        <HiXMark className="text-[14px]" />
+                      </button>
+
+                      {/* BOX GAMBAR */}
+                      <div className="w-24 shrink-0">
+                        <div className="text-sm font-semibold mb-2 invisible">
+                          Foto
+                        </div>
+
+                        {/* ✅ 1. Form.Item disembunyikan agar hanya menyimpan teks URL */}
+                        <Form.Item
+                          {...restField}
+                          name={[name, "url"]}
+                          rules={[{ required: true, message: "Pilih foto" }]}
+                          className="hidden">
+                          <Input />
+                        </Form.Item>
+
+                        {/* ✅ 2. Upload ditaruh DI LUAR Form.Item agar tidak menimpa nilai form dengan Object */}
+                        <Upload
+                          name="file"
+                          showUploadList={false}
+                          customRequest={async (options: any) => {
+                            const { file, onSuccess, onError } = options;
+                            const formData = new FormData();
+                            formData.append("file", file);
+                            try {
+                              const res = await api.post("/upload", formData, {
+                                headers: {
+                                  "Content-Type": "multipart/form-data",
+                                },
+                              });
+                              const currentImages =
+                                fieldForm.getFieldValue("images") || [];
+                              currentImages[name] = {
+                                ...currentImages[name],
+                                url: res.data.url, // Kita set teks URL-nya
+                              };
+                              fieldForm.setFieldsValue({
+                                images: currentImages,
+                              });
+                              onSuccess("Ok");
+                            } catch (err) {
+                              onError(err);
+                              message.error("Gagal unggah foto galeri");
+                            }
+                          }}
+                          accept="image/*">
+                          <div className="w-24 h-24 bg-white border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-purple-500 overflow-hidden relative group">
+                            <Form.Item
+                              noStyle
+                              shouldUpdate={(prevValues, currentValues) =>
+                                prevValues.images?.[name]?.url !==
+                                currentValues.images?.[name]?.url
+                              }>
+                              {({ getFieldValue }) => {
+                                const imgUrl = getFieldValue([
+                                  "images",
+                                  name,
+                                  "url",
+                                ]);
+
+                                // ✅ 3. Pastikan yang dirender benar-benar string URL
+                                return imgUrl && typeof imgUrl === "string" ? (
+                                  <>
+                                    <img
+                                      src={imgUrl}
+                                      alt="preview"
+                                      className="w-full h-full object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <div className="flex flex-col items-center text-white">
+                                        <HiOutlineArrowUpTray className="text-xl mb-0.5" />
+                                        <span className="text-[10px] font-medium leading-tight text-center">
+                                          Ganti
+                                          <br />
+                                          Foto
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <HiOutlineArrowUpTray className="text-xl text-slate-400" />
+                                );
+                              }}
+                            </Form.Item>
+                          </div>
+                        </Upload>
+                      </div>
+
+                      {/* BOX TEKS */}
+                      <div className="flex-1">
+                        <Form.Item
+                          {...restField}
+                          name={[name, "title"]}
+                          label={
+                            <span className="text-sm font-semibold text-slate-500">
+                              Nama Foto
+                            </span>
+                          }
+                          rules={[
+                            {
+                              required: true,
+                              message: "Wajib diisi",
+                            },
+                          ]}
+                          className="mb-0">
+                          <Input
+                            placeholder="Contoh: Area Bench"
+                            className="!rounded-lg !py-2 !border-gray-200 !text-sm"
+                          />
+                        </Form.Item>
+                      </div>
+                    </div>
+                  ))}
+
+                  {fields.length < 4 && (
+                    <Button
+                      type="dashed"
+                      onClick={() => add()}
+                      block
+                      icon={<HiOutlinePlus />}
+                      className="!h-10 !rounded-xl !border-purple-200 !text-purple-600 hover:!bg-purple-50 hover:!border-purple-400">
+                      Tambah Foto Galeri Lapangan
+                    </Button>
+                  )}
+                  <Form.ErrorList
+                    errors={errors}
+                    className="text-red-500 text-sm mt-2"
+                  />
+                </div>
+              )}
+            </Form.List>
+          </div>
         </Form>
       </Drawer>
 

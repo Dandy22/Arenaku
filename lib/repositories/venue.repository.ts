@@ -26,6 +26,10 @@ export const venueRepository = {
     longitude?: number;
     vendorId: string;
     thumbnailUrl?: string;
+    // ✅ TAMBAHKAN TYPE DI SINI
+    openHour?: number;
+    closeHour?: number;
+    isOpen?: boolean;
   }) =>
     prisma.venue.create({
       data: {
@@ -38,13 +42,16 @@ export const venueRepository = {
         longitude: data.longitude,
         vendorId: data.vendorId,
         thumbnailUrl: data.thumbnailUrl || "",
+        // ✅ PASTIKAN DIKIRIM KE PRISMA
+        openHour: data.openHour,
+        closeHour: data.closeHour,
+        isOpen: data.isOpen ?? true,
       },
       include: {
         images: true,
         fields: { include: { images: true, contacts: true } },
       },
     }),
-
   update: (
     id: string,
     data: {
@@ -56,6 +63,10 @@ export const venueRepository = {
       latitude?: number;
       longitude?: number;
       thumbnailUrl?: string;
+      // ✅ TAMBAHKAN TYPE DI SINI
+      openHour?: number;
+      closeHour?: number;
+      isOpen?: boolean;
     },
   ) =>
     prisma.venue.update({

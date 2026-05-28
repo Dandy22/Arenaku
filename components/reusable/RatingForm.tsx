@@ -21,9 +21,78 @@ const STAR_LABELS = [
   "Sangat baik!",
 ];
 
+const BAD_WORDS = [
+  "anjing",
+  "bangsat",
+  "kontol",
+  "memek",
+  "ngentot",
+  "tolol",
+  "goblok",
+  "babi",
+  "tai",
+  "asu",
+];
+
+const LEET_MAP: Record<string, string[]> = {
+  a: ["a", "4", "@"],
+  b: ["b", "8"],
+  c: ["c"],
+  d: ["d"],
+  e: ["e", "3"],
+  f: ["f"],
+  g: ["g", "6", "9"],
+  h: ["h"],
+  i: ["i", "1", "!", "|"],
+  j: ["j"],
+  k: ["k"],
+  l: ["l", "1", "|"],
+  m: ["m"],
+  n: ["n"],
+  o: ["o", "0"],
+  p: ["p"],
+  q: ["q"],
+  r: ["r"],
+  s: ["s", "5", "$"],
+  t: ["t", "7", "+"],
+  u: ["u", "v"],
+  v: ["v", "u"],
+  w: ["w"],
+  x: ["x"],
+  y: ["y"],
+  z: ["z", "2"],
+};
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildBadWordRegex(word: string) {
+  const chars = word.toLowerCase().split("");
+
+  const pattern = chars
+    .map((char, index) => {
+      const variants = LEET_MAP[char] || [char];
+      const charPattern = variants.map(escapeRegex).join("|");
+
+      const separator = index < chars.length - 1 ? "[\\W_]*" : "";
+      const repeat = index === chars.length - 1 ? "+" : "";
+
+      return `(?:${charPattern})${repeat}${separator}`;
+    })
+    .join("");
+
+  return new RegExp(pattern, "i");
+}
+
+function containsBadWords(text: string) {
+  return BAD_WORDS.some((word) => buildBadWordRegex(word).test(text));
+}
+
 function StarIcon({ filled, hovered }: { filled: boolean; hovered: boolean }) {
   const fill = filled ? "#BA7517" : hovered ? "#FAC775" : "none";
   const stroke = filled || hovered ? "#BA7517" : "#D3D1C7";
+
   return (
     <svg
       width={36}
@@ -51,6 +120,7 @@ export default function RatingForm({
   const [loading, setLoading] = useState(false);
 
   const activeVal = hovered || rating;
+  const badWordDetected = containsBadWords(comment);
 
   const handleClose = () => {
     setRating(0);
@@ -64,6 +134,12 @@ export default function RatingForm({
       message.warning("Silakan berikan rating bintang terlebih dahulu");
       return;
     }
+
+    if (badWordDetected) {
+      message.warning("Komentar mengandung kata yang tidak diperbolehkan");
+      return;
+    }
+
     try {
       setLoading(true);
       await api.post("/ratings", { orderId, rating, comment });
@@ -94,7 +170,7 @@ export default function RatingForm({
           key="submit"
           type="primary"
           loading={loading}
-          disabled={rating === 0}
+          disabled={rating === 0 || badWordDetected}
           onClick={handleSubmit}>
           Kirim rating
         </Button>,
@@ -111,7 +187,7 @@ export default function RatingForm({
                 key={val}
                 type="button"
                 aria-label={`${val} bintang`}
-                className="transition-transform hover:scale-110 active:scale-95"
+                className="cursor-pointer transition-transform hover:scale-110 active:scale-95"
                 onMouseEnter={() => setHovered(val)}
                 onMouseLeave={() => setHovered(0)}
                 onClick={() => setRating(val)}>
@@ -146,6 +222,12 @@ export default function RatingForm({
           <p className="text-xs text-gray-400 text-right mt-1">
             {comment.length}/500
           </p>
+
+          {badWordDetected && (
+            <p className="text-xs text-red-500 mt-2">
+              Komentar mengandung kata yang tidak diperbolehkan.
+            </p>
+          )}
         </div>
 
         {/* Tips */}

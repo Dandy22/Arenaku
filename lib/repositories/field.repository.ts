@@ -19,6 +19,8 @@ export const fieldRepository = {
     description: string;
     venueId: string;
     thumbnailUrl?: string;
+    // ✅ Tambahkan images di sini
+    images?: { url: string; title: string }[];
   }) =>
     prisma.field.create({
       data: {
@@ -31,6 +33,14 @@ export const fieldRepository = {
         description: data.description,
         venueId: data.venueId,
         thumbnailUrl: data.thumbnailUrl,
+        // ✅ Buat relasi gambar sekaligus saat lapangan dibuat
+        images: {
+          create:
+            data.images?.map((img) => ({
+              url: img.url,
+              title: img.title || "Detail Lapangan",
+            })) || [],
+        },
       },
       include: { images: true, contacts: true },
     }),
@@ -46,11 +56,32 @@ export const fieldRepository = {
       price?: number;
       description?: string;
       thumbnailUrl?: string;
+      // ✅ Tambahkan images di sini
+      images?: { url: string; title: string }[];
     },
   ) =>
     prisma.field.update({
       where: { id },
-      data,
+      data: {
+        name: data.name,
+        type: data.type,
+        floorType: data.floorType,
+        length: data.length,
+        width: data.width,
+        price: data.price,
+        description: data.description,
+        thumbnailUrl: data.thumbnailUrl,
+        // ✅ Hapus gambar lama, ganti dengan gambar baru dari form
+        ...(data.images && {
+          images: {
+            deleteMany: {},
+            create: data.images.map((img) => ({
+              url: img.url,
+              title: img.title || "Detail Lapangan",
+            })),
+          },
+        }),
+      },
       include: { images: true, contacts: true },
     }),
 
@@ -85,6 +116,7 @@ export const fieldRepository = {
       data: {
         fieldId,
         url,
+        title, // ✅ Pastikan title masuk di sini
       },
     }),
 

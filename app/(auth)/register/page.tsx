@@ -3,11 +3,12 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { HiEye, HiEyeSlash, HiChevronDown } from "react-icons/hi2";
+import { HiEye, HiEyeSlash, HiChevronDown, HiArrowLeft } from "react-icons/hi2";
 import { message } from "antd";
 
 import api from "@/lib/axios";
 import { BEKASI_DISTRICTS } from "@/lib/constants";
+import Link from "next/link";
 
 type Role = "CUSTOMER" | "VENDOR";
 
@@ -49,7 +50,26 @@ export default function RegisterPage() {
   // --- LOGIKA VALIDASI ---
   const validateField = (field: string, value: string, currentRole: Role) => {
     let error = "";
-    if (field === "name" && !value.trim()) error = "* nama wajib diisi";
+    if (field === "name") {
+      const fullNameRegex = /^[A-Za-zÀ-ÿ]+(?:[ '.-][A-Za-zÀ-ÿ]+)+$/;
+      const nameBlacklist = [
+        "gamer",
+        "player",
+        "mlbb",
+        "ff",
+        "pubg",
+        "freefire",
+      ];
+      const lowerName = value.toLowerCase().trim();
+
+      if (!value.trim()) error = "* nama lengkap wajib diisi";
+      else if (value.trim().split(/\s+/).length < 2)
+        error = "* nama lengkap minimal 2 kata";
+      else if (nameBlacklist.some((bad) => lowerName.includes(bad)))
+        error = "* gunakan nama lengkap asli";
+      else if (!fullNameRegex.test(value.trim()))
+        error = "* nama hanya boleh berisi huruf dan spasi";
+    }
 
     if (field === "email") {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -144,8 +164,9 @@ export default function RegisterPage() {
 
     // Auto-Format Nama (Tiap awal kata jadi Huruf Besar)
     const formattedName = form.name
+      .trim()
       .toLowerCase()
-      .split(" ")
+      .split(/\s+/)
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
 
@@ -199,6 +220,13 @@ export default function RegisterPage() {
         height={600}
         className="absolute -right-4 -bottom-32 opacity-20 lg:opacity-100"
       />
+
+      <Link
+        href="/"
+        className="fixed top-6 left-6 z-50 flex items-center gap-2 text-white/80 hover:text-white font-medium transition-all">
+        <HiArrowLeft size={22} />
+        <span className="">Kembali</span>
+      </Link>
 
       <div className="relative z-10 w-full max-w-5xl mx-auto flex items-center justify-between p-6 lg:p-0 gap-24 mt-8">
         {/* LEFT */}

@@ -67,12 +67,12 @@ export default function OrdersPage() {
     fetchOrders();
   }, [user, isInitialized, router, fetchOrders]);
 
-  const statusColor: Record<string, string> = {
-    PENDING: "yellow",
-    PAID: "green",
-    CANCELLED: "red",
-    REFUND_REQUESTED: "blue",
-    REFUNDED: "slate",
+  const statusLabel: Record<string, string> = {
+    PENDING: "Menunggu Pembayaran",
+    PAID: "Lunas",
+    CANCELLED: "Dibatalkan",
+    REFUND_REQUESTED: "Pengajuan Refund",
+    REFUNDED: "Refund Selesai",
   };
 
   const handleConfirmRefund = async () => {
@@ -134,7 +134,20 @@ export default function OrdersPage() {
                     #{order.id.slice(0, 8)}
                   </span>
                   <div className="flex items-center gap-2">
-                    <Tag color={statusColor[order.status]}>{order.status}</Tag>
+                    <Tag
+                      className={`rounded-full px-3 py-1 font-medium border-0 ${
+                        order.status === "PAID"
+                          ? "!bg-green-50 !text-green-500"
+                          : order.status === "PENDING"
+                            ? "!bg-yellow-50 !text-yellow-600"
+                            : order.status === "CANCELLED"
+                              ? "!bg-red-50 !text-red-600"
+                              : order.status === "REFUND_REQUESTED"
+                                ? "!bg-blue-50 !text-blue-600"
+                                : "!bg-slate-100 !text-slate-600"
+                      }`}>
+                      {statusLabel[order.status] || order.status}
+                    </Tag>
                     {order.status === "PENDING" && !order.payment && (
                       <span className="text-sm text-yellow-500 font-medium">
                         Belum bayar

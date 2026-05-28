@@ -231,14 +231,17 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
+      <nav className="sticky top-0 z-50 bg-white  border-b border-gray-100 shadow-sm ">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/">
+          {/* LOGO FIXED: Ditambah shrink-0 supaya gak kegencet flex dan class responsive */}
+          <Link href="/" className="shrink-0 flex items-center">
             <Image
               src="/LOGO-ARENAKU-PURPLE.svg"
               alt="Arenaku"
               width={120}
               height={36}
+              className="w-[100px] md:w-[120px] h-auto object-contain"
+              priority
             />
           </Link>
 
@@ -319,8 +322,9 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                   </button>
 
                   {showNotifMenu && (
-                    <div className="absolute right-0 top-12 w-[360px] bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-gray-100 flex flex-col z-[60] origin-top-right animate-in fade-in zoom-in duration-200">
-                      <div className="absolute -top-2 right-4 w-4 h-4 bg-white border-t border-l border-gray-100 transform rotate-45 z-0"></div>
+                    <div className="fixed top-20 left-1/2 -translate-x-1/2 w-[calc(100vw-32px)] max-w-[360px] md:absolute md:top-12 md:left-auto md:right-0 md:translate-x-0 md:w-[360px] bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-gray-100 flex flex-col z-[100] origin-top md:origin-top-right animate-in fade-in zoom-in duration-200">
+                      {/* SEGITIGA POINTER: Muncul khusus di Desktop (md ke atas), sembunyi di Mobile */}
+                      <div className="hidden md:block absolute -top-2 right-4 w-4 h-4 bg-white border-t border-l border-gray-100 transform rotate-45 z-0"></div>
 
                       <div className="flex items-center justify-between px-5 py-4 border-b border-dashed border-gray-200 relative z-10 bg-white rounded-t-2xl">
                         <div className="flex items-center gap-3">
@@ -387,19 +391,20 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                         )}
                       </div>
 
-                      <div className="px-4 py-3 border-t border-dashed border-gray-200 relative z-10 bg-white rounded-b-2xl flex justify-between items-center">
+                      {/* TOMBOL BAWAH: Font dikecilin di mobile & dipaksa 1 baris */}
+                      <div className="px-3 md:px-4 py-3 border-t border-dashed border-gray-200 relative z-10 bg-white rounded-b-2xl flex justify-between items-center gap-2">
                         <button
                           onClick={handleDeleteAllNotifications}
-                          className="flex items-center cursor-pointer gap-1.5 text-sm font-semibold text-red-500 hover:text-red-600 transition px-2 py-1 rounded-md hover:bg-red-50">
-                          <HiOutlineTrash size={18} />
+                          className="flex items-center cursor-pointer gap-1 md:gap-1.5 text-[11px] md:text-sm font-semibold text-red-500 hover:text-red-600 transition px-2 py-1.5 rounded-md hover:bg-red-50 shrink-0 whitespace-nowrap">
+                          <HiOutlineTrash className="w-4 h-4 md:w-[18px] md:h-[18px]" />
                           Hapus Semua
                         </button>
                         <button
                           onClick={handleMarkAllRead}
-                          className="flex items-center cursor-pointer gap-1.5 text-sm font-semibold text-[#A855F7] hover:text-[#9333EA] transition px-2 py-1 rounded-md hover:bg-purple-50">
+                          className="flex items-center cursor-pointer gap-1 md:gap-1.5 text-[11px] md:text-sm font-semibold text-[#A855F7] hover:text-[#9333EA] transition px-2 py-1.5 rounded-md hover:bg-purple-50 shrink-0 whitespace-nowrap">
                           <div className="flex -space-x-1.5">
-                            <HiCheck size={18} />
-                            <HiCheck size={18} />
+                            <HiCheck className="w-4 h-4 md:w-[18px] md:h-[18px]" />
+                            <HiCheck className="w-4 h-4 md:w-[18px] md:h-[18px]" />
                           </div>
                           Tandai semua dibaca
                         </button>
@@ -480,19 +485,33 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                           )}
 
                           {user.role === "CUSTOMER" && (
-                            <button
-                              onClick={() => {
-                                setDropdownOpen(false);
-                                router.push("/orders");
-                              }}
-                              className="w-full text-left px-3 py-2.5 text-sm text-gray-700 font-semibold hover:bg-gray-50 rounded-xl cursor-pointer transition-colors flex items-center gap-3 group">
-                              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors text-blue-600">
-                                <HiClipboardDocumentList size={18} />
-                              </div>
-                              Riwayat Pesanan
-                            </button>
-                          )}
+                            <>
+                              <button
+                                onClick={() => {
+                                  setDropdownOpen(false);
+                                  router.push("/orders");
+                                }}
+                                className="w-full text-left px-3 py-2.5 text-sm text-gray-700 font-semibold hover:bg-gray-50 rounded-xl cursor-pointer transition-colors flex items-center gap-3 group">
+                                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors text-blue-600">
+                                  <HiClipboardDocumentList size={18} />
+                                </div>
+                                Riwayat Pesanan
+                              </button>
 
+                              {/* TOMBOL PENGATURAN TAMBAHAN UNTUK CUSTOMER */}
+                              <button
+                                onClick={() => {
+                                  setDropdownOpen(false);
+                                  router.push("/settings"); // Sesuaikan URL rute yang dibuat
+                                }}
+                                className="w-full text-left px-3 py-2.5 text-sm text-gray-700 font-semibold hover:bg-gray-50 rounded-xl cursor-pointer transition-colors flex items-center gap-3 group">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-200 transition-colors text-emerald-600">
+                                  <HiOutlineUserCircle size={18} />
+                                </div>
+                                Pengaturan Akun
+                              </button>
+                            </>
+                          )}
                           <button
                             onClick={handleLogout}
                             className="w-full text-left px-3 py-2.5 text-sm text-red-600 font-semibold hover:bg-red-50 rounded-xl cursor-pointer transition-colors flex items-center gap-3 group">
@@ -507,12 +526,28 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
                   )}
                 </div>
 
-                {/* Mobile Hamburger Menu */}
+                {/* Mobile Hamburger Menu ANIMATED */}
                 <button
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="md:hidden p-2 text-gray-500 hover:text-primary transition"
+                  className="md:hidden relative w-10 h-10 flex items-center justify-center text-gray-500 hover:text-primary hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
                   title="Menu">
-                  <HiOutlineBars3 size={24} />
+                  <div
+                    className={`absolute transition-all duration-300 ease-in-out ${
+                      mobileMenuOpen
+                        ? "rotate-90 scale-0 opacity-0"
+                        : "rotate-0 scale-100 opacity-100"
+                    }`}>
+                    <HiOutlineBars3 size={26} />
+                  </div>
+
+                  <div
+                    className={`absolute transition-all duration-300 ease-in-out ${
+                      mobileMenuOpen
+                        ? "rotate-0 scale-100 opacity-100"
+                        : "-rotate-90 scale-0 opacity-0"
+                    }`}>
+                    <HiOutlineXMark size={26} />
+                  </div>
                 </button>
               </>
             )}
@@ -559,7 +594,16 @@ export default function WebLayout({ children }: { children: React.ReactNode }) {
         placement="right"
         onClose={() => setCartDrawerOpen(false)}
         open={cartDrawerOpen}
-        size={400}>
+        size={400}
+        height="100vh"
+        styles={{
+          body: {
+            paddingBottom: 24,
+          },
+        }}
+        rootStyle={{
+          position: "fixed",
+        }}>
         {cartItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-slate-400">
             <HiOutlineShoppingCart size={48} className="mb-4 opacity-50" />

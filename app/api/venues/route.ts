@@ -18,6 +18,9 @@ export async function POST(req: Request) {
       longitude: body.longitude ? parseFloat(body.longitude) : undefined,
       district: body.district,
       thumbnailUrl: body.thumbnailUrl,
+      openHour: body.openHour ? parseInt(body.openHour) : 8, // Default buka jam 8
+      closeHour: body.closeHour ? parseInt(body.closeHour) : 22, // Default tutup jam 22
+      isOpen: true, // Saat pertama kali dibuat, venue otomatis statusnya BUKA
     });
     return NextResponse.json(venue, { status: 201 });
   } catch (error: any) {

@@ -42,6 +42,7 @@ export const fieldService = {
       description?: string;
       venueId: string;
       thumbnailUrl?: string;
+      images?: { url: string; title: string }[];
     },
   ) {
     if (userRole !== "VENDOR")
@@ -72,6 +73,7 @@ export const fieldService = {
       width: data.width || 0,
       description: data.description || "",
       thumbnailUrl: data.thumbnailUrl || "",
+      images: data.images || [],
     });
   },
 
@@ -91,6 +93,7 @@ export const fieldService = {
       price?: number;
       description?: string;
       thumbnailUrl?: string;
+      images?: { url: string; title: string }[];
     },
   ) {
     if (userRole !== "VENDOR") {

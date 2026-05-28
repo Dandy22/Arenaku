@@ -261,7 +261,6 @@ export default function VendorEventsPage() {
     {
       title: "Aksi",
       key: "aksi",
-      fixed: "right",
       align: "left",
       width: 280,
       render: (_, r) => (

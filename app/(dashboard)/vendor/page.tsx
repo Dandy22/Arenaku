@@ -104,7 +104,7 @@ export default function VendorDashboardPage() {
           0,
         );
         const totalRevenue = bookings
-          .filter((b: any) => b.order?.status === "PAID")
+          .filter((b: any) => b.order?.status === "LUNAS")
           .reduce((acc: number, b: any) => acc + (b.price || 0), 0);
 
         setStats({
@@ -160,7 +160,7 @@ export default function VendorDashboardPage() {
 
     const validOrders = allBookings.filter((b: any) => {
       const orderDate = new Date(b.order?.createdAt || b.date);
-      return orderDate >= startDate && b.order?.status === "PAID";
+      return orderDate >= startDate && b.order?.status === "LUNAS";
     });
 
     const grouped: Record<string, { amount: number; count: number }> = {};

@@ -22,6 +22,7 @@ import EventCard from "@/components/reusable/EventCard";
 
 export default function HomePage() {
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
   const [venues, setVenues] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [promoVenues, setPromoVenues] = useState<any[]>([]);
@@ -34,6 +35,7 @@ export default function HomePage() {
 
   // FETCH DATA DARI API
   useEffect(() => {
+    setIsMounted(true);
     setLoading(true);
     Promise.all([
       api.get("/venues?limit=4"),
@@ -104,41 +106,47 @@ export default function HomePage() {
               <div className="flex flex-wrap justify-center gap-3 w-full">
                 <div className="flex-1 min-w-[200px] h-[44px] bg-white rounded-xl px-4 flex items-center gap-2">
                   <HiOutlineMapPin className="text-primary shrink-0" />
-                  <Select
-                    placeholder="Pilih Kecamatan"
-                    variant="borderless"
-                    className="flex-1 text-sm font-semibold"
-                    value={searchDistrict || undefined}
-                    onChange={setSearchDistrict}
-                    options={BEKASI_DISTRICTS.slice(1)}
-                  />
+                  {isMounted && (
+                    <Select
+                      placeholder="Pilih Kecamatan"
+                      variant="borderless"
+                      className="flex-1 text-sm font-semibold"
+                      value={searchDistrict || undefined}
+                      onChange={setSearchDistrict}
+                      options={BEKASI_DISTRICTS.slice(1)}
+                    />
+                  )}
                 </div>
 
                 <div className="flex-1 min-w-[200px] h-[44px] bg-white rounded-xl px-4 flex items-center gap-2">
                   <HiOutlineTag className="text-primary shrink-0" />
-                  <Select
-                    placeholder="Pilih Olahraga"
-                    variant="borderless"
-                    className="flex-1 text-sm font-semibold"
-                    value={searchType || undefined}
-                    onChange={setSearchType}
-                    options={EVENT_CATEGORIES.slice(1)}
-                  />
+                  {isMounted && (
+                    <Select
+                      placeholder="Pilih Olahraga"
+                      variant="borderless"
+                      className="flex-1 text-sm font-semibold"
+                      value={searchType || undefined}
+                      onChange={setSearchType}
+                      options={EVENT_CATEGORIES.slice(1)}
+                    />
+                  )}
                 </div>
 
                 <div className="flex-1 min-w-[200px] h-[44px] bg-white rounded-xl px-4 flex items-center gap-2">
                   <HiOutlineCalendar className="text-primary shrink-0" />
-                  <DatePicker
-                    variant="borderless"
-                    className="flex-1 text-sm font-semibold"
-                    value={searchDate ? dayjs(searchDate) : null}
-                    suffixIcon={null}
-                    onChange={(date) =>
-                      setSearchDate(date ? date.format("YYYY-MM-DD") : "")
-                    }
-                    format="YYYY-MM-DD"
-                    placeholder="Pilih tanggal"
-                  />
+                  {isMounted && (
+                    <DatePicker
+                      variant="borderless"
+                      className="flex-1 text-sm font-semibold"
+                      value={searchDate ? dayjs(searchDate) : null}
+                      suffixIcon={null}
+                      onChange={(date) =>
+                        setSearchDate(date ? date.format("YYYY-MM-DD") : "")
+                      }
+                      format="YYYY-MM-DD"
+                      placeholder="Pilih tanggal"
+                    />
+                  )}
                 </div>
 
                 <button
@@ -155,13 +163,13 @@ export default function HomePage() {
 
       {/* REKOMENDASI VENUE */}
       <section className="max-w-7xl mx-auto px-6 mt-12">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-black">
+        <div className="flex items-center justify-between mb-6 gap-4">
+          <h2 className="text-xl md:text-3xl lg:text-4xl font-bold text-black">
             Rekomendasi <span className="text-primary">Venue</span>
           </h2>
           <Link
             href="/venues"
-            className="text-sm text-primary font-semibold hover:underline flex items-center gap-1">
+            className="text-xs md:text-sm text-primary font-semibold hover:underline flex items-center gap-1 shrink-0 whitespace-nowrap">
             Lihat lebih lanjut →
           </Link>
         </div>
@@ -186,13 +194,13 @@ export default function HomePage() {
 
       {/* PROMO VENUE  */}
       <section className="max-w-7xl mx-auto px-6 mt-16 mb-12">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-black">
+        <div className="flex items-center justify-between mb-6 gap-4">
+          <h2 className="text-xl md:text-3xl lg:text-4xl font-bold text-black">
             Promo <span className="text-primary">Venue</span>
           </h2>
           <Link
             href="/venues?filter=promo"
-            className="text-sm text-primary font-semibold hover:underline flex items-center gap-1">
+            className="text-xs md:text-sm text-primary font-semibold hover:underline flex items-center gap-1 shrink-0 whitespace-nowrap">
             Lihat lebih lanjut →
           </Link>
         </div>
@@ -337,13 +345,13 @@ export default function HomePage() {
 
       {/* ACARA KOMUNITAS */}
       <section className="max-w-7xl mx-auto px-6 mt-12 mb-16">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-black">
+        <div className="flex items-center justify-between mb-6 gap-4">
+          <h2 className="text-xl md:text-3xl lg:text-4xl font-bold text-black">
             Acara <span className="text-primary">Komunitas</span>
           </h2>
           <Link
             href="/activity"
-            className="text-sm text-primary font-semibold hover:underline flex items-center gap-1">
+            className="text-xs md:text-sm text-primary font-semibold hover:underline flex items-center gap-1 shrink-0 whitespace-nowrap">
             Lihat lebih lanjut →
           </Link>
         </div>

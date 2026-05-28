@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Button, Drawer, Form, Input, Select, Upload, message } from "antd";
+import {
+  Button,
+  Drawer,
+  Form,
+  Input,
+  Select,
+  Upload,
+  message,
+  Switch,
+  InputNumber,
+} from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
   HiOutlinePlus,
@@ -24,13 +34,14 @@ interface Venue {
   address: string;
   description: string;
   thumbnailUrl?: string;
+  openHour: number;
+  closeHour: number;
+  isOpen: boolean;
   fields: { id: string }[];
 }
 
 export default function VendorVenuesPage() {
   const router = useRouter();
-
-  // 1. Ambil keyword pencarian dari URL params
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
 
@@ -51,29 +62,17 @@ export default function VendorVenuesPage() {
     venueId: null,
   });
 
-  const handleDelete = async (id: string) => {
-    try {
-      await api.delete(`/venues/${id}`);
-      message.success("Venue berhasil dihapus");
-      fetchVenues(); // Refresh tabel setelah dihapus
-    } catch (err: any) {
-      const errorMsg = err?.response?.data?.error || "Gagal menghapus venue";
-      message.error(errorMsg);
-    } finally {
-      setDeleteModal({ open: false, venueId: null });
-    }
-  };
-
   const fetchVenues = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/venues");
+      const timestamp = new Date().getTime();
+      const res = await api.get(`/venues?t=${timestamp}`);
       const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
       setVenues(data);
     } catch (err) {
       console.error(err);
       message.error("Gagal memuat daftar venue");
-      setVenues([]); // Set empty array jika gagal
+      setVenues([]);
     } finally {
       setLoading(false);
     }
@@ -83,10 +82,8 @@ export default function VendorVenuesPage() {
     fetchVenues();
   }, []);
 
-  // 2. Logic Filter: Menjalankan filter hanya kalau data atau keyword berubah
   const filteredVenues = useMemo(() => {
     if (!searchQuery) return venues;
-
     const query = searchQuery.toLowerCase();
     return venues.filter(
       (v) =>
@@ -123,6 +120,8 @@ export default function VendorVenuesPage() {
     setEditVenue(null);
     setThumbnailUrl("");
     form.resetFields();
+    // Set default jam operasional
+    form.setFieldsValue({ openHour: 8, closeHour: 22 });
     setDrawerOpen(true);
   };
 
@@ -135,6 +134,34 @@ export default function VendorVenuesPage() {
       thumbnailUrl: currentThumb,
     });
     setDrawerOpen(true);
+  };
+
+  // ✅ Fungsi baru untuk Toggle Buka/Tutup Venue cepat
+  const handleToggleStatus = async (venueId: string, checked: boolean) => {
+    try {
+      // Optimistic update UI biar kerasa cepet
+      setVenues((prev) =>
+        prev.map((v) => (v.id === venueId ? { ...v, isOpen: checked } : v)),
+      );
+      await api.patch(`/venues/${venueId}`, { isOpen: checked });
+      message.success(checked ? "Venue dibuka" : "Venue ditutup sementara");
+    } catch (err) {
+      message.error("Gagal mengubah status venue");
+      fetchVenues(); // Revert kalau gagal
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await api.delete(`/venues/${id}`);
+      message.success("Venue berhasil dihapus");
+      fetchVenues();
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.error || "Gagal menghapus venue";
+      message.error(errorMsg);
+    } finally {
+      setDeleteModal({ open: false, venueId: null });
+    }
   };
 
   const handleSubmit = async () => {
@@ -152,7 +179,8 @@ export default function VendorVenuesPage() {
         await api.patch(`/venues/${editVenue.id}`, payload);
         message.success("Venue berhasil diperbarui");
       } else {
-        await api.post("/venues", payload);
+        // Default saat pertama dibuat langsung status Buka (isOpen: true)
+        await api.post("/venues", { ...payload, isOpen: true });
         message.success("Venue berhasil ditambahkan");
       }
 
@@ -199,10 +227,27 @@ export default function VendorVenuesPage() {
         </span>
       ),
     },
+    // INI TAMBAHAN KOLOM STATUSNYA
+    {
+      title: "Status",
+      key: "status",
+      render: (_, r) => (
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={r.isOpen}
+            onChange={(checked) => handleToggleStatus(r.id, checked)}
+            className={r.isOpen ? "bg-green-500" : "bg-red-400"}
+          />
+          <span
+            className={`text-xs font-bold ${r.isOpen ? "text-green-500" : "text-red-500"}`}>
+            {r.isOpen ? "BUKA" : "TUTUP"}
+          </span>
+        </div>
+      ),
+    },
     {
       title: "Aksi",
       key: "aksi",
-      fixed: "right",
       align: "left",
       width: 320,
       render: (_, r) => (
@@ -357,7 +402,6 @@ export default function VendorVenuesPage() {
                 )}
               </div>
             </Upload>
-
             <Form.Item
               name="thumbnailUrl"
               noStyle
@@ -366,20 +410,41 @@ export default function VendorVenuesPage() {
             </Form.Item>
           </Form.Item>
 
-          <Form.Item
-            name="description"
-            label={
-              <span className="text-sm font-semibold text-slate-500">
-                Deskripsi <span className="text-red-500">*</span>
-              </span>
-            }
-            rules={[{ required: true, message: "Deskripsi wajib diisi" }]}>
-            <Input.TextArea
-              rows={4}
-              className="!rounded-lg"
-              placeholder="Ceritakan tentang venue ini..."
-            />
-          </Form.Item>
+          {/* JAM OPERASIONAL */}
+          <div className="flex gap-4">
+            <Form.Item
+              name="openHour"
+              label={
+                <span className="text-sm font-semibold text-slate-500">
+                  Jam Buka <span className="text-red-500">*</span>
+                </span>
+              }
+              className="flex-1"
+              rules={[{ required: true, message: "Wajib" }]}>
+              <InputNumber
+                min={0}
+                max={23}
+                className="!w-full !rounded-lg !py-1"
+                placeholder="08"
+              />
+            </Form.Item>
+            <Form.Item
+              name="closeHour"
+              label={
+                <span className="text-sm font-semibold text-slate-500">
+                  Jam Tutup <span className="text-red-500">*</span>
+                </span>
+              }
+              className="flex-1"
+              rules={[{ required: true, message: "Wajib" }]}>
+              <InputNumber
+                min={0}
+                max={23}
+                className="!w-full !rounded-lg !py-1"
+                placeholder="22"
+              />
+            </Form.Item>
+          </div>
 
           <Form.Item
             name="district"
@@ -412,6 +477,7 @@ export default function VendorVenuesPage() {
             />
           </Form.Item>
 
+          {/* KOORDINAT YANG TADI HILANG */}
           <div className="flex gap-4">
             <Form.Item
               name="latitude"
@@ -444,6 +510,21 @@ export default function VendorVenuesPage() {
               />
             </Form.Item>
           </div>
+
+          <Form.Item
+            name="description"
+            label={
+              <span className="text-sm font-semibold text-slate-500">
+                Deskripsi <span className="text-red-500">*</span>
+              </span>
+            }
+            rules={[{ required: true, message: "Deskripsi wajib diisi" }]}>
+            <Input.TextArea
+              rows={3}
+              className="!rounded-lg"
+              placeholder="Ceritakan tentang venue ini..."
+            />
+          </Form.Item>
         </Form>
       </Drawer>
 

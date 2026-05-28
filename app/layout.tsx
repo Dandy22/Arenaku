@@ -1,8 +1,12 @@
-"use client";
-
+import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import { ConfigProvider } from "antd";
+import Providers from "./provider";
+
+export const metadata: Metadata = {
+  title: "Arenaku",
+  description: "Booking venue olahraga dengan praktis dalam satu platform.",
+};
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -17,21 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={plusJakartaSans.variable}>
       <body className={plusJakartaSans.className}>
-        <ConfigProvider
-          theme={{
-            token: {
-              fontFamily: "var(--font-plus-jakarta), sans-serif",
-              colorPrimary: "#7C3AED", // Konsisten dengan brand warna ungu
-            },
-            components: {
-              Drawer: {
-                // Opsional: Memastikan drawer tidak mengunci body secara agresif
-                zIndexPopup: 1000,
-              },
-            },
-          }}>
-          {children}
-        </ConfigProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/axios";
-import { HiEye, HiEyeSlash } from "react-icons/hi2";
+import { HiArrowLeft, HiEye, HiEyeSlash } from "react-icons/hi2";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { message } from "antd";
 import Image from "next/image";
@@ -95,6 +95,14 @@ export default function LoginContent() {
         height={600}
         className="absolute -right-4 -bottom-32 opacity-20 lg:opacity-100"
       />
+
+      <Link
+        href="/"
+        className="fixed top-6 left-6 z-50 flex items-center gap-2 text-white/80 hover:text-white font-medium transition-all">
+        <HiArrowLeft size={22} />
+        <span className="">Kembali</span>
+      </Link>
+
       <div className="relative z-10 w-full max-w-5xl mx-auto flex items-center justify-between p-6 lg:p-0 gap-24">
         {/* LOGO KIRI */}
         <div className="hidden md:flex flex-col gap-7">
@@ -112,6 +120,7 @@ export default function LoginContent() {
         {/* CARD */}
         <div className="bg-white rounded-lg w-full h-auto lg:p-16 p-8 shadow-lg flex-col justify-between gap-6">
           {/* LOGO MOBILE */}
+
           <div className="flex lg:hidden items-center gap-2 mb-6">
             <Image
               alt="Logo ArenaKu"

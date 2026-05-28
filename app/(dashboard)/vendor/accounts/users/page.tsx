@@ -213,7 +213,6 @@ export default function ManageUsersPage() {
     {
       title: "Aksi",
       key: "aksi",
-      fixed: "right",
       align: "left",
       width: 250,
       render: (_, r) => {

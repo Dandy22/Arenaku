@@ -29,6 +29,9 @@ function VenuesContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  // Tambahkan state isMounted untuk mengatasi FOUC pada Ant Design
+  const [isMounted, setIsMounted] = useState(false);
+
   const [venues, setVenues] = useState<any[]>([]);
   const [meta, setMeta] = useState({
     total: 0,
@@ -71,8 +74,6 @@ function VenuesContent() {
         totalPages: 1,
       };
 
-      // 🛑 PELINDUNG MUTLAK (SUPER BAND-AID) 🛑
-      // Paksa konversi ke Number agar string "0" tetep kebaca sebagai 0.
       if (Number(responseMeta.total) === 0 || !Array.isArray(responseData)) {
         responseData = []; // Paksa buang data 'hantu' dari backend
         responseMeta.total = 0;
@@ -88,6 +89,11 @@ function VenuesContent() {
       setLoading(false);
     }
   };
+
+  // Set isMounted jadi true setelah render pertama di client
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     setName(searchParams.get("name") || "");
@@ -149,49 +155,55 @@ function VenuesContent() {
           {/* Select Kecamatan */}
           <div className="flex-1 min-w-[200px] h-[44px]  !bg-none border border-gray-200 rounded-xl px-4 flex items-center gap-2">
             <HiOutlineMapPin className="text-purple-500 shrink-0" />
-            <Select
-              placeholder="Pilih Kecamatan"
-              variant="borderless"
-              className="flex-1 text-sm font-semibold"
-              value={district || undefined}
-              onChange={(val) => setDistrict(val || "")}
-              allowClear
-              options={
-                BEKASI_DISTRICTS as unknown as {
-                  label: string;
-                  value: string;
-                }[]
-              }
-            />
+            {isMounted && (
+              <Select
+                placeholder="Pilih Kecamatan"
+                variant="borderless"
+                className="flex-1 text-sm font-semibold"
+                value={district || undefined}
+                onChange={(val) => setDistrict(val || "")}
+                allowClear
+                options={
+                  BEKASI_DISTRICTS as unknown as {
+                    label: string;
+                    value: string;
+                  }[]
+                }
+              />
+            )}
           </div>
 
           {/* Select Olahraga */}
           <div className="flex-1 min-w-[200px] h-[44px] !bg-none border border-gray-200 rounded-xl px-4 flex items-center gap-2">
             <HiOutlineTag className="text-purple-500 shrink-0" />
-            <Select
-              placeholder="Pilih Olahraga"
-              variant="borderless"
-              className="flex-1 text-sm font-semibold"
-              value={type || undefined}
-              onChange={(val) => setType(val || "")}
-              allowClear
-              options={SPORT_TYPES as any}
-            />
+            {isMounted && (
+              <Select
+                placeholder="Pilih Olahraga"
+                variant="borderless"
+                className="flex-1 text-sm font-semibold"
+                value={type || undefined}
+                onChange={(val) => setType(val || "")}
+                allowClear
+                options={SPORT_TYPES as any}
+              />
+            )}
           </div>
 
           {/* Date Picker */}
           <div className="flex-1 min-w-[200px] h-[44px]  !bg-none border border-gray-200 rounded-xl px-4 flex items-center gap-2">
             <HiOutlineCalendar className="text-purple-500 shrink-0" />
-            <DatePicker
-              variant="borderless"
-              className="flex-1 text-sm font-semibold"
-              value={date ? dayjs(date) : null}
-              suffixIcon={null}
-              onChange={(d) => setDate(d ? d.format("YYYY-MM-DD") : "")}
-              format="YYYY-MM-DD"
-              placeholder="Pilih tanggal"
-              allowClear={false}
-            />
+            {isMounted && (
+              <DatePicker
+                variant="borderless"
+                className="flex-1 text-sm font-semibold"
+                value={date ? dayjs(date) : null}
+                suffixIcon={null}
+                onChange={(d) => setDate(d ? d.format("YYYY-MM-DD") : "")}
+                format="YYYY-MM-DD"
+                placeholder="Pilih tanggal"
+                allowClear={false}
+              />
+            )}
           </div>
 
           {/* Tombol Cari */}

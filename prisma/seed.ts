@@ -176,6 +176,7 @@ async function main() {
     data: {
       fieldId: field1.id,
       url: "https://placehold.co/600x400/png",
+      title: "Foto Lapangan 1",
     },
   });
 

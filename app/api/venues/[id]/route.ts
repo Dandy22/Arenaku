@@ -42,6 +42,9 @@ export async function PATCH(
       latitude: body.latitude ? parseFloat(body.latitude) : undefined,
       longitude: body.longitude ? parseFloat(body.longitude) : undefined,
       thumbnailUrl: body.thumbnailUrl,
+      openHour: body.openHour ? parseInt(body.openHour) : undefined,
+      closeHour: body.closeHour ? parseInt(body.closeHour) : undefined,
+      isOpen: typeof body.isOpen === "boolean" ? body.isOpen : undefined,
     });
 
     return NextResponse.json(venue);

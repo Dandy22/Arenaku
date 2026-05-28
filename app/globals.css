@@ -23,13 +23,12 @@ body {
   background: var(--background);
   color: var(--foreground);
   overflow-x: hidden;
-  /* Jangan gunakan overflow-y: scroll di sini jika sudah pakai scrollbar-gutter */
 }
 
 /* Mengatasi paksaan padding-right dari Ant Design */
 body.ant-scrolling-effect {
-  width: 100% !important;
   overflow: hidden !important;
+  padding-right: 0 !important;
 }
 
 /* CUSTOM ANTD TABLE STYLING */

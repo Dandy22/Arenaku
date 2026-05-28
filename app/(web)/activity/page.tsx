@@ -34,6 +34,8 @@ function ActivityContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  // State baru untuk mengecek apakah komponen sudah di-render di client (Hydration fix)
+  const [mounted, setMounted] = useState(false);
   const [events, setEvents] = useState<any[]>([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
   const [loading, setLoading] = useState(true);
@@ -98,6 +100,9 @@ function ActivityContent() {
   };
 
   useEffect(() => {
+    // Set mounted ke true saat pertama kali masuk (client-side)
+    setMounted(true);
+
     const nextName = searchParams.get("name") || "";
     const nextCategory = searchParams.get("category") || "";
     const nextDistrict = searchParams.get("district") || "";
@@ -174,37 +179,45 @@ function ActivityContent() {
           {/* Select Kecamatan */}
           <div className="flex-1 min-w-[200px] h-[44px] border border-gray-200 rounded-xl px-4 flex items-center gap-2">
             <HiOutlineMapPin className="text-purple-500 shrink-0" />
-            <Select
-              placeholder="Pilih Kecamatan"
-              variant="borderless"
-              className="flex-1 text-sm font-semibold cursor-pointer"
-              value={district || undefined}
-              onChange={(val) => setDistrict(val || "")}
-              allowClear
-              options={
-                BEKASI_DISTRICTS as unknown as {
-                  label: string;
-                  value: string;
-                }[]
-              }
-            />
+            {mounted ? (
+              <Select
+                placeholder="Pilih Kecamatan"
+                variant="borderless"
+                className="flex-1 text-sm font-semibold cursor-pointer"
+                value={district || undefined}
+                onChange={(val) => setDistrict(val || "")}
+                allowClear
+                options={
+                  BEKASI_DISTRICTS as unknown as {
+                    label: string;
+                    value: string;
+                  }[]
+                }
+              />
+            ) : (
+              <div className="flex-1 text-sm text-gray-400"></div>
+            )}
           </div>
 
           {/* Select Tipe Event (Turnamen / Olahraga) */}
           <div className="flex-1 min-w-[200px] h-[44px] border border-gray-200 rounded-xl px-4 flex items-center gap-2">
             <HiOutlineTag className="text-purple-500 shrink-0" />
-            <Select
-              placeholder="Pilih Tipe Event"
-              variant="borderless"
-              className="flex-1 text-sm font-semibold cursor-pointer"
-              value={eventType || undefined}
-              onChange={(val) => setEventType(val || "")}
-              allowClear
-              options={[
-                { label: "Turnamen", value: "TOURNAMENT" },
-                { label: "Olahraga", value: "SPORTS" },
-              ]}
-            />
+            {mounted ? (
+              <Select
+                placeholder="Pilih Tipe Event"
+                variant="borderless"
+                className="flex-1 text-sm font-semibold cursor-pointer"
+                value={eventType || undefined}
+                onChange={(val) => setEventType(val || "")}
+                allowClear
+                options={[
+                  { label: "Turnamen", value: "TOURNAMENT" },
+                  { label: "Olahraga", value: "SPORTS" },
+                ]}
+              />
+            ) : (
+              <div className="flex-1 text-sm text-gray-400"></div>
+            )}
           </div>
 
           {/* Tombol Cari */}
@@ -283,7 +296,6 @@ function ActivityContent() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {events.map((event) => (
-            /* Di sini kita langsung panggil komponen EventCard-nya */
             <EventCard key={event.id} event={event} />
           ))}
         </div>

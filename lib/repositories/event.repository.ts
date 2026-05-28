@@ -96,12 +96,17 @@ export const eventRepository = {
 
     const filters: any[] = [];
 
+    // PERBAIKAN: Cari jenis olahraga (Basket, Sepak Bola) di kolom topic ATAU category
     if (params.category) {
       filters.push({
-        topic: { contains: params.category, mode: "insensitive" },
+        OR: [
+          { topic: { contains: params.category, mode: "insensitive" } },
+          { category: { contains: params.category, mode: "insensitive" } },
+        ],
       });
     }
 
+    // PERBAIKAN: Cari tipe event (Turnamen/Olahraga) di kolom category ATAU topic
     if (params.eventType) {
       const mappedType =
         params.eventType === "TURNAMEN"
@@ -111,7 +116,10 @@ export const eventRepository = {
             : params.eventType;
 
       filters.push({
-        category: { contains: mappedType, mode: "insensitive" },
+        OR: [
+          { category: { contains: mappedType, mode: "insensitive" } },
+          { topic: { contains: mappedType, mode: "insensitive" } },
+        ],
       });
     }
 

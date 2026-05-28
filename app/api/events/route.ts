@@ -65,6 +65,10 @@ export async function POST(req: Request) {
  * GET /api/events
  * Mengambil daftar event berdasarkan filter dan role
  */
+/**
+ * GET /api/events
+ * Mengambil daftar event berdasarkan filter dan role
+ */
 export async function GET(req: Request) {
   try {
     let user = null;
@@ -74,27 +78,98 @@ export async function GET(req: Request) {
       // Abaikan jika tidak ada token (akses publik)
     }
 
+    const { searchParams } = new URL(req.url);
+    const nameParam = searchParams.get("name") || undefined;
+    const categoryParam = searchParams.get("category") || undefined;
+    const eventTypeParam = searchParams.get("eventType") || undefined;
+    const districtParam = searchParams.get("district") || undefined;
+    const page = searchParams.get("page")
+      ? parseInt(searchParams.get("page")!)
+      : 1;
+    const limit = searchParams.get("limit")
+      ? parseInt(searchParams.get("limit")!)
+      : 8;
+
     // 1. LOGIKA UNTUK VENDOR (Owner & Staff)
-    // Jika user login sebagai VENDOR, tampilkan event khusus vendor mereka
+    // PERBAIKAN: Sekarang data Vendor akan ikut disaring sesuai input filter dari Frontend
     if (user && user.role === "VENDOR") {
-      const vendorEvents = await eventService.getVendorEvents(user.userId);
-      return NextResponse.json(vendorEvents);
+      let vendorEvents = await eventService.getVendorEvents(user.userId);
+
+      // Filter berdasarkan kategori olahraga (Basket, Badminton, dll)
+      if (categoryParam) {
+        vendorEvents = vendorEvents.filter(
+          (e: any) =>
+            (e.topic &&
+              e.topic.toLowerCase().includes(categoryParam.toLowerCase())) ||
+            (e.category &&
+              e.category.toLowerCase().includes(categoryParam.toLowerCase())),
+        );
+      }
+
+      // Filter berdasarkan tipe event (Turnamen / Olahraga)
+      if (eventTypeParam) {
+        const mappedType =
+          eventTypeParam === "TURNAMEN"
+            ? "TOURNAMENT"
+            : eventTypeParam === "OLAHRAGA"
+              ? "SPORTS"
+              : eventTypeParam;
+        vendorEvents = vendorEvents.filter(
+          (e: any) =>
+            (e.category &&
+              e.category.toLowerCase().includes(mappedType.toLowerCase())) ||
+            (e.topic &&
+              e.topic.toLowerCase().includes(mappedType.toLowerCase())),
+        );
+      }
+
+      // Filter berdasarkan judul atau kata kunci nama
+      if (nameParam) {
+        vendorEvents = vendorEvents.filter(
+          (e: any) =>
+            (e.title &&
+              e.title.toLowerCase().includes(nameParam.toLowerCase())) ||
+            (e.location &&
+              e.location.toLowerCase().includes(nameParam.toLowerCase())) ||
+            (e.topic &&
+              e.topic.toLowerCase().includes(nameParam.toLowerCase())),
+        );
+      }
+
+      // Filter berdasarkan Kecamatan
+      if (districtParam) {
+        vendorEvents = vendorEvents.filter(
+          (e: any) =>
+            e.district &&
+            e.district.toLowerCase().includes(districtParam.toLowerCase()),
+        );
+      }
+
+      // Pagination untuk data vendor agar struktur response sama dengan publik
+      const total = vendorEvents.length;
+      const skip = (page - 1) * limit;
+      const paginatedData = vendorEvents.slice(skip, skip + limit);
+
+      return NextResponse.json({
+        data: paginatedData,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit) || 1,
+        },
+      });
     }
 
     // 2. LOGIKA UNTUK PUBLIK / CUSTOMER
-    // Tampilkan semua event yang statusnya ACTIVE saja
-    const { searchParams } = new URL(req.url);
-
     const result = await eventService.getAllEvents({
-      name: searchParams.get("name") || undefined,
-      category: searchParams.get("category") || undefined,
-      eventType: searchParams.get("eventType") || undefined,
+      name: nameParam,
+      category: categoryParam,
+      eventType: eventTypeParam,
       city: searchParams.get("city") || undefined,
-      district: searchParams.get("district") || undefined,
-      page: searchParams.get("page") ? parseInt(searchParams.get("page")!) : 1,
-      limit: searchParams.get("limit")
-        ? parseInt(searchParams.get("limit")!)
-        : 8,
+      district: districtParam,
+      page,
+      limit,
     });
 
     return NextResponse.json(result);

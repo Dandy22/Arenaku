@@ -37,6 +37,7 @@ export async function PATCH(
       price: body.price,
       description: body.description,
       thumbnailUrl: body.thumbnailUrl,
+      images: body.images,
     });
     return NextResponse.json(field);
   } catch (error: any) {

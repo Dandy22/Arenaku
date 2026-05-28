@@ -15,6 +15,9 @@ export const venueService = {
       latitude?: number;
       longitude?: number;
       thumbnailUrl?: string;
+      openHour?: number;
+      closeHour?: number;
+      isOpen?: boolean;
     },
   ) {
     if (userRole !== "VENDOR")
@@ -33,6 +36,9 @@ export const venueService = {
       address: data.address || "",
       vendorId: vendorOrg.id, // Gunakan ID Organisasi
       thumbnailUrl: data.thumbnailUrl || "",
+      openHour: data.openHour,
+      closeHour: data.closeHour,
+      isOpen: data.isOpen ?? true,
     });
   },
 

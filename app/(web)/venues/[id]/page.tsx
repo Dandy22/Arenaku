@@ -8,11 +8,12 @@ import {
   HiArrowLeft,
   HiMapPin,
   HiOutlineLink,
+  HiOutlineClock,
 } from "react-icons/hi2";
-import { Empty, message } from "antd";
+import { Empty, message, Image, Modal } from "antd";
+import { useAuthStore } from "@/lib/store/auth.store";
+import { useCartStore } from "@/lib/store/cart.store";
 import api from "@/lib/axios";
-import RatingDisplay from "@/components/reusable/RatingDisplay";
-import RatingList from "@/components/reusable/RatingList";
 
 type Tab = "lapangan" | "gallery";
 
@@ -43,10 +44,13 @@ interface Venue {
   latitude?: number;
   longitude?: number;
   thumbnailUrl?: string;
-  images?: { id: string; url: string }[];
+  images?: { id: string; url: string; title?: string }[];
   fields?: Field[];
   ratings?: Rating[];
   vendorId: string;
+  openHour?: number;
+  closeHour?: number;
+  isOpen?: boolean;
 }
 
 function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
@@ -69,26 +73,40 @@ function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
   );
 }
 
-function SlotBadge({ hour, booked }: { hour: number; booked?: boolean }) {
-  return (
-    <span
-      className={`text-xs px-1.5 py-0.5 rounded border ${
-        booked
-          ? "bg-slate-50 border-slate-200 text-slate-400"
-          : "bg-purple-50 border-purple-100 text-primary"
-      }`}>
-      {String(hour).padStart(2, "0")}:00
-    </span>
-  );
-}
+// DESAIN CARD ASLI ANDA, HANYA JAM DIUBAH 2 KOLOM KE BAWAH UNTUK HARI INI
+function FieldCard({
+  field,
+  venue,
+  onQuickBook,
+}: {
+  field: Field;
+  venue: Venue;
+  onQuickBook: (field: Field, hour: number) => void;
+}) {
+  const openHour = venue.openHour ?? 8;
+  const closeHour = venue.closeHour ?? 22;
+  const isOpen = venue.isOpen ?? true;
 
-function FieldCard({ field, venueId }: { field: Field; venueId: string }) {
+  // LOGIKA JAM HARI INI
+  const currentHour = new Date().getHours();
+  const totalHours = Math.max(0, closeHour - openHour);
+
+  // Hanya ambil jam yang BELUM LEWAT hari ini
+  const availableSlots = Array.from(
+    { length: totalHours },
+    (_, i) => openHour + i,
+  ).filter((h) => h > currentHour);
+
   return (
-    <Link
-      href={`/venues/${venueId}/${field.id}`}
-      className="block cursor-pointer">
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:border-purple-200 transition-colors hover:shadow-md">
-        <div className="aspect-video bg-slate-100 overflow-hidden">
+    <div
+      className={`bg-white border border-slate-200 rounded-2xl overflow-hidden transition-colors flex flex-col ${
+        isOpen ? "hover:border-purple-200 hover:shadow-md" : "opacity-80"
+      }`}>
+      {/* Link luar hanya membungkus gambar dan info atas */}
+      <Link
+        href={isOpen ? `/venues/${venue.id}/${field.id}` : "#"}
+        className="block group">
+        <div className="aspect-video bg-slate-100 overflow-hidden relative">
           <img
             src={
               field.thumbnailUrl ||
@@ -96,28 +114,73 @@ function FieldCard({ field, venueId }: { field: Field; venueId: string }) {
               "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=400"
             }
             alt={field.name}
-            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
+          {!isOpen && (
+            <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] flex items-center justify-center">
+              <span className="bg-red-500 text-white px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider">
+                Tutup Sementara
+              </span>
+            </div>
+          )}
         </div>
-        <div className="p-3">
-          <h3 className="font-semibold text-slate-900 text-sm">{field.name}</h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            {field.type} · {field.length} x {field.width} m
+        <div className="px-4 pt-4 pb-2">
+          <h3 className="font-bold text-slate-900 text-sm md:text-base">
+            {field.name}
+          </h3>
+          <p className="text-xs text-slate-400 mt-0.5 font-medium">
+            {field.type.replace("_", " ")} <span className="mx-1">•</span> P{" "}
+            {field.length} x L {field.width} m
           </p>
-          <p className="text-xs text-primary font-semibold mt-1">
+          <p className="text-sm font-bold text-[#7C3AED] mt-1">
             Rp {field.price?.toLocaleString("id-ID")}
           </p>
-          <button className="mt-2 w-full py-1.5 rounded-lg text-xs font-semibold text-white bg-primary  transition-colors cursor-pointer">
-            Jadwal mingguan
-          </button>
-          <div className="mt-2 flex flex-wrap gap-1">
-            {[8, 9, 10, 11, 12, 13, 14, 15].map((h) => (
-              <SlotBadge key={h} hour={h} />
+        </div>
+      </Link>
+
+      <div className="px-4 pb-4 mt-auto">
+        <Link
+          href={isOpen ? `/venues/${venue.id}/${field.id}` : "#"}
+          className={`mt-1 w-full py-2 rounded-lg text-xs font-bold text-white transition-colors flex items-center justify-center ${
+            isOpen
+              ? "bg-[#7C3AED] hover:bg-[#6D28D9] cursor-pointer"
+              : "bg-slate-300 pointer-events-none"
+          }`}>
+          {isOpen ? "Jadwal mingguan" : "Tidak Tersedia"}
+        </Link>
+
+        {/* JADWAL DUA KOTAK DUA KOTAK KE BAWAH HARI INI */}
+        {isOpen && availableSlots.length > 0 && (
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {availableSlots.map((h) => (
+              <button
+                key={h}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onQuickBook(field, h);
+                }}
+                className="border border-slate-200 bg-white rounded-lg py-2 flex flex-col items-center justify-center hover:border-[#7C3AED] hover:shadow-sm transition-all cursor-pointer">
+                <p className="text-[11px] font-bold text-slate-700">
+                  {String(h).padStart(2, "0")}:00 -{" "}
+                  {String(h + 1 === 24 ? 0 : h + 1).padStart(2, "0")}:00
+                </p>
+                <p className="text-[11px] text-slate-500 my-0.5">
+                  Rp {field.price?.toLocaleString("id-ID")}
+                </p>
+                <p className="text-[10px] font-bold text-[#10B981] uppercase tracking-wide">
+                  AVAILABLE
+                </p>
+              </button>
             ))}
           </div>
-        </div>
+        )}
+        {isOpen && availableSlots.length === 0 && (
+          <p className="text-xs text-center text-slate-400 mt-4 italic font-medium">
+            Jadwal hari ini sudah lewat atau penuh.
+          </p>
+        )}
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -130,11 +193,10 @@ function ReviewItem({ review }: { review: Rating }) {
         .join("")
         .toUpperCase()
     : "?";
-
   return (
     <div className="py-4 border-b border-slate-100 last:border-0 last:pb-0 first:pt-0">
       <div className="flex items-center gap-3 mb-2">
-        <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-xs font-semibold text-primary flex-shrink-0">
+        <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-xs font-semibold text-purple-600 flex-shrink-0">
           {initials}
         </div>
         <div>
@@ -164,10 +226,19 @@ export default function VenueDetailPage() {
   const params = useParams();
   const router = useRouter();
   const venueId = params.id as string;
+  const { user } = useAuthStore();
+  const { fetchCart } = useCartStore();
 
   const [venue, setVenue] = useState<Venue | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("lapangan");
+
+  // STATE UNTUK QUICK BOOK SLOT HARI INI
+  const [quickBookData, setQuickBookData] = useState<{
+    field: Field;
+    hour: number;
+  } | null>(null);
+  const [addingToCart, setAddingToCart] = useState(false);
 
   useEffect(() => {
     api
@@ -182,16 +253,38 @@ export default function VenueDetailPage() {
     message.success("Link venue berhasil disalin!");
   };
 
-  const avgRating = venue?.ratings?.length
-    ? venue.ratings.reduce((a, r) => a + r.rating, 0) / venue.ratings.length
-    : 0;
+  const handleQuickBook = (field: Field, hour: number) => {
+    if (!user) {
+      message.warning("Silakan login terlebih dahulu");
+      router.push("/login");
+      return;
+    }
+    setQuickBookData({ field, hour });
+  };
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: "lapangan", label: "Lapangan" },
-    { key: "gallery", label: "Galeri" },
-  ];
+  const confirmQuickBook = async () => {
+    if (!quickBookData) return;
+    setAddingToCart(true);
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      await api.post("/cart", {
+        fieldId: quickBookData.field.id,
+        date: today,
+        startHour: quickBookData.hour,
+        endHour: quickBookData.hour + 1,
+      });
+      await fetchCart();
+      message.success("1 slot berhasil ditambahkan ke cart");
+      setQuickBookData(null);
+      router.push("/cart");
+    } catch (err: any) {
+      message.error(err.response?.data?.error || "Gagal menambahkan ke cart");
+    } finally {
+      setAddingToCart(false);
+    }
+  };
 
-  if (loading) {
+  if (loading)
     return (
       <div className="max-w-5xl mx-auto px-6 py-10">
         <div className="bg-slate-100 rounded-2xl h-72 animate-pulse mb-6" />
@@ -199,21 +292,34 @@ export default function VenueDetailPage() {
         <div className="bg-slate-100 rounded-xl h-5 w-32 animate-pulse" />
       </div>
     );
-  }
-
   if (!venue) return null;
+
+  const avgRating = venue.ratings?.length
+    ? venue.ratings.reduce((a, r) => a + r.rating, 0) / venue.ratings.length
+    : 0;
+  const openHourStr = String(venue.openHour ?? 8).padStart(2, "0");
+  const closeHourStr = String(venue.closeHour ?? 22).padStart(2, "0");
+  const isOpen = venue.isOpen ?? true;
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-6">
-      {/* Breadcrumb / Tombol Kembali */}
-      <button
-        onClick={() => router.push("/venues")}
-        className="flex items-center gap-1 text-sm text-slate-500 hover:text-purple-600 mb-4 cursor-pointer transition-colors">
-        <HiArrowLeft size={16} /> Kembali
-      </button>
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={() => router.push("/venues")}
+          className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-[#7C3AED] transition-colors cursor-pointer">
+          <HiArrowLeft size={16} /> Kembali
+        </button>
+        <span
+          className={`text-[11px] px-3 py-1 rounded-md font-bold tracking-wider border ${
+            isOpen
+              ? "bg-green-50 text-green-600 border-green-200"
+              : "bg-red-50 text-red-600 border-red-200"
+          }`}>
+          {isOpen ? "BUKA" : "TUTUP SEMENTARA"}
+        </span>
+      </div>
 
-      {/* Hero image */}
-      <div className="rounded-2xl overflow-hidden h-64 md:h-80 bg-slate-100 mb-6 shadow-sm">
+      <div className="rounded-2xl overflow-hidden h-64 md:h-80 bg-slate-100 mb-6 shadow-sm relative">
         <img
           src={
             venue.thumbnailUrl ||
@@ -223,9 +329,15 @@ export default function VenueDetailPage() {
           alt={venue.name}
           className="w-full h-full object-cover"
         />
+        {isOpen === false && (
+          <div className="absolute inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center">
+            <span className="bg-red-500 text-white px-6 py-2 rounded-xl font-bold uppercase tracking-widest shadow-lg">
+              Venue Sedang Tutup
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Venue header */}
       <div className="flex flex-col md:flex-row items-start justify-between gap-6 mb-6">
         <div>
           {avgRating > 0 && (
@@ -242,10 +354,17 @@ export default function VenueDetailPage() {
           <h1 className="text-2xl font-bold text-slate-900 uppercase">
             {venue.name}
           </h1>
-          <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-1">
-            <HiOutlineMapPin size={14} />
-            {venue.address}, {venue.city}
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-2">
+            <p className="text-sm text-slate-500 flex items-center gap-1.5">
+              <HiOutlineMapPin size={16} />
+              {venue.address}, {venue.city}
+            </p>
+            <span className="hidden sm:block text-slate-300">•</span>
+            <p className="text-sm text-slate-500 flex items-center gap-1.5 font-medium">
+              <HiOutlineClock size={16} />
+              {openHourStr}:00 - {closeHourStr}:00 WIB
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-col items-end gap-3 shrink-0">
@@ -259,7 +378,6 @@ export default function VenueDetailPage() {
                 className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 transition flex items-center justify-center cursor-pointer text-slate-600">
                 <HiOutlineLink size={16} />
               </button>
-              {/* Dummy FB Icon */}
               <button className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 transition flex items-center justify-center cursor-pointer text-white">
                 <svg
                   width="14"
@@ -269,7 +387,6 @@ export default function VenueDetailPage() {
                   <path d="M22.675 0H1.325C.593 0 0 .593 0 1.325v21.351C0 23.407.593 24 1.325 24H12.82v-9.294H9.692v-3.622h3.128V8.413c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12V24h6.116c.73 0 1.323-.593 1.323-1.325V1.325C24 .593 23.407 0 22.675 0z" />
                 </svg>
               </button>
-              {/* Dummy X Icon */}
               <button className="w-8 h-8 rounded-full bg-black hover:bg-slate-800 transition flex items-center justify-center cursor-pointer text-white">
                 <svg
                   width="14"
@@ -279,7 +396,6 @@ export default function VenueDetailPage() {
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                 </svg>
               </button>
-              {/* Dummy WA Icon */}
               <button className="w-8 h-8 rounded-full bg-green-500 hover:bg-green-600 transition flex items-center justify-center cursor-pointer text-white">
                 <svg
                   width="16"
@@ -294,30 +410,33 @@ export default function VenueDetailPage() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex border-b border-slate-200 mb-6">
-        {tabs.map((tab) => (
+        {(["lapangan", "gallery"] as const).map((tab) => (
           <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            key={tab}
+            onClick={() => setActiveTab(tab)}
             className={`flex-1 py-3 text-sm font-semibold transition cursor-pointer ${
-              activeTab === tab.key
+              activeTab === tab
                 ? "border-b-2 border-purple-600 text-purple-600"
                 : "text-slate-400 hover:text-slate-600"
             }`}>
-            {tab.label.toUpperCase()}
+            {tab.toUpperCase()}
           </button>
         ))}
       </div>
 
-      {/* Tab: Lapangan (Berisi Daftar Lapangan, Ulasan, dan Lokasi) */}
       {activeTab === "lapangan" && (
         <div className="space-y-12">
-          {/* Section: Lapangan */}
+          {/* CARD LAPANGAN DIMUNCULKAN */}
           <div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
               {venue.fields?.map((field) => (
-                <FieldCard key={field.id} field={field} venueId={venueId} />
+                <FieldCard
+                  key={field.id}
+                  field={field}
+                  venue={venue}
+                  onQuickBook={handleQuickBook}
+                />
               ))}
               {!venue.fields?.length && (
                 <div className="col-span-full py-12">
@@ -327,13 +446,11 @@ export default function VenueDetailPage() {
             </div>
           </div>
 
-          {/* Section: Rating & ulasan */}
           <div>
             <h2 className="text-xl font-bold text-slate-900 mb-6">
               Rating & Ulasan
             </h2>
             <div className="space-y-6">
-              {/* Rating Summary */}
               <div className="bg-white border border-slate-200 rounded-xl p-6">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="text-center">
@@ -362,7 +479,7 @@ export default function VenueDetailPage() {
                           </span>
                           <div className="flex-1 bg-slate-200 rounded-full h-2">
                             <div
-                              className="bg-purple-600 h-2 rounded-full"
+                              className="bg-[#7C3AED] h-2 rounded-full"
                               style={{ width: `${percentage}%` }}
                             />
                           </div>
@@ -375,7 +492,6 @@ export default function VenueDetailPage() {
                   </div>
                 </div>
               </div>
-
               <div className="border-t border-slate-100" />
               <div>
                 <h3 className="text-base font-semibold text-slate-900 mb-4">
@@ -396,7 +512,7 @@ export default function VenueDetailPage() {
             </div>
           </div>
 
-          {/* Section: Lokasi */}
+          {/* Location */}
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <h2 className="text-xl font-bold text-slate-900">Lokasi Venue</h2>
@@ -405,25 +521,22 @@ export default function VenueDetailPage() {
                   href={`https://www.google.com/maps?q=${venue.latitude},${venue.longitude}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-white text-xs font-semibold bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 transition-colors cursor-pointer w-fit shrink-0">
-                  <HiMapPin size={14} />
-                  Panduan ke lokasi
+                  className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-white text-xs font-semibold bg-gradient-to-r bg-primary transition-colors cursor-pointer w-fit shrink-0">
+                  <HiMapPin size={14} /> Panduan ke lokasi
                 </a>
               )}
             </div>
-
             <p className="text-sm text-slate-600 flex items-center gap-1.5 mb-4">
-              <HiOutlineMapPin size={18} className="text-purple-600" />
+              <HiOutlineMapPin size={18} className="text-primary" />
               {venue.address}, {venue.city}
             </p>
-
             {venue.latitude && venue.longitude ? (
               <div className="rounded-xl overflow-hidden h-64 bg-slate-100 shadow-sm border border-slate-100">
                 <iframe
                   width="100%"
                   height="100%"
                   loading="lazy"
-                  title="Lokasi venue"
+                  referrerPolicy="no-referrer-when-downgrade"
                   src={`https://maps.google.com/maps?q=${venue.latitude},${venue.longitude}&z=15&output=embed`}
                 />
               </div>
@@ -436,27 +549,77 @@ export default function VenueDetailPage() {
         </div>
       )}
 
-      {/* Tab: Gallery */}
+      {/* GALERI */}
       {activeTab === "gallery" && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {venue.images?.map((img) => (
-            <div
-              key={img.id}
-              className="aspect-video rounded-xl overflow-hidden bg-slate-100">
-              <img
-                src={img.url}
-                alt="foto venue"
-                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-              />
-            </div>
-          ))}
-          {!venue.images?.length && (
-            <p className="text-slate-400 text-sm col-span-full py-12 text-center">
-              Belum ada foto
-            </p>
-          )}
-        </div>
+        <Image.PreviewGroup>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+            {venue.images?.map((img) => (
+              <div key={img.id} className="flex flex-col gap-2">
+                <div className="aspect-video rounded-xl overflow-hidden bg-slate-100 border border-slate-100 shadow-sm">
+                  <Image
+                    src={img.url}
+                    alt={img.title || "foto venue"}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+                <p className="text-sm font-bold text-slate-700 px-1 truncate">
+                  {img.title || "Foto Venue"}
+                </p>
+              </div>
+            ))}
+            {!venue.images?.length && (
+              <div className="col-span-full py-12 flex justify-center">
+                <Empty description="Belum ada foto galeri" />
+              </div>
+            )}
+          </div>
+        </Image.PreviewGroup>
       )}
+
+      {/* QUICK BOOK MODAL HARI INI */}
+      <Modal
+        title={
+          <span className="font-bold text-slate-800">Konfirmasi Pemesanan</span>
+        }
+        open={!!quickBookData}
+        onOk={confirmQuickBook}
+        onCancel={() => setQuickBookData(null)}
+        okText={addingToCart ? "Memproses..." : "Ya, Lanjutkan"}
+        cancelText="Batal"
+        getContainer={false}
+        okButtonProps={{
+          disabled: addingToCart,
+          style: { backgroundColor: "#7C3AED", borderColor: "#7C3AED" },
+          className: "cursor-pointer",
+        }}
+        cancelButtonProps={{
+          disabled: addingToCart,
+          className: "cursor-pointer",
+        }}>
+        {quickBookData && (
+          <>
+            <p className="text-slate-500 mb-4 mt-2">
+              Anda akan memesan <strong>1 slot</strong> untuk lapangan{" "}
+              <strong>{quickBookData.field.name}</strong> dengan total:
+            </p>
+            <div className="bg-purple-50 p-4 rounded-xl mb-4 border border-purple-100">
+              <p className="text-2xl font-bold text-[#7C3AED]">
+                Rp {quickBookData.field.price?.toLocaleString("id-ID")}
+              </p>
+            </div>
+            <ul className="text-sm text-slate-500 space-y-1.5">
+              <li className="flex items-center gap-2 font-medium text-slate-700">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#7C3AED]" />
+                Hari Ini | {String(quickBookData.hour).padStart(2, "0")}:00 -{" "}
+                {String(
+                  quickBookData.hour + 1 === 24 ? 0 : quickBookData.hour + 1,
+                ).padStart(2, "0")}
+                :00
+              </li>
+            </ul>
+          </>
+        )}
+      </Modal>
     </div>
   );
 }

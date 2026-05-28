@@ -159,7 +159,7 @@ export default function EventDetailPage() {
     if (containsHtml) {
       return (
         <div
-          className="quill-content text-sm text-slate-600 leading-relaxed mb-10 prose prose-sm prose-slate max-w-none"
+          className="quill-content text-sm text-slate-600 leading-relaxed mb-10 prose prose-sm prose-slate max-w-none break-words overflow-hidden"
           dangerouslySetInnerHTML={{ __html: text }}
         />
       );
@@ -437,7 +437,7 @@ export default function EventDetailPage() {
                 )}
               </div>
 
-              <h1 className="text-3xl font-extrabold text-slate-900 mb-6 leading-tight uppercase">
+              <h1 className="text-3xl font-extrabold text-slate-900 mb-6 leading-tight uppercase break-words">
                 {event.title}
               </h1>
 

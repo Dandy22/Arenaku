@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { message, Modal } from "antd";
+import { message, Modal, Image, Empty } from "antd";
 import {
   HiArrowLeft,
   HiOutlineMapPin,
@@ -54,13 +54,24 @@ export default function FieldDetailPage() {
   const [addingToCart, setAddingToCart] = useState(false);
   const [confirmModal, setConfirmModal] = useState(false);
 
+  // STATE UNTUK DRAG-TO-SCROLL
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+
   const startDate = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
+    // ✅ PERBAIKAN: Tambahkan timestamp agar data selalu FRESH dari database (Bypass Cache)
+    const timestamp = new Date().getTime();
+
     Promise.all([
-      api.get(`/fields/${fieldId}`),
-      api.get(`/venues/${venueId}`),
-      api.get(`/fields/${fieldId}/schedule?startDate=${startDate}`),
+      api.get(`/fields/${fieldId}?t=${timestamp}`),
+      api.get(`/venues/${venueId}?t=${timestamp}`),
+      api.get(
+        `/fields/${fieldId}/schedule?startDate=${startDate}&t=${timestamp}`,
+      ),
     ])
       .then(([fieldRes, venueRes, scheduleRes]) => {
         setField(fieldRes.data);
@@ -69,7 +80,7 @@ export default function FieldDetailPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [fieldId, venueId]);
+  }, [fieldId, venueId, startDate]);
 
   const toggleSlot = (date: string, slot: Slot) => {
     if (slot.status !== "AVAILABLE") return;
@@ -146,6 +157,32 @@ export default function FieldDetailPage() {
     message.success("Link lapangan berhasil disalin!");
   };
 
+  // MOUSE EVENTS UNTUK DRAG TO SCROLL
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return;
+    setIsDragging(false);
+    setStartX(e.pageX - scrollRef.current.offsetLeft);
+    setScrollLeft(scrollRef.current.scrollLeft);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseUp = () => {
+    setTimeout(() => setIsDragging(false), 50);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!scrollRef.current || e.buttons !== 1) return;
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    const walk = (x - startX) * 2;
+    if (Math.abs(walk) > 5) {
+      setIsDragging(true);
+    }
+    scrollRef.current.scrollLeft = scrollLeft - walk;
+  };
+
   if (loading)
     return (
       <div className="max-w-5xl mx-auto px-6 py-10">
@@ -173,6 +210,7 @@ export default function FieldDetailPage() {
       <div className="rounded-2xl overflow-hidden h-64 md:h-80 bg-slate-100 mb-6 shadow-sm border border-slate-100">
         <img
           src={
+            field.thumbnailUrl ||
             field.images?.[0]?.url ||
             "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1200"
           }
@@ -195,7 +233,6 @@ export default function FieldDetailPage() {
               className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 transition flex items-center justify-center cursor-pointer text-slate-600">
               <HiOutlineLink size={16} />
             </button>
-            {/* Dummy FB Icon */}
             <button className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 transition flex items-center justify-center cursor-pointer text-white">
               <svg
                 width="14"
@@ -205,7 +242,6 @@ export default function FieldDetailPage() {
                 <path d="M22.675 0H1.325C.593 0 0 .593 0 1.325v21.351C0 23.407.593 24 1.325 24H12.82v-9.294H9.692v-3.622h3.128V8.413c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12V24h6.116c.73 0 1.323-.593 1.323-1.325V1.325C24 .593 23.407 0 22.675 0z" />
               </svg>
             </button>
-            {/* Dummy X Icon */}
             <button className="w-8 h-8 rounded-full bg-black hover:bg-slate-800 transition flex items-center justify-center cursor-pointer text-white">
               <svg
                 width="14"
@@ -215,7 +251,6 @@ export default function FieldDetailPage() {
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
               </svg>
             </button>
-            {/* Dummy WA Icon */}
             <button className="w-8 h-8 rounded-full bg-green-500 hover:bg-green-600 transition flex items-center justify-center cursor-pointer text-white">
               <svg
                 width="16"
@@ -291,7 +326,7 @@ export default function FieldDetailPage() {
         ))}
       </div>
 
-      {/* Tab Jadwal */}
+      {/* Tab Jadwal dengan Fitur Drag-to-Scroll */}
       {activeTab === "jadwal" && (
         <div>
           <p className="text-sm text-slate-500 mb-4">Pilih Lapangan:</p>
@@ -299,8 +334,19 @@ export default function FieldDetailPage() {
             {field.name}
           </div>
 
-          <div className="overflow-x-auto pb-4 px-1 -mx-1">
-            <div className="flex gap-3 min-w-max mb-4">
+          <div
+            ref={scrollRef}
+            onMouseDown={handleMouseDown}
+            onMouseLeave={handleMouseLeave}
+            onMouseUp={handleMouseUp}
+            onMouseMove={handleMouseMove}
+            className="overflow-x-auto pb-4 px-1 -mx-1 cursor-grab active:cursor-grabbing no-scrollbar"
+            style={{
+              WebkitOverflowScrolling: "touch",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }}>
+            <div className="flex gap-3 min-w-max mb-4 pointer-events-none">
               {schedule.map((day) => {
                 const isToday =
                   day.date === new Date().toISOString().split("T")[0];
@@ -326,6 +372,7 @@ export default function FieldDetailPage() {
                 );
               })}
             </div>
+
             <div className="flex gap-3 min-w-max py-1">
               {schedule.map((day) => (
                 <div
@@ -336,9 +383,16 @@ export default function FieldDetailPage() {
                     return (
                       <button
                         key={slot.startHour}
-                        onClick={() => toggleSlot(day.date, slot)}
+                        onClick={(e) => {
+                          // Jika user lg nahan klik + nge-drag layar, event onClick gak bakal ke-trigger
+                          if (isDragging) {
+                            e.preventDefault();
+                            return;
+                          }
+                          toggleSlot(day.date, slot);
+                        }}
                         disabled={slot.status !== "AVAILABLE"}
-                        className={`w-full rounded-lg p-2 text-center h-20 flex flex-col justify-center items-center transition text-xs border ${
+                        className={`w-full rounded-lg p-2 text-center h-20 flex flex-col justify-center items-center transition text-xs border select-none ${
                           slot.status === "PAST"
                             ? "bg-slate-100 text-slate-400 cursor-not-allowed border-transparent opacity-60"
                             : slot.status === "BOOKED"
@@ -392,59 +446,30 @@ export default function FieldDetailPage() {
 
       {/* Tab Gallery */}
       {activeTab === "gallery" && (
-        <div className="grid grid-cols-2 gap-4">
-          {field.images?.map((img: any) => (
-            <div
-              key={img.id}
-              className="aspect-video rounded-xl overflow-hidden bg-slate-100">
-              <img
-                src={img.url}
-                alt="field"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          ))}
-          {!field.images?.length && (
-            <p className="text-slate-400 text-sm col-span-full text-center py-10">
-              Belum ada foto
-            </p>
-          )}
-        </div>
+        <Image.PreviewGroup>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+            {field.images?.map((img: any) => (
+              <div key={img.id} className="flex flex-col gap-2 group">
+                <div className="aspect-video rounded-xl overflow-hidden bg-slate-100 border border-slate-100 shadow-sm relative">
+                  <Image
+                    src={img.url}
+                    alt={img.title || "foto lapangan"}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+                <p className="text-sm font-bold text-slate-700 px-1 truncate">
+                  {img.title || "Detail Lapangan"}
+                </p>
+              </div>
+            ))}
+            {!field.images?.length && (
+              <div className="col-span-full py-12 flex justify-center">
+                <Empty description="Belum ada foto galeri lapangan" />
+              </div>
+            )}
+          </div>
+        </Image.PreviewGroup>
       )}
-
-      {/* Location */}
-      {venue?.latitude && venue?.longitude ? (
-        <div className="mt-10">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <h2 className="text-xl font-bold text-slate-900">Lokasi Venue</h2>
-
-            <a
-              href={`https://www.google.com/maps?q=${venue.latitude},${venue.longitude}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-white text-xs font-semibold cursor-pointer hover:opacity-90 hover:shadow-md transition-all shrink-0"
-              style={{
-                background: "linear-gradient(135deg, #7C3AED, #9333EA)",
-              }}>
-              <HiOutlineMapPin size={14} /> Panduan Ke Lokasi
-            </a>
-          </div>
-
-          <p className="text-sm text-slate-600 flex items-center gap-1.5 mb-4">
-            <HiOutlineMapPin size={18} className="text-purple-500 shrink-0" />
-            {venue.address}
-          </p>
-
-          <div className="rounded-xl overflow-hidden h-56 bg-slate-100 shadow-sm border border-slate-100">
-            <iframe
-              width="100%"
-              height="100%"
-              loading="lazy"
-              src={`https://maps.google.com/maps?q=${venue.latitude},${venue.longitude}&z=15&output=embed`}
-            />
-          </div>
-        </div>
-      ) : null}
 
       {/* Sticky bottom bar */}
       {selectedSlots.length > 0 && (
