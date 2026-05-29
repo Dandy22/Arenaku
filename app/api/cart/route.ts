@@ -43,10 +43,19 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const user = await getUserFromToken(req);
-    const body = await req.json();
-    if (!user) {
+
+    // 1. VALIDASI USER HARUS PALING AWAL
+    // Pastikan user ada DAN user.userId terdefinisi dengan jelas
+    if (!user || !user.userId) {
+      console.error(
+        "[POST /cart] Unauthorized access attempt or missing userId in token payload",
+      );
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // 2. PARSE BODY SETELAH USER VALID
+    const body = await req.json();
+
     let item;
 
     // Check if this is an event ticket purchase
@@ -68,6 +77,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(item, { status: 201 });
   } catch (error) {
+    console.error("[POST /cart] Error:", error); // Tambahkan log ini buat tracking di production
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     if (errorMessage.includes("token")) {
