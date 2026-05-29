@@ -13,14 +13,16 @@ import { prisma } from "@/lib/prisma";
 
 // Konfigurasi Midtrans dari environment
 const MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY || "";
-const MIDTRANS_CLIENT_KEY = process.env.MIDTRANS_CLIENT_KEY || "";
-const isProduction = process.env.NODE_ENV === "production";
+const MIDTRANS_CLIENT_KEY = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || "";
 
-// Base URL Midtrans (sandbox vs production)
+// KUNCI UTAMA: Paksa isProduction menjadi false selama masa skripsi/UAT.
+// Walaupun di-deploy di Vercel, kita tetap menembak ke URL Sandbox.
+const isProduction = false;
+
+// Base URL Midtrans (karena isProduction false, akan selalu pakai sandbox)
 const MIDTRANS_BASE_URL = isProduction
   ? "https://app.midtrans.com"
   : "https://app.sandbox.midtrans.com";
-
 // ============================================================
 // createMidtransTransaction
 // Membuat Snap Token via Midtrans API
