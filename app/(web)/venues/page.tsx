@@ -223,12 +223,13 @@ function VenuesContent() {
       </p>
 
       {/* Venue Grid */}
+      {/* Venue Grid */}
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[...Array(8)].map((_, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
             <div
               key={i}
-              className="bg-gray-100 rounded-2xl h-[340px] animate-pulse"
+              className="bg-gray-100 rounded-2xl h-[400px] animate-pulse"
             />
           ))}
         </div>
@@ -242,9 +243,8 @@ function VenuesContent() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {venues.map((venue) => (
-            /* TAMBAHAN: Sisipkan prop showFieldPreview di sini */
             <VenueCard key={venue.id} venue={venue} showFieldPreview />
           ))}
         </div>

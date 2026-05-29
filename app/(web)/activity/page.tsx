@@ -16,7 +16,7 @@ import EventCard from "@/components/reusable/EventCard";
 const SPORT_CATEGORIES = [
   { label: "Semua", value: "", img: "/Semua.svg" },
   { label: "Mini Soccer", value: "MINI_SOCCER", img: "/MiniSoccer.svg" },
-  { label: "Sepak Bola", value: "FUTSAL", img: "/SepakBola.svg" },
+  { label: "Futsal", value: "FUTSAL", img: "/SepakBola.svg" },
   { label: "Bulu Tangkis", value: "BADMINTON", img: "/BuluTangkis.svg" },
   { label: "Basket", value: "BASKETBALL", img: "/Basket.svg" },
   { label: "Tenis", value: "TENNIS", img: "/Tenis.svg" },

@@ -24,7 +24,7 @@ export const BEKASI_DISTRICTS = [
 // Kota Bekasi (untuk backward compatibility)
 export const BEKASI_CITY = "Kota Bekasi";
 
-export type BekasiDistrict = typeof BEKASI_DISTRICTS[number]["value"];
+export type BekasiDistrict = (typeof BEKASI_DISTRICTS)[number]["value"];
 
 // Event Categories
 export const EVENT_CATEGORIES = [
@@ -36,7 +36,6 @@ export const EVENT_CATEGORIES = [
   { label: "Tennis", value: "TENNIS", icon: "🎾" },
   { label: "Volleyball", value: "VOLLEYBALL", icon: "🏐" },
   { label: "Padel", value: "PADEL", icon: "🎾" },
-  { label: "Sepak Bola", value: "SOCCER", icon: "🥅" },
   { label: "Lainnya", value: "OTHER", icon: "🏅" },
 ] as const;
 

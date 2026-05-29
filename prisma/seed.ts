@@ -14,24 +14,20 @@ import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import * as bcrypt from "bcrypt";
 
-// Inisialisasi koneksi pool ke PostgreSQL
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-// Adapter Prisma dengan pg pool
 const adapter = new PrismaPg(pool);
 
-// Buat PrismaClient dengan adapter
 const prisma = new PrismaClient({
   adapter,
 });
 
 async function main() {
-  console.log("Memulai proses seeding...");
+  console.log("Memulai proses seeding data UAT Arenaku (Fixed Path)...");
 
-  // 1. CLEANUP (Menghapus data lama dengan urutan yang benar)
-  // Hapus tabel anak terlebih dahulu sebelum tabel induk
+  // 1. CLEANUP (Menghapus data lama)
   await prisma.notification.deleteMany();
   await prisma.eventTicket.deleteMany();
   await prisma.eventParticipant.deleteMany();
@@ -39,6 +35,7 @@ async function main() {
   await prisma.cartItem.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.orderItem.deleteMany();
+  await prisma.vendorRating.deleteMany();
   await prisma.order.deleteMany();
   await prisma.fieldContact.deleteMany();
   await prisma.fieldImage.deleteMany();
@@ -51,16 +48,16 @@ async function main() {
   await prisma.vendor.deleteMany();
   await prisma.user.deleteMany();
 
-  // Hash password masing-masing role agar mudah diingat
   const adminPassword = await bcrypt.hash("admin123", 10);
-  const vendorPassword = await bcrypt.hash("vendor123", 10);
   const customerPassword = await bcrypt.hash("customer123", 10);
+  const vendorPassword = await bcrypt.hash("vendor123", 10);
+  const secondaryPassword = await bcrypt.hash("password123", 10);
 
   // 2. CREATE USERS
   const adminUser = await prisma.user.create({
     data: {
-      name: "Super Admin",
-      email: "admin@example.com",
+      name: "Super Admin Arenaku",
+      email: "admin@arenaku.com",
       phone: "0811111111",
       password: adminPassword,
       role: Role.ADMIN,
@@ -68,240 +65,396 @@ async function main() {
     },
   });
 
-  const vendorOwner = await prisma.user.create({
+  const mainCustomer = await prisma.user.create({
     data: {
-      name: "Budi Santoso",
-      email: "vendor@example.com",
-      phone: "0822222222",
-      password: vendorPassword,
-      role: Role.VENDOR,
+      name: "Rizky Ramadhan",
+      email: "customer@arenaku.com",
+      phone: "0833333333",
+      password: customerPassword,
+      role: Role.CUSTOMER,
       isEmailVerified: true,
-      address: "Jl. Ir. H. Juanda No. 10",
-      district: "Coblong",
+      address: "Pekayon Jaya",
+      district: "Bekasi Selatan",
     },
   });
 
-  const customerUser = await prisma.user.create({
+  const mainVendorOwner = await prisma.user.create({
     data: {
-      name: "Rizky Ramadhan",
-      email: "customer@example.com",
-      phone: "0833333333",
-      password: customerPassword,
+      name: "Budi Santoso",
+      email: "vendor@arenaku.com",
+      phone: "0821111111",
+      password: vendorPassword,
+      role: Role.VENDOR,
+      isEmailVerified: true,
+    },
+  });
+
+  const reviewerUser1 = await prisma.user.create({
+    data: {
+      name: "Dandy Antariksa",
+      email: "dandy@example.com",
+      phone: "08123456789",
+      password: secondaryPassword,
       role: Role.CUSTOMER,
       isEmailVerified: true,
     },
   });
 
-  // 3. CREATE VENDOR (ORGANIZATION)
-  const gorSukamaju = await prisma.vendor.create({
+  const reviewerUser2 = await prisma.user.create({
     data: {
-      name: "GOR Sukamaju Center",
-      description: "Pusat olahraga terlengkap dan termurah di Bandung.",
+      name: "Siti Aminah",
+      email: "siti@example.com",
+      phone: "08987654321",
+      password: secondaryPassword,
+      role: Role.CUSTOMER,
+      isEmailVerified: true,
+    },
+  });
+
+  const vendorOwner2 = await prisma.user.create({
+    data: {
+      name: "Andi Wijaya",
+      email: "futsal@vendor.com",
+      phone: "0822222222",
+      password: secondaryPassword,
+      role: Role.VENDOR,
+      isEmailVerified: true,
+    },
+  });
+
+  // 3. CREATE VENDORS & VENUES (LOCAL ASSETS - DIRECT PUBLIC ROOT)
+
+  // Vendor 1: Badminton
+  const vendorBadminton = await prisma.vendor.create({
+    data: {
+      name: "Bekasi Smash Center",
+      description:
+        "Pusat pelatihan dan penyewaan lapangan badminton profesional di Bekasi. Fasilitas bersertifikasi BWF dengan pencahayaan standar turnamen nasional.",
       status: VendorStatus.VERIFIED,
       bankName: "BCA",
-      bankAccountNumber: "8877665544",
+      bankAccountNumber: "1234567890",
       bankAccountName: "Budi Santoso",
-      balance: 500000,
-    },
-  });
-
-  // 4. CREATE VENDOR MEMBER (LINK USER TO VENDOR)
-  await prisma.vendorMember.create({
-    data: {
-      userId: vendorOwner.id,
-      vendorId: gorSukamaju.id,
-      role: VendorRole.OWNER,
-    },
-  });
-
-  // 5. CREATE VENUE
-  const venueBadminton = await prisma.venue.create({
-    data: {
-      name: "Sukamaju Badminton Arena",
-      description:
-        "Lapangan badminton eksklusif dengan karpet standar internasional.",
-      city: "Bandung",
-      district: "Coblong",
-      address: "Jl. Ir. H. Juanda No. 10",
-      latitude: -6.8915,
-      longitude: 107.6107,
-      vendorId: gorSukamaju.id,
-      thumbnailUrl: "https://placehold.co/600x400/png",
-    },
-  });
-
-  // 6. CREATE VENUE IMAGE & RATING
-  await prisma.venueImage.create({
-    data: {
-      venueId: venueBadminton.id,
-      url: "https://placehold.co/600x400/png",
-      title: "Tampak Depan",
-    },
-  });
-
-  await prisma.venueRating.create({
-    data: {
-      venueId: venueBadminton.id,
-      userId: customerUser.id,
-      rating: 5,
-      comment: "Tempatnya bersih banget, mantap!",
-    },
-  });
-
-  // 7. CREATE FIELD
-  const field1 = await prisma.field.create({
-    data: {
-      name: "Lapangan 1 (VIP)",
-      type: "Badminton",
-      floorType: "Carpet",
-      length: 13.4,
-      width: 6.1,
-      price: 60000,
-      description: "Lapangan khusus VIP dekat dengan kantin.",
-      venueId: venueBadminton.id,
-      thumbnailUrl: "https://placehold.co/600x400/png",
-    },
-  });
-
-  // 8. FIELD CONTACT & IMAGE
-  await prisma.fieldContact.create({
-    data: {
-      fieldId: field1.id,
-      name: "Staff Jaga Sore",
-      phone: "0812345678",
-    },
-  });
-
-  await prisma.fieldImage.create({
-    data: {
-      fieldId: field1.id,
-      url: "https://placehold.co/600x400/png",
-      title: "Foto Lapangan 1",
-    },
-  });
-
-  // 9. CREATE EVENT & TICKET TIERS
-  const eventFutsal = await prisma.event.create({
-    data: {
-      title: "Bandung Futsal League 2026",
-      description: "Turnamen futsal bergengsi tingkat kota.",
-      location: "GOR Sukamaju",
-      city: "Bandung",
-      date: new Date("2026-06-10T08:00:00Z"),
-      endDate: new Date("2026-06-10T20:00:00Z"),
-      startHour: 8,
-      endHour: 20,
-      capacity: 200,
-      creatorId: vendorOwner.id,
-      status: EventStatus.ACTIVE,
-      ticketPrice: 25000,
-      contactName: "Panitia Event",
-      contactPhone: "089999999",
-    },
-  });
-
-  await prisma.eventTicketTier.createMany({
-    data: [
-      {
-        eventId: eventFutsal.id,
-        name: "Regular Entrance",
-        stock: 150,
-        price: 25000,
-        description: "Akses masuk tribun.",
-      },
-      {
-        eventId: eventFutsal.id,
-        name: "Courtside VIP",
-        stock: 50,
-        price: 75000,
-        description: "Akses duduk pinggir lapangan.",
-      },
-    ],
-  });
-
-  // 10. CREATE ORDER & ORDER ITEM (Booking Lapangan)
-  const order = await prisma.order.create({
-    data: {
-      userId: customerUser.id,
-      totalAmount: 60000,
-      status: OrderStatus.PAID,
-      customerName: customerUser.name,
-      customerPhone: customerUser.phone,
-      customerEmail: customerUser.email,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 jam
-      items: {
+      balance: 1500000,
+      members: {
         create: {
-          fieldId: field1.id,
-          date: new Date(),
-          startHour: 19,
-          endHour: 20,
-          price: 60000,
+          userId: mainVendorOwner.id,
+          role: VendorRole.OWNER,
+        },
+      },
+      venues: {
+        create: {
+          name: "Bekasi Smash Arena",
+          description:
+            "Arena badminton eksklusif yang dilengkapi dengan lapangan karpet premium. Memiliki sirkulasi udara optimal, ruang ganti ber-AC, dan area penonton.",
+          city: "Bekasi",
+          district: "Bekasi Selatan",
+          address: "Jl. Boulevard Raya No. 88, Pekayon Jaya",
+          latitude: -6.2573,
+          longitude: 106.9896,
+          thumbnailUrl: "/venueimg/Thumbnail Venue Bulu Tangkis.jpg",
+          isOpen: true,
+          openHour: 8,
+          closeHour: 23,
+          images: {
+            create: [
+              {
+                url: "/venueimg/Lapangan Bulu Tangkis Tampak Depan.jpg",
+                title: "Tampak Depan Lapangan",
+              },
+            ],
+          },
+          fields: {
+            create: {
+              name: "Court 1 (VIP)",
+              type: "BADMINTON",
+              floorType: "Carpet BWF",
+              length: 13.4,
+              width: 6.1,
+              price: 75000,
+              description:
+                "Lapangan utama dengan karpet standar internasional. Posisi di tengah arena, jauh dari silau matahari.",
+              thumbnailUrl: "/venueimg/Lapangan Bulu Tangkis Tampak Depan.jpg",
+              images: {
+                create: {
+                  url: "/venueimg/Lapangan Bulu Tangkis Tampak Depan.jpg",
+                  title: "Detail Lapangan",
+                },
+              },
+              contacts: {
+                create: { name: "Admin Smash", phone: "0812345678" },
+              },
+            },
+          },
         },
       },
     },
   });
 
-  // 11. CREATE PAYMENT
-  await prisma.payment.create({
+  // Vendor 2: Futsal
+  const vendorFutsal = await prisma.vendor.create({
     data: {
-      orderId: order.id,
-      amount: 60000,
-      method: "QRIS",
-      status: PaymentStatus.SUCCESS,
-      paidAt: new Date(),
-      expiredAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
+      name: "Juara Futsal Bekasi",
+      description:
+        "Kompleks olahraga futsal terbesar di Bekasi Barat. Menyediakan lapangan dengan fasilitas setara stadion mini.",
+      status: VendorStatus.VERIFIED,
+      bankName: "MANDIRI",
+      bankAccountNumber: "0987654321123",
+      bankAccountName: "Andi Wijaya",
+      balance: 500000,
+      members: {
+        create: {
+          userId: vendorOwner2.id,
+          role: VendorRole.OWNER,
+        },
+      },
+      venues: {
+        create: {
+          name: "Juara Futsal Hub",
+          description:
+            "Venue futsal indoor dengan pencahayaan yang merata. Fasilitas mencakup parkir luas, loker, mushola, dan area tunggu.",
+          city: "Bekasi",
+          district: "Bekasi Barat",
+          address: "Jl. Bintara Raya No. 15",
+          latitude: -6.2345,
+          longitude: 106.9745,
+          thumbnailUrl: "/venueimg/Thumbnail Venue Lapangan Futsal 1.jpg",
+          isOpen: true,
+          openHour: 7,
+          closeHour: 24,
+          images: {
+            create: [
+              {
+                url: "/venueimg/Lapangan Futsal Tampak Atas 2.jpg",
+                title: "Tampak Atas Lapangan Utama",
+              },
+              {
+                url: "/venueimg/Lapangan Futsal Tampak Atas.jpg",
+                title: "View Drone Lapangan",
+              },
+            ],
+          },
+          fields: {
+            create: {
+              name: "Lapangan Sintetis A",
+              type: "FUTSAL",
+              floorType: "Rumput Sintetis",
+              length: 25,
+              width: 15,
+              price: 150000,
+              description:
+                "Lapangan futsal dengan rumput sintetis premium. Empuk, meminimalisir cedera lutut.",
+              thumbnailUrl: "/venueimg/Thumbnail Venue Lapangan Futsal 2.jpg",
+              images: {
+                create: [
+                  {
+                    url: "/venueimg/Gawang 2 Lapangan Futsal.jpg",
+                    title: "Gawang Lapangan",
+                  },
+                  {
+                    url: "/venueimg/Gawang Lapangan Futsal.jpg",
+                    title: "Detail Area Gawang",
+                  },
+                ],
+              },
+              contacts: {
+                create: { name: "Bang Andi", phone: "0855555555" },
+              },
+            },
+          },
+        },
+      },
     },
   });
 
-  // 12. CREATE EVENT TICKET & PARTICIPANT
-  await prisma.eventTicket.create({
+  // 4. CREATE REVIEWS/RATINGS
+  const targetVenue = await prisma.venue.findFirst({
+    where: { name: "Bekasi Smash Arena" },
+  });
+
+  if (targetVenue) {
+    await prisma.venueRating.createMany({
+      data: [
+        {
+          venueId: targetVenue.id,
+          userId: mainCustomer.id,
+          rating: 5,
+          comment:
+            "Luar biasa! Pengalaman booking lewat Arenaku sangat mulus. Pas sampai lokasi, lapangannya terawat banget. Karpetnya nge-grip dan gak licin sama sekali.",
+        },
+        {
+          venueId: targetVenue.id,
+          userId: reviewerUser1.id,
+          rating: 5,
+          comment:
+            "Pencahayaannya pas, gak bikin silau kalau lagi ambil bola lob atau mau smash. Kantinnya juara!",
+        },
+      ],
+    });
+  }
+
+  // 5. CREATE EVENTS
+
+  // Event 1: Futsal Championship
+  await prisma.event.create({
     data: {
-      eventId: eventFutsal.id,
-      userId: customerUser.id,
-      quantity: 1,
-      totalPrice: 25000,
-      status: TicketStatus.CONFIRMED,
-      orderId: order.id,
-      confirmedAt: new Date(),
+      title: "Liga Pelajar & Mahasiswa: Bekasi Futsal Championship 2026",
+      description:
+        "Ajang pembuktian tim futsal terbaik se-Bekasi Raya! Turnamen bergengsi ini memperebutkan total hadiah uang tunai Rp 15.000.000, medali, dan piala bergilir walikota.",
+      location: "Juara Futsal Hub",
+      city: "Bekasi",
+      district: "Bekasi Barat",
+      category: "Turnamen",
+      topic: "Futsal",
+      date: new Date("2026-08-15T08:00:00Z"),
+      endDate: new Date("2026-08-17T20:00:00Z"),
+      startHour: 8,
+      endHour: 20,
+      capacity: 500,
+      creatorId: vendorOwner2.id,
+      status: EventStatus.ACTIVE,
+      ticketPrice: 20000,
+      contactName: "Panitia BFC",
+      contactPhone: "081299998888",
+      imageUrl: "/venueimg/Thumbnail Event Olahraga Futsal.jpg",
+      ticketTiers: {
+        create: [
+          {
+            name: "Pendaftaran Tim",
+            stock: 32,
+            price: 350000,
+            description: "Tiket registrasi untuk 1 tim futsal.",
+          },
+        ],
+      },
     },
   });
 
-  await prisma.eventParticipant.create({
+  // Event 2: Mabar Badminton
+  await prisma.event.create({
     data: {
-      eventId: eventFutsal.id,
-      userId: customerUser.id,
+      title: "Main Bareng (Mabar) Badminton: Fun Match & Networking",
+      description:
+        "Yuk gabung di sesi 'Mabar Fun Match'! Acara ini ditujukan khusus untuk pegiat olahraga amatir yang ingin cari keringat sekaligus nambah relasi di area Bekasi.\n\nPeserta cukup membawa raket dan sepatu sendiri.",
+      location: "Bekasi Smash Arena",
+      city: "Bekasi",
+      district: "Bekasi Selatan",
+      category: "Olahraga",
+      topic: "Badminton",
+      date: new Date("2026-06-20T19:00:00Z"),
+      endDate: new Date("2026-06-20T22:00:00Z"),
+      startHour: 19,
+      endHour: 22,
+      capacity: 40,
+      creatorId: mainVendorOwner.id,
+      status: EventStatus.ACTIVE,
+      ticketPrice: 35000,
+      contactName: "Admin Mabar",
+      contactPhone: "081122223333",
+      imageUrl: "/venueimg/Thumbnail Event Komunitas Badminton.jpg",
+      ticketTiers: {
+        create: [
+          {
+            name: "Slot Pemain Reguler",
+            stock: 40,
+            price: 35000,
+            description: "Tiket jaminan main. Mengcover patungan lapangan.",
+          },
+        ],
+      },
     },
   });
 
-  // 13. CREATE CART ITEM
-  await prisma.cartItem.create({
+  // Event 3: Masterclass Badminton
+  await prisma.event.create({
     data: {
-      userId: customerUser.id,
-      fieldId: field1.id,
-      date: new Date(),
-      startHour: 20,
-      endHour: 21,
+      title: "Masterclass Intensif: Teknik Smash & Footwork BWF",
+      description:
+        "Kami menghadirkan mantan asisten pelatih Pelatnas untuk membedah biomekanika gerakan badminton yang benar.",
+      location: "Bekasi Smash Arena",
+      city: "Bekasi",
+      district: "Bekasi Selatan",
+      category: "Olahraga",
+      topic: "Badminton",
+      date: new Date("2026-07-05T08:00:00Z"),
+      endDate: new Date("2026-07-05T12:00:00Z"),
+      startHour: 8,
+      endHour: 12,
+      capacity: 16,
+      creatorId: mainVendorOwner.id,
+      status: EventStatus.ACTIVE,
+      ticketPrice: 150000,
+      contactName: "Coach Budi",
+      contactPhone: "085566667777",
+      imageUrl: "/venueimg/Lapangan Bulu Tangkis Tampak Depan.jpg",
+      ticketTiers: {
+        create: [
+          {
+            name: "Masterclass Access",
+            stock: 12,
+            price: 150000,
+            description: "Akses penuh 4 jam latihan, modul, dan konsumsi.",
+          },
+        ],
+      },
     },
   });
 
-  // 14. CREATE NOTIFICATION
-  await prisma.notification.create({
-    data: {
-      userId: vendorOwner.id,
-      type: NotificationType.BOOKING_NEW,
-      target: NotificationTarget.VENDOR,
-      title: "Pesanan Baru!",
-      message: `${customerUser.name} telah memesan lapangan ${field1.name}`,
-      data: { orderId: order.id },
-    },
+  // 6. ORDER & NOTIFICATION
+  const badmintonField = await prisma.field.findFirst({
+    where: { name: "Court 1 (VIP)" },
   });
 
-  console.log("Seeding selesai!");
+  if (badmintonField) {
+    const order = await prisma.order.create({
+      data: {
+        userId: mainCustomer.id,
+        totalAmount: 75000,
+        status: OrderStatus.PAID,
+        customerName: mainCustomer.name,
+        customerPhone: mainCustomer.phone,
+        customerEmail: mainCustomer.email,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        items: {
+          create: {
+            fieldId: badmintonField.id,
+            date: new Date(),
+            startHour: 19,
+            endHour: 20,
+            price: 75000,
+          },
+        },
+      },
+    });
+
+    await prisma.payment.create({
+      data: {
+        orderId: order.id,
+        amount: 75000,
+        method: "QRIS",
+        status: PaymentStatus.SUCCESS,
+        paidAt: new Date(),
+        expiredAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
+      },
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: mainVendorOwner.id,
+        type: NotificationType.BOOKING_NEW,
+        target: NotificationTarget.VENDOR,
+        title: "Pesanan Baru Masuk!",
+        message: `${mainCustomer.name} telah memesan lapangan ${badmintonField.name}`,
+        data: { orderId: order.id },
+      },
+    });
+  }
+
+  console.log("Seeding selesai! Path gambar sudah diarahin ke /venueimg/");
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("Gagal melakukan seeding:", e);
     process.exit(1);
   })
   .finally(async () => {

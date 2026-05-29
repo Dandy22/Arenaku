@@ -285,10 +285,7 @@ export default function HomePage() {
                   svgFileName = "MiniSoccer.svg";
                   displayLabel = "Mini Soccer";
                   break;
-                case "SOCCER":
-                  svgFileName = "SepakBola.svg";
-                  displayLabel = "Sepak Bola";
-                  break;
+
                 case "BADMINTON":
                   svgFileName = "BuluTangkis.svg";
                   displayLabel = "Bulu Tangkis";

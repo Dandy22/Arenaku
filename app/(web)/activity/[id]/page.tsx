@@ -223,15 +223,13 @@ export default function EventDetailPage() {
       key: "additional",
       title: "Informasi Tambahan",
       content: event.additionalInfo,
-      icon: (
-        <HiOutlineInformationCircle size={18} className="text-purple-500" />
-      ),
+      icon: <HiOutlineInformationCircle size={18} className="text-primary" />,
     },
     {
       key: "terms",
       title: "Syarat dan Ketentuan",
       content: event.termsConditions,
-      icon: <HiOutlineDocumentText size={18} className="text-purple-500" />,
+      icon: <HiOutlineDocumentText size={18} className="text-primary" />,
     },
     event.contactName
       ? {
@@ -240,7 +238,7 @@ export default function EventDetailPage() {
           content: `Nama: ${event.contactName}${
             event.contactEmail ? `\nEmail: ${event.contactEmail}` : ""
           }${event.contactPhone ? `\nPhone: ${event.contactPhone}` : ""}`,
-          icon: <HiOutlinePhone size={18} className="text-purple-500" />,
+          icon: <HiOutlinePhone size={18} className="text-primary" />,
         }
       : null,
   ].filter(Boolean);
@@ -251,7 +249,7 @@ export default function EventDetailPage() {
       <div className="mb-6">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-purple-600 transition-colors cursor-pointer w-fit">
+          className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-primary transition-colors cursor-pointer w-fit">
           <HiArrowLeft size={16} /> Kembali
         </button>
       </div>
@@ -380,7 +378,7 @@ export default function EventDetailPage() {
                 <p className="text-sm text-slate-600 flex items-center gap-1.5 font-medium">
                   <HiOutlineMapPin
                     size={18}
-                    className="text-purple-500 shrink-0"
+                    className="text-primary shrink-0"
                   />
                   {event.location}
                 </p>
@@ -420,7 +418,7 @@ export default function EventDetailPage() {
                   <p className="text-[11px] text-slate-400 mb-1 font-medium">
                     Kategori Aktivitas
                   </p>
-                  <span className="px-3 py-1.5 rounded-lg text-xs font-semibold text-purple-600 bg-purple-50 inline-block">
+                  <span className="px-3 py-1.5 rounded-lg text-xs font-semibold text-primary bg-purple-50 inline-block">
                     {formatDisplayCategory(event.category)}
                   </span>
                 </div>
@@ -430,7 +428,7 @@ export default function EventDetailPage() {
                     className={`text-xs font-semibold px-3 py-1.5 rounded-lg ${
                       isExpired
                         ? "bg-red-50 text-red-600"
-                        : "bg-purple-50 text-purple-600"
+                        : "bg-purple-50 text-primary"
                     }`}>
                     {isExpired ? "Event Berakhir" : `Sisa Waktu ${timeLeft}`}
                   </span>
@@ -448,7 +446,7 @@ export default function EventDetailPage() {
                     Diselenggarakan oleh
                   </p>
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs font-bold">
+                    <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
                       {getInitials(event.creator?.name)}
                     </div>
                     <p className="text-base font-bold text-slate-800">
@@ -459,37 +457,47 @@ export default function EventDetailPage() {
 
                 {/* Waktu & Lokasi */}
                 <div className="space-y-2 pt-2">
-                  <div className="text-[13px] text-slate-500 font-medium flex items-center gap-2">
+                  <div className="text-[13px] text-slate-500 font-medium flex items-center gap-2 flex-wrap">
                     <HiOutlineClock
                       size={16}
-                      className="text-purple-500 shrink-0"
+                      className="text-primary shrink-0"
                     />
-                    {new Date(event.date).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                    , {event.startHour}:00 PM{" "}
+
+                    <span>
+                      {new Date(event.date).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "short", // <-- Ubah jadi short
+                        year: "numeric",
+                      })}
+                      , {String(event.startHour).padStart(2, "0")}:00 WIB
+                    </span>
+
                     <svg
                       viewBox="64 64 896 896"
                       focusable="false"
                       width="12px"
                       height="12px"
                       fill="currentColor"
-                      className="text-slate-500">
+                      className="text-slate-400 mx-0.5 shrink-0">
                       <path d="M873.1 596.2l-164-208A32 32 0 00684 376h-64.8c-6.7 0-10.4 7.7-6.3 13l144.3 183H152c-4.4 0-8 3.6-8 8v60c0 4.4 3.6 8 8 8h695.9c26.8 0 41.7-30.8 25.2-51.8z"></path>
-                    </svg>{" "}
-                    {new Date(event.date).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                    , {event.endHour}:00 PM
+                    </svg>
+
+                    <span>
+                      {new Date(event.endDate || event.date).toLocaleDateString(
+                        "id-ID",
+                        {
+                          day: "numeric",
+                          month: "short", // <-- Ubah jadi short juga
+                          year: "numeric",
+                        },
+                      )}
+                      , {String(event.endHour).padStart(2, "0")}:00 WIB
+                    </span>
                   </div>
                   <div className="text-[13px] text-slate-500 font-medium flex items-start gap-2">
                     <HiOutlineMapPin
                       size={16}
-                      className="text-purple-500 shrink-0 mt-0.5"
+                      className="text-primary shrink-0 mt-0.5"
                     />
                     <span>{event.location}</span>
                   </div>
@@ -569,7 +577,7 @@ export default function EventDetailPage() {
                     </span>
                   </div>
                   <div className="flex justify-between items-center mt-1">
-                    <span className="text-[10px] px-3 py-1.5 rounded-md font-bold bg-purple-50 text-purple-600 uppercase">
+                    <span className="text-[10px] px-3 py-1.5 rounded-md font-bold bg-purple-50 text-primary uppercase">
                       Tersedia
                     </span>
                     {isTicketUnavailable || isVendorView ? (
