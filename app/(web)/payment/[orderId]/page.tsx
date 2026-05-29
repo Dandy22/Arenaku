@@ -154,21 +154,52 @@ export default function PaymentPage() {
       </div>
 
       {/* Detail Pesanan tetap tampil di bawah */}
+      {/* Detail Pesanan tetap tampil di bawah */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-gray-800 mb-4">Detail Pesanan</h2>
+
+        {/* Render Booking Lapangan */}
         {order.items?.map((item: any) => (
           <div
             key={item.id}
-            className="flex justify-between items-center py-3 border-b last:border-0">
+            className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0">
             <div>
-              <p className="font-semibold">{item.field?.name}</p>
+              <p className="font-semibold text-gray-800">
+                {item.field?.name || "Booking Lapangan"}
+              </p>
               <p className="text-xs text-gray-400">{item.field?.venue?.name}</p>
             </div>
-            <p className="font-bold">
+            <p className="font-bold text-gray-800">
               Rp {item.price?.toLocaleString("id-ID")}
             </p>
           </div>
         ))}
+
+        {/* Render Tiket Event */}
+        {order.eventTickets?.map((ticket: any) => (
+          <div
+            key={ticket.id}
+            className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0">
+            <div>
+              <p className="font-semibold text-gray-800">
+                {ticket.event?.title || "Tiket Event"}
+              </p>
+              <p className="text-xs text-gray-400">
+                {ticket.quantity}x {ticket.ticketTier?.name || "Tiket Standar"}
+              </p>
+            </div>
+            <p className="font-bold text-gray-800">
+              Rp {ticket.totalPrice?.toLocaleString("id-ID")}
+            </p>
+          </div>
+        ))}
+
+        {/* Kalau dua-duanya kosong (Jaga-jaga) */}
+        {!order.items?.length && !order.eventTickets?.length && (
+          <p className="text-sm text-gray-400 italic">
+            Detail item tidak ditemukan.
+          </p>
+        )}
       </div>
     </div>
   );
