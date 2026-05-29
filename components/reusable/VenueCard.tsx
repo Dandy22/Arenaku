@@ -128,10 +128,8 @@ export default function VenueCard({
 
         {/* Info */}
         <p className="flex items-center gap-1 text-[10px] md:text-xs text-slate-400 font-medium mt-0.5 truncate">
-          <HiHome className="shrink-0 text-slate-400 w-3 h-3 md:w-[14px] md:h-[14px]" />
-
           <span className="truncate">
-            {venue.city} · {venue.fields?.[0]?.type || "Olahraga"} ·
+            LAPANGAN {venue.fields?.[0]?.type || "Olahraga"} ·
             <span className="font-semibold text-primary ml-1">
               {venue.fields?.length || 0} Lapangan
             </span>

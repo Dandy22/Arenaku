@@ -66,7 +66,7 @@ export default function HomePage() {
   };
 
   return (
-    <div>
+    <div className="overflow-x-hidden">
       {/* HERO SECTIONS */}
       <section className="relative h-72 md:h-96 overflow-hidden">
         <img

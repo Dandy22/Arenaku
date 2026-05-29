@@ -126,7 +126,7 @@ export default function LoginContent() {
               alt="Logo ArenaKu"
               width={160}
               height={160}
-              src="LOGO-ARENAKU-PURPLE.svg"
+              src="/LOGO-ARENAKU-PURPLE.svg"
             />
           </div>
           <div className="flex flex-col gap-1 mb-6">
