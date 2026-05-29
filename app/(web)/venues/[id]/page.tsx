@@ -429,7 +429,7 @@ export default function VenueDetailPage() {
         <div className="space-y-12">
           {/* CARD LAPANGAN DIMUNCULKAN */}
           <div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {venue.fields?.map((field) => (
                 <FieldCard
                   key={field.id}
