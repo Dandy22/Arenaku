@@ -410,7 +410,7 @@ export default function EventDetailPage() {
 
         {/* R I G H T   S I D E (DIUBAH DISINI: Sticky Wrapper dengan dua bagian Flex) */}
         <div className="w-full lg:w-[380px] shrink-0">
-          <div className="lg:sticky lg:top-24 flex flex-col shadow-sm rounded-2xl bg-white border border-slate-200 max-h-[calc(100vh-120px)] overflow-hidden">
+          <div className="lg:sticky lg:top-24 flex flex-col shadow-sm rounded-2xl bg-white border border-slate-200 h-fit mb-8">
             {/* --- BAGIAN ATAS: Informasi (Tetap Diam / Tidak Ter-Scroll) --- */}
             <div className="p-5 pb-6 border-b border-slate-200 shrink-0">
               <div className="flex items-end justify-between mb-4">
@@ -504,8 +504,7 @@ export default function EventDetailPage() {
                 </div>
               </div>
             </div>
-
-            <div className="p-5 overflow-y-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="p-5 overflow-y-auto flex-1">
               {effectiveTicketTiers.length > 0 ? (
                 <div className="space-y-4">
                   {effectiveTicketTiers.map((ticket: any) => (

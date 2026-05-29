@@ -26,7 +26,12 @@ function createTransport() {
 }
 
 export async function sendVerificationEmail(email: string, token: string) {
-  const verificationUrl = `http://localhost:3000/api/auth/verify-email?token=${encodeURIComponent(
+  const baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    (process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000");
+  const verificationUrl = `${baseUrl}/api/auth/verify-email?token=${encodeURIComponent(
     token,
   )}`;
 

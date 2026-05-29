@@ -294,10 +294,36 @@ export default function DashboardLayout({
       }
       setCurrentUser(parsedUser);
 
-      // Kita panggil fetch yang butuh token di sini agar aman
       fetchNotifications();
+
       if (parsedUser.role === "VENDOR") {
-        fetchVendorRole();
+        // 🔥 AUTO-KICK LOGIC: Fetch status real-time dari database
+        api
+          .get("/vendor/profile")
+          .then((res) => {
+            const realUser = res.data.user;
+
+            // Jika backend memvonis dia sudah jadi CUSTOMER (akibat di-kick/dihapus)
+            if (realUser && realUser.role === "CUSTOMER") {
+              // 1. Update localStorage dengan data terbaru
+              localStorage.setItem("user", JSON.stringify(realUser));
+              // 2. Tampilkan pesan
+              alert(
+                "Akses Vendor Anda telah dicabut. Anda akan dialihkan ke halaman utama.",
+              );
+              // 3. Refresh & tendang ke beranda
+              window.location.href = "/";
+              return;
+            }
+
+            // Jika masih VENDOR beneran, simpan role owner/staff-nya
+            if (res.data.vendorRole) {
+              setVendorRole(res.data.vendorRole);
+            }
+          })
+          .catch((error) => {
+            console.error("Gagal memverifikasi status vendor", error);
+          });
       }
     } catch {
       router.push("/login");
@@ -305,7 +331,7 @@ export default function DashboardLayout({
     }
 
     setMounted(true);
-  }, [fetchNotifications, fetchVendorRole, initAuth, router]);
+  }, [fetchNotifications, initAuth, router]);
 
   const handleLogout = () => {
     clearAuth();

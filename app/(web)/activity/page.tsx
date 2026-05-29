@@ -15,9 +15,10 @@ import EventCard from "@/components/reusable/EventCard";
 // Kategori disesuaikan menggunakan asset SVG dari Landing Page
 const SPORT_CATEGORIES = [
   { label: "Semua", value: "", img: "/Semua.svg" },
-  { label: "Mini Soccer", value: "MINI_SOCCER", img: "/MiniSoccer.svg" },
   { label: "Futsal", value: "FUTSAL", img: "/SepakBola.svg" },
   { label: "Bulu Tangkis", value: "BADMINTON", img: "/BuluTangkis.svg" },
+
+  { label: "Mini Soccer", value: "MINI_SOCCER", img: "/MiniSoccer.svg" },
   { label: "Basket", value: "BASKETBALL", img: "/Basket.svg" },
   { label: "Tenis", value: "TENNIS", img: "/Tenis.svg" },
   { label: "Bola Voli", value: "VOLLEYBALL", img: "/Bola Voli.svg" },

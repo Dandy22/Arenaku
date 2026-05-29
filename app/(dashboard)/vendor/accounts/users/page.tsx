@@ -19,6 +19,7 @@ import { useAuthStore } from "@/lib/store/auth.store"; // 👉 Import auth store
 
 interface User {
   id: string;
+  memberId: string;
   name: string;
   email: string;
   phone: string;
@@ -87,11 +88,11 @@ export default function ManageUsersPage() {
 
   const [deleteModal, setDeleteModal] = useState<{
     open: boolean;
-    userId: string | null;
+    memberId: string | null; // 🔥 Ganti userId jadi memberId
     userName: string;
   }>({
     open: false,
-    userId: null,
+    memberId: null,
     userName: "",
   });
 
@@ -111,6 +112,7 @@ export default function ManageUsersPage() {
 
       const formattedUsers: User[] = membersData.map((m: any) => ({
         id: m.user.id,
+        memberId: m.id, // 🔥 TAMBAHKAN INI
         name: m.user.name,
         email: m.user.email,
         phone: m.user.phone || "-",
@@ -130,9 +132,17 @@ export default function ManageUsersPage() {
     fetchMembers();
   }, []);
 
-  const handleDeleteUser = (id: string) => {
-    setUsers(users.filter((u) => u.id !== id));
-    message.success("Akses pengguna berhasil dicabut");
+  const handleDeleteUser = async (memberId: string) => {
+    try {
+      // 1. Tembak API Backend beneran buat hapus data di Database
+      await api.delete(`/vendor/members/${memberId}`);
+
+      // 2. Kalau sukses, baru hapus dari tampilan layar
+      setUsers(users.filter((u) => u.memberId !== memberId));
+      message.success("Pengguna berhasil dihapus!");
+    } catch (error: any) {
+      message.error(error.response?.data?.error || "Gagal menghapus pengguna");
+    }
   };
 
   const handleSaveRole = async () => {
@@ -233,12 +243,17 @@ export default function ManageUsersPage() {
               Detail
             </Button>
 
-            {/* 👉 Hanya OWNER yang bisa melihat tombol hapus, dan tidak bisa menghapus diri sendiri */}
+            {/* Tombol Hapus */}
             {currentUserRole === "OWNER" && !isSelf && r.role !== "OWNER" && (
               <Button
                 danger
                 onClick={() =>
-                  setDeleteModal({ open: true, userId: r.id, userName: r.name })
+                  // 🔥 Gunakan memberId, bukan id
+                  setDeleteModal({
+                    open: true,
+                    memberId: r.memberId,
+                    userName: r.name,
+                  })
                 }
                 icon={<HiOutlineTrash className="text-[18px]" />}
                 className="!h-9 !rounded-full !border-[#F1F5F9] !bg-white !shadow-none !text-red-500 hover:!bg-red-50 hover:!border-red-200 !font-semibold">
@@ -414,8 +429,9 @@ export default function ManageUsersPage() {
         dataName={deleteModal.userName}
         onCancel={() => setDeleteModal({ ...deleteModal, open: false })}
         onDelete={() => {
-          if (deleteModal.userId) handleDeleteUser(deleteModal.userId);
-          setDeleteModal({ open: false, userId: null, userName: "" });
+          // 🔥 Panggil fungsi delete dengan memberId
+          if (deleteModal.memberId) handleDeleteUser(deleteModal.memberId);
+          setDeleteModal({ open: false, memberId: null, userName: "" });
         }}
       />
       {/* Modal Undang Pengguna */}
