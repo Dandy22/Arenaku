@@ -85,8 +85,32 @@ export const venueService = {
     return venueRepository.findByVendorId(vendorOrg.id);
   },
 
+  // 🔥 UPDATE DI SINI: getVenueById mengambil data booking hari ini
   async getVenueById(id: string) {
-    const venue = await venueRepository.findById(id);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set ke awal hari ini
+
+    const venue = await prisma.venue.findUnique({
+      where: { id },
+      include: {
+        ratings: { include: { user: true } },
+        images: true,
+        fields: {
+          include: {
+            images: true,
+            // Ambil orderItems (jadwal booking) khusus hari ini yang sudah dibayar
+            orderItems: {
+              where: {
+                date: { gte: today },
+                order: { status: "PAID" },
+              },
+              select: { startHour: true },
+            },
+          },
+        },
+      },
+    });
+
     if (!venue) throw new Error("Venue not found");
 
     const ratingInfo = await venueRepository.getAverageRating(id);

@@ -251,8 +251,7 @@ export default function AdminEventsPage() {
     {
       title: "Aksi",
       key: "action",
-      fixed: "right",
-      align: "right",
+      align: "left",
       width: 220,
       render: (_, record) => (
         <div className="flex items-center justify-end gap-2">

@@ -63,11 +63,20 @@ export default function VenueCard({
 
   const totalHours = Math.max(0, closeHour - openHour);
 
-  // semua jam ditampilkan
-  const slots = Array.from({ length: totalHours }, (_, i) => openHour + i);
-
   // Ambil lapangan pertama untuk dijadikan preview
   const firstField = venue.fields?.[0];
+
+  // 🔥 LOGIKA SINKRONISASI JADWAL
+  const currentHour = new Date().getHours();
+  // Ambil data booked jika ada dari backend
+  const bookedSlots =
+    firstField?.orderItems?.map((oi: any) => oi.startHour) || [];
+
+  // Hanya tampilkan jam yang BELUM lewat DAN BELUM di-booking
+  const availableSlots = Array.from(
+    { length: totalHours },
+    (_, i) => openHour + i,
+  ).filter((h) => h > currentHour && !bookedSlots.includes(h));
 
   return (
     <Link
@@ -156,7 +165,6 @@ export default function VenueCard({
         {/* PREVIEW JAM & INFO LAPANGAN */}
         {showFieldPreview && firstField && (
           <div className="mt-2 pt-2 border-t border-gray-50">
-            {/* INI FIX-NYA: Ambil murni nama lapangannya (cth: Lapangan 1 VIP) */}
             <h4 className="font-bold text-black text-[12px] sm:text-[14px] mb-0.5 leading-snug">
               {firstField.name}
             </h4>
@@ -168,30 +176,35 @@ export default function VenueCard({
               {firstField.length || 0} x L {firstField.width || 0}
             </p>
 
-            <div className="grid grid-cols-4 md:grid-cols-5 gap-1.5 mt-1">
-              {slots.map((h) => (
-                <button
-                  key={h}
-                  type="button"
-                  onClick={(e) => {
-                    // Mencegah outer <Link> ke venue.id ketrigger
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    // Langsung redirect spesifik ke jadwal lapangan tersebut
-                    if (firstField.id) {
-                      router.push(`/venues/${venue.id}/${firstField.id}`);
-                    }
-                  }}
-                  className={`relative z-10 w-full text-center px-2 py-1.5 rounded-lg border text-[10px] font-medium transition-all ${
-                    isOpen
-                      ? "border-purple-200 text-purple-600 bg-white hover:bg-purple-600 hover:text-white hover:border-purple-600 cursor-pointer"
-                      : "border-slate-200 text-slate-400 bg-slate-50 cursor-not-allowed"
-                  }`}>
-                  {String(h).padStart(2, "0")}:00
-                </button>
-              ))}
-            </div>
+            {/* Render Grid Jam */}
+            {availableSlots.length > 0 ? (
+              <div className="grid grid-cols-4 md:grid-cols-5 gap-1.5 mt-1">
+                {/* Dibatasi maksimal 10 slot agar UI card tidak terlalu memanjang ke bawah */}
+                {availableSlots.slice(0, 10).map((h) => (
+                  <button
+                    key={h}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (firstField.id) {
+                        router.push(`/venues/${venue.id}/${firstField.id}`);
+                      }
+                    }}
+                    className={`relative z-10 w-full text-center px-2 py-1.5 rounded-lg border text-[10px] font-medium transition-all ${
+                      isOpen
+                        ? "border-purple-200 text-purple-600 bg-white hover:bg-purple-600 hover:text-white hover:border-purple-600 cursor-pointer"
+                        : "border-slate-200 text-slate-400 bg-slate-50 cursor-not-allowed"
+                    }`}>
+                    {String(h).padStart(2, "0")}:00
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] md:text-xs text-slate-400 italic font-medium mt-3 text-center bg-slate-50 py-2 rounded-lg border border-slate-100">
+                Jadwal hari ini sudah penuh / lewat
+              </p>
+            )}
           </div>
         )}
 

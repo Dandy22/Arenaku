@@ -188,7 +188,7 @@ export default function AdminVendorsPage() {
       key: "aksi",
       align: "left",
       render: (_, record) => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-start gap-2">
           <Button
             onClick={() => {
               setSelectedVendor(record);

@@ -286,36 +286,6 @@ export default function EventDetailPage() {
                   className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 transition flex items-center justify-center cursor-pointer text-slate-600">
                   <HiOutlineLink size={16} />
                 </button>
-                {/* Dummy FB Icon */}
-                <button className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 transition flex items-center justify-center cursor-pointer text-white">
-                  <svg
-                    width="14"
-                    height="14"
-                    fill="currentColor"
-                    viewBox="0 0 24 24">
-                    <path d="M22.675 0H1.325C.593 0 0 .593 0 1.325v21.351C0 23.407.593 24 1.325 24H12.82v-9.294H9.692v-3.622h3.128V8.413c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12V24h6.116c.73 0 1.323-.593 1.323-1.325V1.325C24 .593 23.407 0 22.675 0z" />
-                  </svg>
-                </button>
-                {/* Dummy X Icon */}
-                <button className="w-8 h-8 rounded-full bg-black hover:bg-slate-800 transition flex items-center justify-center cursor-pointer text-white">
-                  <svg
-                    width="14"
-                    height="14"
-                    fill="currentColor"
-                    viewBox="0 0 24 24">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                  </svg>
-                </button>
-                {/* Dummy WA Icon */}
-                <button className="w-8 h-8 rounded-full bg-green-500 hover:bg-green-600 transition flex items-center justify-center cursor-pointer text-white">
-                  <svg
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    viewBox="0 0 24 24">
-                    <path d="M12.031 2c-5.5 0-9.972 4.475-9.972 9.976 0 1.758.455 3.473 1.322 4.98L2 22l5.166-1.353c1.455.808 3.101 1.233 4.865 1.233 5.498 0 9.969-4.475 9.969-9.976S17.53 2 12.031 2zm5.498 14.368c-.227.638-1.322 1.205-1.821 1.261-.468.053-1.077.067-1.808-.178-.458-.153-1.096-.381-2.22-1.055-1.503-.902-2.457-2.433-2.528-2.528-.071-.096-1.503-2.001-1.503-3.818 0-1.817.946-2.712 1.282-3.045.337-.333.727-.419.968-.419.24 0 .48.001.693.01.235.011.551-.095.862.664.325.808 1.096 2.673 1.192 2.864.095.192.161.419.019.706-.142.287-.213.468-.426.719-.213.251-.444.536-.639.719-.213.21-.439.439-.199.827.24.388 1.066 1.705 2.261 2.704 1.545 1.29 2.825 1.69 3.223 1.882.397.192.628.163.864-.096.236-.259.988-1.15 1.253-1.545.265-.395.53-.328.892-.192.362.136 2.29.988 2.687 1.18.397.192.662.287.758.45.096.163.096.945-.131 1.583z" />
-                  </svg>
-                </button>
               </div>
             </div>
           </div>

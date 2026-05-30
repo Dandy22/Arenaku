@@ -118,6 +118,29 @@ model User {
   vendorRatings     VendorRating[]
 }
 
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING // Opsional: Saat admin sedang ngecek/transfer
+  SUCCESS
+  REJECTED
+}
+
+model Withdrawal {
+  id              String           @id @default(cuid())
+  vendorId        String
+  amount          Int
+  status          WithdrawalStatus @default(PENDING)
+  bankName        String
+  accountNumber   String
+  accountName     String
+  adminNote       String?          // Alasan jika ditolak/pesan admin
+  proofUrl        String?          // URL gambar bukti transfer dari admin (opsional)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  vendor          Vendor           @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+}
+
 // Menggantikan VendorProfile menjadi entitas Organisasi
 model Vendor {
   id                String       @id @default(cuid())
@@ -129,6 +152,7 @@ model Vendor {
   bankName          String       @default("")
   bankAccountNumber String       @default("")
   bankAccountName   String       @default("")
+  withdrawals     Withdrawal[]
   
   // Saldo vendor
   balance           Int          @default(0)
@@ -281,6 +305,7 @@ model Order {
   customerPhone String      @default("")
   customerEmail String      @default("")
   notes         String      @default("")
+  cancelReason  String?
   createdAt     DateTime    @default(now())
   expiresAt     DateTime    // Waktu kedaluwarsa payment (24 jam dari creation)
 

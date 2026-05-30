@@ -37,10 +37,16 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { action } = body;
+    // 🔥 Tangkap cancelReason dari frontend
+    const { action, cancelReason } = body;
 
     if (action === "request-refund") {
-      const order = await orderService.requestRefund(user.userId, id);
+      // 🔥 Oper cancelReason ke dalam service
+      const order = await orderService.requestRefund(
+        user.userId,
+        id,
+        cancelReason,
+      );
       return NextResponse.json(order);
     }
 

@@ -84,6 +84,7 @@ export const orderRepository = {
           },
         },
         payment: true,
+        vendorRating: true, // 🔥 WAJIB TAMBAH INI
       },
     }),
 
@@ -103,6 +104,7 @@ export const orderRepository = {
           },
         },
         payment: true,
+        vendorRating: true, // 🔥 WAJIB TAMBAH INI
       },
     }),
 
@@ -127,6 +129,7 @@ export const orderRepository = {
           },
         },
         payment: true,
+        vendorRating: true, // 🔥 WAJIB TAMBAH INI
       },
     }),
 
@@ -145,6 +148,7 @@ export const orderRepository = {
           },
         },
         payment: true,
+        vendorRating: true, // 🔥 WAJIB TAMBAH INI
       },
       orderBy: { createdAt: "desc" },
     }),

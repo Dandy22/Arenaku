@@ -136,10 +136,8 @@ export default function VendorVenuesPage() {
     setDrawerOpen(true);
   };
 
-  // ✅ Fungsi baru untuk Toggle Buka/Tutup Venue cepat
   const handleToggleStatus = async (venueId: string, checked: boolean) => {
     try {
-      // Optimistic update UI biar kerasa cepet
       setVenues((prev) =>
         prev.map((v) => (v.id === venueId ? { ...v, isOpen: checked } : v)),
       );
@@ -147,7 +145,7 @@ export default function VendorVenuesPage() {
       message.success(checked ? "Venue dibuka" : "Venue ditutup sementara");
     } catch (err) {
       message.error("Gagal mengubah status venue");
-      fetchVenues(); // Revert kalau gagal
+      fetchVenues();
     }
   };
 
@@ -179,7 +177,6 @@ export default function VendorVenuesPage() {
         await api.patch(`/venues/${editVenue.id}`, payload);
         message.success("Venue berhasil diperbarui");
       } else {
-        // Default saat pertama dibuat langsung status Buka (isOpen: true)
         await api.post("/venues", { ...payload, isOpen: true });
         message.success("Venue berhasil ditambahkan");
       }
@@ -227,7 +224,6 @@ export default function VendorVenuesPage() {
         </span>
       ),
     },
-    // INI TAMBAHAN KOLOM STATUSNYA
     {
       title: "Status",
       key: "status",
@@ -277,7 +273,8 @@ export default function VendorVenuesPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      {/* 🔥 FIX: FLEX-COL DI MOBILE, FLEX-ROW DI DESKTOP */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Venue Saya</h1>
           <p className="text-gray-500 text-sm mt-1">
@@ -289,8 +286,8 @@ export default function VendorVenuesPage() {
           icon={<HiOutlinePlus className="text-[18px]" />}
           onClick={openCreate}
           className="
-            !h-10 !rounded-full !border-[#F1F5F9]   !text-white !font-semibold !shadow-none !bg-[#7C3AED]
-            hover:!bg-[#612dbb] [&_.ant-btn-icon]:!flex [&_.ant-btn-icon]:!items-center
+            w-full sm:w-auto !h-11 sm:!h-10 !px-6 !rounded-full !border-none !text-white !font-bold !text-sm !shadow-none !bg-[#7C3AED]
+            hover:!bg-[#612dbb] flex items-center justify-center cursor-pointer
           ">
           Tambah Venue
         </Button>
@@ -322,14 +319,14 @@ export default function VendorVenuesPage() {
           <div className="flex gap-4 pt-2 pb-4">
             <Button
               onClick={() => setDrawerOpen(false)}
-              className="flex-1 !h-12 !rounded-xl !font-semibold">
+              className="flex-1 !h-12 !rounded-xl !font-semibold cursor-pointer">
               Batal
             </Button>
             <Button
               type="primary"
               onClick={handleSubmit}
               loading={submitting}
-              className="flex-1 !h-12 !rounded-xl !bg-[#7C3AED] !font-bold !border-none">
+              className="flex-1 !h-12 !rounded-xl !bg-[#7C3AED] !font-bold !border-none cursor-pointer">
               {editVenue ? "Simpan Perubahan" : "Buat Venue"}
             </Button>
           </div>
@@ -410,7 +407,6 @@ export default function VendorVenuesPage() {
             </Form.Item>
           </Form.Item>
 
-          {/* JAM OPERASIONAL */}
           <div className="flex gap-4">
             <Form.Item
               name="openHour"
@@ -477,7 +473,6 @@ export default function VendorVenuesPage() {
             />
           </Form.Item>
 
-          {/* KOORDINAT YANG TADI HILANG */}
           <div className="flex gap-4">
             <Form.Item
               name="latitude"

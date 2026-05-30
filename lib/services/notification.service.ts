@@ -7,6 +7,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { notificationRepository } from "@/lib/repositories/notification.repository";
+// 🔥 IMPORT EMAIL SERVICE KAMU DI SINI
+import { sendBookingInvoice } from "@/lib/mail";
 
 // Helper: Get all admin user IDs
 async function getAdminUserIds(): Promise<string[]> {
@@ -134,6 +136,10 @@ export async function notifyPaymentSuccess(orderId: string) {
           field: { include: { venue: { include: { vendor: true } } } },
         },
       },
+      // 🔥 Pastikan ini di-include agar data tiket event masuk ke Email Invoice
+      eventTickets: {
+        include: { event: true },
+      },
       user: true,
       payment: true,
     },
@@ -177,6 +183,15 @@ export async function notifyPaymentSuccess(orderId: string) {
       message: `Pembayaran untuk order #${orderId.slice(-6).toUpperCase()} telah berhasil.`,
       data: { orderId },
     });
+
+    // 🔥 LOGIC BARU: KIRIM EMAIL INVOICE KE CUSTOMER SAAT LUNAS
+    if (order.customerEmail) {
+      try {
+        await sendBookingInvoice(order.customerEmail, order);
+      } catch (err) {
+        console.error("Gagal kirim email invoice:", err);
+      }
+    }
   }
 }
 
@@ -453,6 +468,35 @@ export async function notifyRefundRequest(orderId: string) {
   }
 }
 
+// ============================================================
+// TRIGGER: Hasil Proses Refund dari Admin
+// ============================================================
+export async function notifyRefundResult(
+  orderId: string,
+  status: "ACCEPT" | "REJECT",
+  adminNote: string,
+) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { user: true },
+  });
+
+  if (!order || !order.userId) return;
+
+  const isAccepted = status === "ACCEPT";
+
+  await notificationRepository.create({
+    userId: order.userId,
+    type: "ORDER_CANCELLED", // Atau buat tipe baru REFUND_RESULT jika sudah ada di enum
+    target: "USER",
+    title: isAccepted ? "Refund Diterima" : "Refund Ditolak",
+    message: isAccepted
+      ? `Pengajuan refund order #${orderId.slice(-6).toUpperCase()} disetujui. Catatan: ${adminNote}`
+      : `Pengajuan refund order #${orderId.slice(-6).toUpperCase()} ditolak. Pesanan Anda tetap Lunas. Catatan: ${adminNote}`,
+    data: { orderId },
+  });
+}
+
 export const notificationService = {
   notifyBookingNew,
   notifyPaymentSuccess,
@@ -465,4 +509,5 @@ export const notificationService = {
   notifyEventNew,
   notifyUserSuspended,
   notifyRefundRequest,
+  notifyRefundResult,
 };

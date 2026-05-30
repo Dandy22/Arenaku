@@ -169,10 +169,17 @@ export const orderService = {
     if (order.userId !== userId) {
       throw new Error("You are not authorized to view this order");
     }
-    return order;
+
+    // Cek apakah order ini sudah di-review
+    const { ratingRepository } =
+      await import("@/lib/repositories/rating.repository");
+    const vendorRating = await ratingRepository.checkExistingRating(orderId);
+
+    // Kirim order beserta info vendorRating ke frontend
+    return { ...order, vendorRating };
   },
 
-  async requestRefund(userId: string, orderId: string) {
+  async requestRefund(userId: string, orderId: string, cancelReason?: string) {
     const order = await orderRepository.findById(orderId);
     if (!order) throw new Error("Order not found");
     if (order.userId !== userId) {
@@ -206,14 +213,49 @@ export const orderService = {
       );
     }
 
-    // Update status to REFUND_REQUESTED
-    const updatedOrder = await orderRepository.updateStatus(
-      orderId,
-      "REFUND_REQUESTED",
-    );
+    // Simpan status REFUND_REQUESTED beserta alasannya
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: "REFUND_REQUESTED",
+        cancelReason: cancelReason || "Tidak ada alasan pembatalan",
+      },
+    });
 
     // Notify admin
     await notificationService.notifyRefundRequest(orderId);
+
+    return updatedOrder;
+  },
+
+  // 🔥 FUNGSI BARU UNTUK ADMIN MEMPROSES REFUND
+  async processRefundDecision(
+    orderId: string,
+    status: "ACCEPT" | "REJECT",
+    adminNote: string,
+  ) {
+    // 1. Cek order
+    const order = await orderRepository.findById(orderId);
+    if (!order) throw new Error("Order not found");
+    if (order.status !== "REFUND_REQUESTED") {
+      throw new Error(
+        "Hanya pesanan berstatus REFUND_REQUESTED yang bisa diproses",
+      );
+    }
+
+    // 2. Tentukan status baru (Jika diterima jadi REFUNDED, jika ditolak kembali jadi PAID)
+    const newStatus = status === "ACCEPT" ? "REFUNDED" : "PAID";
+
+    // 3. Update status pesanan di database
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: newStatus,
+      },
+    });
+
+    // 4. Kirim notifikasi hasil refund ke pelanggan
+    await notificationService.notifyRefundResult(orderId, status, adminNote);
 
     return updatedOrder;
   },
@@ -231,8 +273,6 @@ export const orderService = {
       orderId,
       "REFUNDED",
     );
-
-    // TODO: Kurangi balance vendor jika perlu
 
     return updatedOrder;
   },

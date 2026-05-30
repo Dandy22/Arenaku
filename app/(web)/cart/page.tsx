@@ -291,6 +291,7 @@ export default function CartPage() {
           <Form.Item
             name="customerPhone"
             label="Nomor Telepon"
+            normalize={(value) => (value || "").replace(/[^0-9]/g, "")}
             rules={[{ required: true }]}>
             <Input placeholder="08123456789" />
           </Form.Item>

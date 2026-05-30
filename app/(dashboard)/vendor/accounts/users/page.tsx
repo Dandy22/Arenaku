@@ -230,7 +230,7 @@ export default function ManageUsersPage() {
         const isSelf = r.id === user?.id;
 
         return (
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex items-center justify-start gap-2">
             <Button
               onClick={() => {
                 setSelectedUser(r);

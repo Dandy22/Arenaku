@@ -90,13 +90,20 @@ export const eventRepository = {
     const limit = params.limit || 8;
     const skip = (page - 1) * limit;
 
+    // 🔥 PERBAIKAN: Gunakan Waktu Sekarang persis (Bukan 00:00) agar event yg berlangsung hari ini tidak terhapus duluan.
+    const now = new Date();
+
+    // 🔥 FILTER UTAMA: Status ACTIVE dan Belum Lewat Waktu
     const where: any = {
       status: "ACTIVE",
+      endDate: {
+        gte: now, // Hanya tampilkan event yang selesainya lebih besar dari waktu sekarang
+      },
     };
 
     const filters: any[] = [];
 
-    // PERBAIKAN: Cari jenis olahraga (Basket, Sepak Bola) di kolom topic ATAU category
+    // Cari jenis olahraga (Basket, Sepak Bola) di kolom topic ATAU category
     if (params.category) {
       filters.push({
         OR: [
@@ -106,7 +113,7 @@ export const eventRepository = {
       });
     }
 
-    // PERBAIKAN: Cari tipe event (Turnamen/Olahraga) di kolom category ATAU topic
+    // Cari tipe event (Turnamen/Olahraga) di kolom category ATAU topic
     if (params.eventType) {
       const mappedType =
         params.eventType === "TURNAMEN"
@@ -156,7 +163,7 @@ export const eventRepository = {
           participants: true,
           creator: { select: { id: true, name: true } },
         },
-        orderBy: { date: "asc" },
+        orderBy: { date: "asc" }, // Urutkan dari yang paling dekat waktunya
       }),
       prisma.event.count({ where }),
     ]);

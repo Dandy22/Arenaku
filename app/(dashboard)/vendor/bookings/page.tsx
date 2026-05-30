@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useEffect, useState } from "react";
-import { message } from "antd";
+import { message, Button } from "antd";
+import { HiEye } from "react-icons/hi2";
 import type { ColumnsType } from "antd/es/table";
 import api from "@/lib/axios";
 import dayjs from "dayjs";
 import DataTable from "@/components/reusable/DataTable";
+import CustomDrawer from "@/components/reusable/CustomDrawer";
 import { useSearchParams } from "next/navigation";
 
 interface Booking {
@@ -22,6 +24,7 @@ interface Booking {
     customerName: string;
     customerPhone: string;
     customerEmail: string;
+    notes?: string;
     payment?: {
       status: string;
       method: string;
@@ -34,7 +37,10 @@ export default function VendorBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Mengambil query pencarian langsung dari URL
+  // Drawer State
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
 
@@ -42,7 +48,6 @@ export default function VendorBookingsPage() {
     api
       .get("/vendor/bookings")
       .then((res) => {
-        // MENGURUTKAN DATA MASUK DARI YANG TERBARU KE TERLAMA (Berdasarkan waktu pembuatan)
         const sortedData = res.data.sort(
           (a: Booking, b: Booking) =>
             dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf(),
@@ -53,8 +58,16 @@ export default function VendorBookingsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Fungsi Badge Status
-  const statusBadge = (status: string) => {
+  // --- BADGE STATUS ---
+  const statusBadge = (status: string, isPayment = false) => {
+    if (!status && isPayment) {
+      return (
+        <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+          Belum ada
+        </span>
+      );
+    }
+
     const map: Record<string, { text: string; className: string }> = {
       PENDING: { text: "Pending", className: "text-yellow-600 bg-yellow-50" },
       PAID: { text: "Lunas", className: "text-green-500 bg-green-50" },
@@ -75,10 +88,8 @@ export default function VendorBookingsPage() {
     );
   };
 
-  // LOGIKA PENCARIAN (Filtering)
   const filteredBookings = useMemo(() => {
     if (!searchQuery) return bookings;
-
     const query = searchQuery.toLowerCase();
     return bookings.filter((item) => {
       return (
@@ -110,15 +121,6 @@ export default function VendorBookingsPage() {
       ),
     },
     {
-      title: "No. Telepon",
-      key: "phone",
-      render: (_, r) => (
-        <span className="text-sm font-semibold text-slate-500">
-          {r.order?.customerPhone}
-        </span>
-      ),
-    },
-    {
       title: "Lapangan",
       key: "field",
       render: (_, r) => (
@@ -133,78 +135,29 @@ export default function VendorBookingsPage() {
       ),
     },
     {
-      title: "Tanggal Booking",
-      key: "date",
-      // MENAMBAHKAN SORTER UNTUK TANGGAL BOOKING
+      title: "Jadwal Main",
+      key: "schedule",
       sorter: (a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf(),
-      render: (_, r) => (
-        <span className="text-sm font-semibold text-slate-500">
-          {dayjs(r.date).format("DD MMM YYYY")}
-        </span>
-      ),
-    },
-    {
-      title: "Jam Booking",
-      key: "time",
       render: (_, r) => {
         const start = String(r.startHour).padStart(2, "0");
         const end = String(r.endHour).padStart(2, "0");
-
         return (
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
-            <span>{start}:00</span>
-            <svg
-              viewBox="64 64 896 896"
-              focusable="false"
-              width="12px"
-              height="12px"
-              fill="currentColor"
-              className="text-slate-400">
-              <path d="M873.1 596.2l-164-208A32 32 0 00684 376h-64.8c-6.7 0-10.4 7.7-6.3 13l144.3 183H152c-4.4 0-8 3.6-8 8v60c0 4.4 3.6 8 8 8h695.9c26.8 0 41.7-30.8 25.2-51.8z" />
-            </svg>
-            <span>{end}:00</span>
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold text-slate-500">
+              {dayjs(r.date).format("DD/MM/YY")}
+            </span>
+            <span className="text-[10px] font-bold text-slate-400">
+              {start}:00 - {end}:00 WIB
+            </span>
           </div>
         );
       },
     },
     {
-      title: "Waktu Transaksi",
-      key: "transactionTime",
-      // MENAMBAHKAN SORTER JUGA PADA WAKTU TRANSAKSI (Opsional, tapi sangat direkomendasikan)
-      sorter: (a, b) => {
-        const timeA = a.order?.payment?.createdAt || a.createdAt;
-        const timeB = b.order?.payment?.createdAt || b.createdAt;
-        return dayjs(timeA).valueOf() - dayjs(timeB).valueOf();
-      },
-      render: (_, r) => (
-        <div className="flex flex-col">
-          <span className="text-sm font-semibold text-slate-500">
-            {dayjs(r.order?.payment?.createdAt || r.createdAt).format(
-              "DD/MM/YY",
-            )}
-          </span>
-          <span className="text-[10px] font-bold text-slate-400">
-            {dayjs(r.order?.payment?.createdAt || r.createdAt).format("HH:mm")}{" "}
-            WIB
-          </span>
-        </div>
-      ),
-    },
-    {
-      title: "Metode",
-      key: "paymentMethod",
-      render: (_, r) => (
-        <span className="text-sm font-semibold text-slate-500 uppercase">
-          {r.order?.payment?.method?.replace(/_/g, " ") || "N/A"}
-        </span>
-      ),
-    },
-    {
-      title: "Total Bayar",
+      title: "Total",
       dataIndex: "price",
       key: "price",
       align: "right",
-      // MENAMBAHKAN SORTER PADA HARGA
       sorter: (a, b) => a.price - b.price,
       render: (price) => (
         <span className="font-semibold text-sm text-slate-500">
@@ -218,26 +171,218 @@ export default function VendorBookingsPage() {
       align: "center",
       render: (_, r) => statusBadge(r.order?.status),
     },
+    {
+      title: "Aksi",
+      key: "aksi",
+      align: "left",
+      render: (_, record) => (
+        <Button
+          onClick={() => {
+            setSelectedBooking(record);
+            setDrawerOpen(true);
+          }}
+          icon={<HiEye size={18} />}
+          className="!h-9 !rounded-full !border-[#F1F5F9] !px-4 !text-blue-500 !font-semibold !shadow-none hover:!bg-blue-50 cursor-pointer">
+          Detail
+        </Button>
+      ),
+    },
   ];
 
+  // --- DRAWER CONTENT (KONSISTEN DENGAN ARENAKU DESIGNS) ---
+  const renderDrawerContent = () => {
+    if (!selectedBooking) return null;
+
+    return (
+      <div className="space-y-6 mt-2 pb-6">
+        {/* --- 1. INFO CUSTOMER --- */}
+        <div>
+          <p className="text-sm font-bold text-slate-700 mb-3">
+            Informasi Pemesan
+          </p>
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs font-semibold text-slate-500 mb-1">
+                Nama Pemesan
+              </p>
+              <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200">
+                <p className="font-semibold text-sm text-slate-600">
+                  {selectedBooking.order?.customerName}
+                </p>
+              </div>
+            </div>
+
+            {/* Dipisah No. Telepon dan Email ke baris baru */}
+            <div>
+              <p className="text-xs font-semibold text-slate-500 mb-1">
+                No. Telepon
+              </p>
+              <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200">
+                <p className="font-semibold text-sm text-slate-600">
+                  {selectedBooking.order?.customerPhone}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-slate-500 mb-1">Email</p>
+              <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200 overflow-hidden">
+                <p className="font-semibold text-sm text-slate-600 truncate">
+                  {selectedBooking.order?.customerEmail}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* --- 2. DETAIL LAPANGAN & WAKTU --- */}
+        <div className="pt-4 border-t border-gray-100 mt-6">
+          <p className="text-sm font-bold text-slate-700 mb-3">
+            Jadwal Lapangan
+          </p>
+          <div className="space-y-4">
+            {/* Dipisah Venue dan Lapangan ke baris baru */}
+            <div>
+              <p className="text-xs font-semibold text-slate-500 mb-1">Venue</p>
+              <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200">
+                <p className="font-semibold text-sm text-slate-600">
+                  {selectedBooking.field?.venue?.name}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-slate-500 mb-1">
+                Lapangan
+              </p>
+              <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200">
+                <p className="font-semibold text-sm text-slate-600">
+                  {selectedBooking.field?.name}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-slate-500 mb-1">
+                  Tanggal Main
+                </p>
+                <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200">
+                  <p className="font-semibold text-sm text-slate-600">
+                    {dayjs(selectedBooking.date).format("DD MMM YYYY")}
+                  </p>
+                </div>
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-slate-500 mb-1">Jam</p>
+                <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200">
+                  <p className="font-semibold text-sm text-slate-600">
+                    {String(selectedBooking.startHour).padStart(2, "0")}:00 -{" "}
+                    {String(selectedBooking.endHour).padStart(2, "0")}:00 WIB
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* --- 3. CATATAN PENGGUNA --- */}
+        {selectedBooking.order?.notes && (
+          <div className="pt-4 border-t border-gray-100 mt-6 animate-in fade-in">
+            <p className="text-sm font-bold text-slate-700 mb-3">
+              Catatan Khusus
+            </p>
+            <div className="!rounded-xl !p-4 bg-slate-50 border border-slate-200">
+              <p className="font-medium text-sm text-slate-600 italic">
+                "{selectedBooking.order.notes}"
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* --- 4. INFO PEMBAYARAN --- */}
+        <div className="pt-4 border-t border-gray-100 mt-6">
+          <p className="text-sm font-bold text-slate-700 mb-3">
+            Informasi Pembayaran
+          </p>
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-slate-500 mb-1">
+                  Metode
+                </p>
+                <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200 flex items-center min-h-[46px]">
+                  <p className="font-semibold text-slate-600 text-sm uppercase">
+                    {selectedBooking.order?.payment?.method?.replace(
+                      /_/g,
+                      " ",
+                    ) || "-"}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-semibold text-slate-500 mb-1">
+                Status Order
+              </p>
+              <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200 flex items-center min-h-[46px]">
+                {statusBadge(selectedBooking.order?.status)}
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex justify-between items-center mt-2">
+              <span className="text-sm font-bold text-blue-800">
+                Total Dibayar
+              </span>
+              <span className="text-lg font-black text-blue-600">
+                Rp {selectedBooking.price?.toLocaleString("id-ID")}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Booking Masuk</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Monitor semua pemesanan lapangan dan status pembayaran
-        </p>
+    <>
+      <div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">Booking Masuk</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Monitor semua pemesanan lapangan, jadwal, dan catatan khusus dari
+            pelanggan.
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <DataTable
+            columns={columns}
+            dataSource={filteredBookings}
+            isLoading={loading}
+            showSearch
+            searchPlaceholder="Cari nama customer, ID order, atau lapangan..."
+          />
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <DataTable
-          columns={columns}
-          dataSource={filteredBookings}
-          isLoading={loading}
-          showSearch
-          searchPlaceholder="Cari nama customer, ID order, atau lapangan..."
-        />
-      </div>
-    </div>
+      <CustomDrawer
+        title={
+          <span className="text-xl font-bold text-slate-800">
+            Detail Booking
+          </span>
+        }
+        open={drawerOpen}
+        setOpen={setDrawerOpen}
+        content={renderDrawerContent()}
+        footer={
+          <Button
+            onClick={() => setDrawerOpen(false)}
+            className="w-full !h-11 !rounded-lg !border-gray-300 hover:!bg-gray-50 !text-slate-600 !font-semibold !text-sm cursor-pointer">
+            Tutup Detail
+          </Button>
+        }
+      />
+    </>
   );
 }

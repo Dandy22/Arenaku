@@ -20,15 +20,26 @@ export async function GET(
       );
     }
 
-    // Ambil data field untuk dapat harga
+    // 🔥 PERBAIKAN: Ambil juga jam operasional venue dari database
     const field = await prisma.field.findUnique({
       where: { id },
-      select: { id: true, name: true, price: true },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        venue: {
+          select: { openHour: true, closeHour: true },
+        },
+      },
     });
 
     if (!field) {
       return NextResponse.json({ error: "Field not found" }, { status: 404 });
     }
+
+    // Ambil jam operasional (jika tidak ada di DB, fallback ke 8 dan 22)
+    const openHour = field.venue.openHour ?? 8;
+    const closeHour = field.venue.closeHour ?? 22;
 
     // Mode mingguan: startDate → 7 hari
     if (startDateStr) {
@@ -58,17 +69,23 @@ export async function GET(
 
         const slots = [];
         const now = new Date();
-        for (let h = 8; h < 22; h++) {
+
+        // 🔥 PERBAIKAN: Looping menggunakan openHour dan closeHour dari database
+        for (let h = openHour; h < closeHour; h++) {
           const isBooked = bookedHours.has(h);
           const isPast =
             currentDate.toDateString() === now.toDateString()
               ? h <= now.getHours()
               : currentDate < new Date(now.toDateString());
 
+          // Perbaiki tampilan string jam jika jam tutupnya 24 (tampil jadi 00:00)
+          const nextHourStr =
+            h + 1 === 24 ? "00" : String(h + 1).padStart(2, "0");
+
           slots.push({
             startHour: h,
             endHour: h + 1,
-            label: `${String(h).padStart(2, "0")}:00 - ${String(h + 1).padStart(2, "0")}:00`,
+            label: `${String(h).padStart(2, "0")}:00 - ${nextHourStr}:00`,
             price: field.price,
             status: isPast ? "PAST" : isBooked ? "BOOKED" : "AVAILABLE",
           });
@@ -115,17 +132,22 @@ export async function GET(
 
     const now = new Date();
     const slots = [];
-    for (let h = 8; h < 22; h++) {
+
+    // 🔥 PERBAIKAN: Looping menggunakan openHour dan closeHour dari database
+    for (let h = openHour; h < closeHour; h++) {
       const isBooked = bookedHours.has(h);
       const isPast =
         date.toDateString() === now.toDateString()
           ? h <= now.getHours()
           : date < new Date(now.toDateString());
 
+      // Perbaiki tampilan string jam jika jam tutupnya 24 (tampil jadi 00:00)
+      const nextHourStr = h + 1 === 24 ? "00" : String(h + 1).padStart(2, "0");
+
       slots.push({
         startHour: h,
         endHour: h + 1,
-        label: `${String(h).padStart(2, "0")}:00 - ${String(h + 1).padStart(2, "0")}:00`,
+        label: `${String(h).padStart(2, "0")}:00 - ${nextHourStr}:00`,
         price: field.price,
         status: isPast ? "PAST" : isBooked ? "BOOKED" : "AVAILABLE",
       });

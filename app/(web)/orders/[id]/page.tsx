@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Button, Spin, Empty, message } from "antd";
+import { Button, Spin, Empty, message, Input } from "antd";
 import { useAuthStore } from "@/lib/store/auth.store";
 import api from "@/lib/axios";
 import OrderRatingCard from "@/components/reusable/OrderRatingCard";
@@ -18,8 +18,10 @@ interface Order {
   customerPhone: string;
   customerEmail: string;
   notes: string;
+  cancelReason?: string; // 🔥 Field baru
   createdAt: string;
   expiresAt: string;
+  vendorRating?: any; // 🔥 Untuk cek apakah sudah di-review
   items: Array<{
     id: string;
     date: string;
@@ -108,6 +110,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// Icons...
 function IconMapPin() {
   return (
     <svg
@@ -226,7 +229,11 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // 🔥 State untuk Refund
   const [refundModalOpen, setRefundModalOpen] = useState(false);
+  const [refundReason, setRefundReason] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchOrder = async (showLoading = true) => {
     try {
@@ -237,7 +244,6 @@ export default function OrderDetailPage() {
       message.error(
         err instanceof Error ? err.message : "Gagal mengambil data order",
       );
-      console.error(err);
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -245,45 +251,50 @@ export default function OrderDetailPage() {
 
   useEffect(() => {
     if (!isInitialized) return;
-
     if (!user) {
       router.push("/login");
       return;
     }
-
     fetchOrder();
   }, [user, isInitialized, router]);
 
   const handleRequestRefund = async () => {
+    if (!refundReason.trim()) {
+      message.error("Alasan pembatalan wajib diisi!");
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      await api.put(`/orders/${orderId}`, { action: "request-refund" });
+      await api.put(`/orders/${orderId}`, {
+        action: "request-refund",
+        cancelReason: refundReason, // 🔥 Kirim alasan ke backend
+      });
       message.success(
-        "Permintaan refund telah diajukan. Admin akan memproses dalam 1–2 hari kerja.",
+        "Permintaan refund diajukan. Admin akan memproses dalam 1–2 hari kerja.",
       );
       setRefundModalOpen(false);
+      setRefundReason("");
       fetchOrder();
     } catch (error: any) {
       message.error(error.response?.data?.error || "Gagal mengajukan refund");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  if (loading) {
+  if (loading)
     return (
       <div className="flex justify-center items-center min-h-screen">
         <Spin />
       </div>
     );
-  }
-
   if (!order) {
     return (
       <div className="max-w-3xl mx-auto px-6 py-10">
         <Empty description="Order tidak ditemukan" />
         <div className="text-center mt-4">
-          <Button
-            type="primary"
-            onClick={() => router.push("/orders")}
-            className="cursor-pointer">
+          <Button type="primary" onClick={() => router.push("/orders")}>
             Kembali ke riwayat
           </Button>
         </div>
@@ -296,14 +307,16 @@ export default function OrderDetailPage() {
     order.items?.[0]?.field?.venue?.name || eventTitle || "Pesanan";
   const vendorId = order.items?.[0]?.field?.venue?.vendorId || "";
 
+  // Cek apakah order sudah di-review (asumsi backend include vendorRating)
+  const hasRated = !!order.vendorRating;
+
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
       <div className="mb-6">
         <button
           onClick={() => router.push("/orders")}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors cursor-pointer mb-4 w-fit">
-          <IconArrowLeft />
-          Kembali
+          <IconArrowLeft /> Kembali
         </button>
         <div className="flex items-center gap-3">
           <div className="flex-1">
@@ -341,77 +354,66 @@ export default function OrderDetailPage() {
                 type: "ticket" as const,
                 ticket,
               })),
-            ].map(
-              (
-                entry: any,
-                index, // <-- Penambahan 'any' di sini menyelesaikan error startHour/quantity
-              ) =>
-                entry.type === "field" ? (
-                  <div
-                    key={entry.item.id || index}
-                    className="pb-3 border-b border-gray-100 last:border-0 last:pb-0">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {entry.item.field.name}
-                        </p>
-                        <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1">
-                          <IconCalendar />
-                          {new Date(entry.item.date).toLocaleDateString(
-                            "id-ID",
-                            {
-                              day: "numeric",
-                              month: "long",
-                              year: "numeric",
-                            },
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-0.5">
-                          <IconClock />
-                          {entry.item.startHour}:00 – {entry.item.endHour}:00 (
-                          {entry.item.endHour - entry.item.startHour} jam)
-                        </div>
+            ].map((entry: any, index) =>
+              entry.type === "field" ? (
+                <div
+                  key={entry.item.id || index}
+                  className="pb-3 border-b border-gray-100 last:border-0 last:pb-0">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {entry.item.field.name}
+                      </p>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1">
+                        <IconCalendar />
+                        {new Date(entry.item.date).toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })}
                       </div>
-                      <p className="text-sm font-semibold text-purple-600">
-                        Rp {entry.item.price.toLocaleString("id-ID")}
+                      <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-0.5">
+                        <IconClock />
+                        {entry.item.startHour}:00 – {entry.item.endHour}:00 (
+                        {entry.item.endHour - entry.item.startHour} jam)
+                      </div>
+                    </div>
+                    <p className="text-sm font-semibold text-purple-600">
+                      Rp {entry.item.price.toLocaleString("id-ID")}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  key={entry.ticket.id || index}
+                  className="pb-3 border-b border-gray-100 last:border-0 last:pb-0">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {entry.ticket.event.title}
+                      </p>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1">
+                        <IconCalendar />
+                        {new Date(entry.ticket.event.date).toLocaleDateString(
+                          "id-ID",
+                          { day: "numeric", month: "long", year: "numeric" },
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-0.5">
+                        <IconClock />
+                        {entry.ticket.event.startHour}:00 –{" "}
+                        {entry.ticket.event.endHour}:00
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {entry.ticket.quantity} tiket
                       </p>
                     </div>
+                    <p className="text-sm font-semibold text-purple-600">
+                      Rp {entry.ticket.totalPrice.toLocaleString("id-ID")}
+                    </p>
                   </div>
-                ) : (
-                  <div
-                    key={entry.ticket.id || index}
-                    className="pb-3 border-b border-gray-100 last:border-0 last:pb-0">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {entry.ticket.event.title}
-                        </p>
-                        <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1">
-                          <IconCalendar />
-                          {new Date(entry.ticket.event.date).toLocaleDateString(
-                            "id-ID",
-                            {
-                              day: "numeric",
-                              month: "long",
-                              year: "numeric",
-                            },
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-0.5">
-                          <IconClock />
-                          {entry.ticket.event.startHour}:00 –{" "}
-                          {entry.ticket.event.endHour}:00
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {entry.ticket.quantity} tiket
-                        </p>
-                      </div>
-                      <p className="text-sm font-semibold text-purple-600">
-                        Rp {entry.ticket.totalPrice.toLocaleString("id-ID")}
-                      </p>
-                    </div>
-                  </div>
-                ),
+                </div>
+              ),
             )}
           </div>
         </div>
@@ -456,7 +458,7 @@ export default function OrderDetailPage() {
                 {order.status === "PENDING" && (
                   <button
                     onClick={() => router.push(`/payment/${order.id}`)}
-                    className="mt-4 w-full py-3 rounded-xl bg-purple-700 text-white text-sm font-semibold hover:bg-purple-800 transition">
+                    className="mt-4 w-full py-3 rounded-xl bg-purple-700 text-white text-sm font-semibold hover:bg-purple-800 transition cursor-pointer">
                     {order.payment?.status === "PENDING"
                       ? "Lanjutkan Pembayaran"
                       : "Bayar Sekarang"}
@@ -467,25 +469,8 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Order Date */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-4">
-          <SectionLabel icon={<IconCalendar />}>Tanggal pesanan</SectionLabel>
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500">Dipesan pada</span>
-            <span className="text-gray-900">
-              {new Date(order.createdAt).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-          </div>
-        </div>
-
-        {/* Cancel button */}
-        {order.status === "PAID" && (
+        {/* Cancel button - 🔥 Disembunyikan kalau sudah ada vendorRating */}
+        {order.status === "PAID" && !hasRated && (
           <button
             onClick={() => setRefundModalOpen(true)}
             className="cursor-pointer w-full py-2.5 border border-red-200 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-50 transition-colors">
@@ -497,7 +482,7 @@ export default function OrderDetailPage() {
         {order.status === "PAID" && (
           <div className="bg-white border border-gray-100 rounded-2xl p-4">
             <OrderRatingCard
-              order={order as any} // <-- Penambahan 'as any' di sini menyelesaikan error Type mismatch
+              order={order as any}
               onRatingSubmitted={() => {
                 setRefreshKey((prev) => prev + 1);
                 fetchOrder(false);
@@ -536,16 +521,33 @@ export default function OrderDetailPage() {
             <Button
               type="primary"
               danger
+              disabled={!refundReason.trim()} // 🔥 Disabled jika alasan kosong
+              loading={isSubmitting}
               onClick={handleRequestRefund}
-              className="cursor-pointer bg-red-500 hover:bg-red-600">
+              className="cursor-pointer bg-red-500 hover:bg-red-600 disabled:opacity-50">
               Ya, Ajukan Pembatalan
             </Button>
           </div>
         }>
-        <p className="text-gray-600 text-sm">
-          Apakah Anda yakin ingin mengajukan pembatalan untuk pesanan ini?
-          Pengembalian dana akan diproses sesuai dengan kebijakan yang berlaku.
-        </p>
+        <div className="py-2">
+          <p className="text-gray-600 text-sm mb-4">
+            Apakah Anda yakin ingin mengajukan pembatalan untuk pesanan ini?
+            Pengembalian dana akan diproses sesuai dengan kebijakan yang
+            berlaku.
+          </p>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700">
+              Alasan Pembatalan <span className="text-red-500">*</span>
+            </label>
+            <Input.TextArea
+              rows={4}
+              placeholder="Contoh: Salah pilih tanggal, jadwal mendadak berubah..."
+              value={refundReason}
+              onChange={(e) => setRefundReason(e.target.value)}
+              className="!rounded-xl"
+            />
+          </div>
+        </div>
       </CustomModal>
     </div>
   );

@@ -217,56 +217,79 @@ export const paymentService = {
   async confirmPayment(orderId: string) {
     const { prisma } = await import("@/lib/prisma");
 
-    // UBAH DI SINI: Gunakan findByOrderId, bukan findById
-    const payment = await paymentRepository.findByOrderId(orderId);
-    if (!payment) throw new Error("Payment not found");
+    // 1. Ambil order dengan relasi lengkap sampai ke venue untuk dapet vendorId
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        payment: true,
+        items: { include: { field: { include: { venue: true } } } },
+        eventTickets: true,
+      },
+    });
 
-    if (payment.status !== "PENDING") {
-      throw new Error(`Payment already ${payment.status}`);
-    }
+    if (!order) throw new Error("Order not found");
+    if (order.status === "PAID") throw new Error("Payment already processed");
 
-    // Gunakan payment.id untuk update status
-    await paymentRepository.updateStatus(payment.id, "SUCCESS");
-    await orderRepository.updateStatus(payment.orderId, "PAID");
-    const order = await orderRepository.findById(payment.orderId);
+    const payment = order.payment;
+    if (!payment) throw new Error("Payment record not found");
 
-    // Trigger notifikasi Pembayaran Berhasil
-    await notificationService.notifyPaymentSuccess(payment.orderId);
+    // Ambil vendorId dari item pertama (asumsi satu order satu vendor)
+    const vendorId = order.items[0]?.field?.venue?.vendorId;
+    if (!vendorId) throw new Error("Vendor not found for this order");
 
-    // If order has event tickets, confirm them and add to EventParticipant
-    if (order && order.eventTickets && order.eventTickets.length > 0) {
-      for (const ticket of order.eventTickets) {
-        await prisma.eventTicket.update({
-          where: { id: ticket.id },
-          data: {
-            status: "CONFIRMED",
-            confirmedAt: new Date(),
-          },
-        });
+    // 2. Gunakan Transaction agar semua data terupdate dengan aman
+    await prisma.$transaction(async (tx) => {
+      // Update status payment
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { status: "SUCCESS", paidAt: new Date() },
+      });
 
-        await prisma.eventParticipant.upsert({
-          where: {
-            eventId_userId: {
-              eventId: ticket.eventId,
-              userId: ticket.userId,
+      // Update status order
+      await tx.order.update({
+        where: { id: orderId },
+        data: { status: "PAID" },
+      });
+
+      // 🔥 KUNCI UTAMA: Tambahkan saldo ke vendor
+      await tx.vendor.update({
+        where: { id: vendorId },
+        data: {
+          balance: { increment: order.totalAmount },
+        },
+      });
+
+      // Handle Event Tickets (jika ada)
+      if (order.eventTickets && order.eventTickets.length > 0) {
+        for (const ticket of order.eventTickets) {
+          await tx.eventTicket.update({
+            where: { id: ticket.id },
+            data: { status: "CONFIRMED", confirmedAt: new Date() },
+          });
+
+          await tx.eventParticipant.upsert({
+            where: {
+              eventId_userId: {
+                eventId: ticket.eventId,
+                userId: ticket.userId,
+              },
             },
-          },
-          create: {
-            eventId: ticket.eventId,
-            userId: ticket.userId,
-          },
-          update: {},
-        });
+            create: { eventId: ticket.eventId, userId: ticket.userId },
+            update: {},
+          });
+        }
       }
+    });
 
-      if (order.eventTickets[0]) {
-        await notificationService.notifyTicketSold(
-          order.eventTickets[0].eventId,
-        );
-      }
+    // Trigger notifikasi setelah transaksi sukses
+    await notificationService.notifyPaymentSuccess(orderId);
+
+    // Notify jika ada event
+    if (order.eventTickets && order.eventTickets.length > 0) {
+      await notificationService.notifyTicketSold(order.eventTickets[0].eventId);
     }
 
-    return { message: "Payment confirmed successfully" };
+    return { message: "Payment confirmed and balance updated" };
   },
 };
 

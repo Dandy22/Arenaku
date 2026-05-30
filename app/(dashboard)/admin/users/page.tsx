@@ -218,9 +218,9 @@ export default function AdminUsersPage() {
     {
       title: "Aksi",
       key: "aksi",
-      align: "right",
+      align: "left",
       render: (_, record) => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-start gap-2">
           <Button
             onClick={() => {
               setSelectedUser(record);

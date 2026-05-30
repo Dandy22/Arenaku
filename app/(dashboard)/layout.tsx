@@ -27,6 +27,8 @@ import {
   HiCheck,
   HiOutlineEnvelope,
   HiOutlineTrash,
+  HiOutlineBanknotes,
+  HiBanknotes,
 } from "react-icons/hi2";
 
 import { useAuthStore } from "@/lib/store/auth.store";
@@ -83,6 +85,12 @@ const adminMenus: { group: string; items: MenuItem[] }[] = [
         activeIcon: <HiClipboard size={18} />,
       },
       {
+        label: "Penarikan Dana",
+        href: "/admin/withdrawals",
+        icon: <HiOutlineBanknotes size={18} />,
+        activeIcon: <HiBanknotes size={18} />,
+      },
+      {
         label: "Kelola Event",
         href: "/admin/events",
         icon: <HiOutlineCalendar size={18} />,
@@ -135,6 +143,12 @@ const vendorMenus: { group: string; items: MenuItem[] }[] = [
         href: "/vendor/accounts/profile",
         icon: <HiOutlineUserCircle size={18} />,
         activeIcon: <HiUserCircle size={18} />,
+      },
+      {
+        label: "Keuangan",
+        href: "/vendor/accounts/finance",
+        icon: <HiOutlineBanknotes size={18} />,
+        activeIcon: <HiBanknotes size={18} />,
       },
       {
         label: "Kelola Pengguna",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Button, message, Select } from "antd";
+import { Button, message, Select, Input } from "antd";
 import { HiEye } from "react-icons/hi2";
 import { useSearchParams } from "next/navigation";
 import dayjs from "dayjs";
@@ -16,10 +16,12 @@ interface Order {
   customerName: string;
   customerEmail: string;
   totalAmount: number;
-  status: string; // PENDING, PAID, CANCELLED, REFUND_REQUESTED, dll
+  status: string;
   createdAt: string;
+  cancelReason?: string;
+  adminNote?: string;
   items: { id: string }[];
-  payment?: { status: string; method: string }; // PENDING, SUCCESS, FAILED, EXPIRED
+  payment?: { status: string; method: string };
 }
 
 export default function AdminOrdersPage() {
@@ -34,6 +36,13 @@ export default function AdminOrdersPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
+  // STATE UNTUK PROSES REFUND
+  const [refundStatus, setRefundStatus] = useState<"ACCEPT" | "REJECT" | null>(
+    null,
+  );
+  const [adminNote, setAdminNote] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const fetchOrders = async () => {
     try {
       setLoading(true);
@@ -41,12 +50,10 @@ export default function AdminOrdersPage() {
         filter === "ALL" ? "/admin/orders" : `/admin/orders?status=${filter}`;
       const res = await api.get(url);
 
-      // MENGURUTKAN DATA MASUK DARI YANG TERBARU KE TERLAMA (Berdasarkan waktu pembuatan)
       const sortedData = res.data.sort(
         (a: Order, b: Order) =>
           dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf(),
       );
-
       setOrders(sortedData);
     } catch {
       message.error("Gagal memuat data order");
@@ -70,7 +77,6 @@ export default function AdminOrdersPage() {
     );
   }, [orders, searchQuery]);
 
-  // --- BADGES (Disamakan dengan style vendor) ---
   const statusBadge = (status: string, isPayment = false) => {
     if (!status && isPayment) {
       return (
@@ -79,7 +85,6 @@ export default function AdminOrdersPage() {
         </span>
       );
     }
-
     const map: Record<string, { text: string; className: string }> = {
       PENDING: { text: "Pending", className: "text-yellow-600 bg-yellow-50" },
       PAID: { text: "Lunas", className: "text-green-500 bg-green-50" },
@@ -93,12 +98,10 @@ export default function AdminOrdersPage() {
       },
       REFUNDED: { text: "Refunded", className: "text-slate-600 bg-slate-100" },
     };
-
     const item = map[status?.toUpperCase()] || {
       text: status,
       className: "text-gray-600 bg-gray-50",
     };
-
     return (
       <div
         className={`inline-flex items-center h-7 gap-1.5 rounded-full px-3 text-[10px] font-bold uppercase tracking-wider ${item.className}`}>
@@ -108,7 +111,6 @@ export default function AdminOrdersPage() {
     );
   };
 
-  // --- TABLE COLUMNS (Dirombak mirip vendor) ---
   const columns: ColumnsType<Order> = [
     {
       title: "ID Order",
@@ -186,30 +188,29 @@ export default function AdminOrdersPage() {
     {
       title: "Status",
       key: "status",
-      align: "center",
+      align: "left",
       render: (_, r) => statusBadge(r.status),
     },
     {
       title: "Aksi",
       key: "aksi",
-      align: "right",
+      align: "left",
       render: (_, record) => (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            onClick={() => {
-              setSelectedOrder(record);
-              setDrawerOpen(true);
-            }}
-            icon={<HiEye size={18} />}
-            className="!h-9 !rounded-full !border-[#F1F5F9] !px-4 !text-blue-500 !font-semibold !shadow-none hover:!bg-blue-50">
-            Detail
-          </Button>
-        </div>
+        <Button
+          onClick={() => {
+            setSelectedOrder(record);
+            setRefundStatus(null);
+            setAdminNote("");
+            setDrawerOpen(true);
+          }}
+          icon={<HiEye size={18} />}
+          className="!h-9 !rounded-full !border-[#F1F5F9] !px-4 !text-blue-500 !font-semibold !shadow-none hover:!bg-blue-50 cursor-pointer">
+          Detail
+        </Button>
       ),
     },
   ];
 
-  // --- DRAWER CONTENT ---
   const renderDrawerContent = () => {
     if (!selectedOrder) return null;
 
@@ -219,7 +220,7 @@ export default function AdminOrdersPage() {
 
     return (
       <div className="space-y-4 mt-2 pb-6">
-        {/* --- INFORMASI CUSTOMER --- */}
+        {/* Info Customer */}
         <div>
           <p className="text-sm font-semibold text-slate-500 mb-2">
             Nama Pemesan
@@ -240,7 +241,7 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
-        {/* --- DETAIL PESANAN --- */}
+        {/* Detail Pesanan */}
         <div className="pt-4 border-t border-gray-100 mt-6">
           <p className="text-sm font-bold text-slate-700 mb-3">
             Detail Pesanan
@@ -269,7 +270,7 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
-        {/* --- TOTAL & ITEMS --- */}
+        {/* Ringkasan Pembayaran */}
         <div className="pt-4 border-t border-gray-100 mt-6">
           <p className="text-sm font-bold text-slate-700 mb-3">
             Ringkasan Pembayaran
@@ -298,7 +299,7 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
-        {/* --- INFORMASI PEMBAYARAN --- */}
+        {/* Status Pembayaran */}
         <div className="pt-4 border-t border-gray-100 mt-6">
           <p className="text-sm font-bold text-slate-700 mb-3">
             Status Pembayaran
@@ -324,38 +325,125 @@ export default function AdminOrdersPage() {
             </div>
           </div>
         </div>
+
+        {/* Alasan Pembatalan (tampil jika status REFUND) */}
+        {(selectedOrder.status === "REFUND_REQUESTED" ||
+          selectedOrder.status === "REFUNDED" ||
+          selectedOrder.status === "PAID") &&
+          selectedOrder.cancelReason && (
+            <div className="pt-4 border-t border-gray-100 mt-6 animate-in fade-in">
+              <p className="text-sm font-bold text-red-600 mb-3">
+                Alasan Pengajuan Pembatalan (User)
+              </p>
+              <div className="!rounded-lg !p-4 bg-red-50 border !border-red-200">
+                <p className="font-medium text-sm text-red-700 ">
+                  {selectedOrder.cancelReason}
+                </p>
+              </div>
+            </div>
+          )}
+
+        {/* Catatan Admin (tampil jika sudah diproses / status REFUNDED) */}
+        {selectedOrder.status === "REFUNDED" && selectedOrder.adminNote && (
+          <div className="pt-4 border-t border-gray-100 mt-6 animate-in fade-in">
+            <p className="text-sm font-bold text-slate-700 mb-3">
+              Catatan Admin
+            </p>
+            <div className="!rounded-lg !p-4 bg-slate-50 border !border-gray-200">
+              <p className="font-medium text-sm text-slate-600">
+                {selectedOrder.adminNote}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Form Proses Refund (hanya tampil jika status REFUND_REQUESTED) */}
+        {selectedOrder.status === "REFUND_REQUESTED" && (
+          <div className="pt-4 border-t border-gray-100 mt-6 animate-in fade-in">
+            <div className="bg-slate-50 border border-gray-200 rounded-xl p-4">
+              <p className="text-sm font-bold text-slate-600 mb-4">
+                Tindak Lanjut Admin
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs font-semibold text-slate-600 mb-1.5">
+                    Keputusan Refund <span className="text-red-500">*</span>
+                  </p>
+                  <Select
+                    className="w-full !h-10"
+                    placeholder="Pilih Terima atau Tolak"
+                    value={refundStatus}
+                    onChange={(val) => setRefundStatus(val)}
+                    options={[
+                      {
+                        value: "ACCEPT",
+                        label: "Terima — Dana Dikembalikan",
+                      },
+                      { value: "REJECT", label: "Tolak — Tetap Lunas" },
+                    ]}
+                  />
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-slate-600 mb-1.5">
+                    Catatan Admin <span className="text-red-500">*</span>
+                  </p>
+                  <Input.TextArea
+                    rows={3}
+                    className="!rounded-lg"
+                    placeholder="Jelaskan alasan diterima/ditolaknya refund ini..."
+                    value={adminNote}
+                    onChange={(e) => setAdminNote(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
 
-  const handleRefundComplete = async (orderId: string) => {
+  const handleProcessRefund = async () => {
+    if (!refundStatus || !adminNote.trim()) {
+      message.error("Keputusan dan Catatan Admin wajib diisi!");
+      return;
+    }
+
     try {
-      await api.put(`/admin/orders/${orderId}`, { action: "refund-complete" });
-      message.success("Refund berhasil ditandai selesai");
+      setIsSubmitting(true);
+      await api.put(`/admin/orders/${selectedOrder!.id}`, {
+        action: "process-refund",
+        refundStatus,
+        adminNote,
+      });
+      message.success(
+        `Refund berhasil di${refundStatus === "ACCEPT" ? "terima" : "tolak"}`,
+      );
       setDrawerOpen(false);
       fetchOrders();
     } catch (error: any) {
-      message.error(
-        error.response?.data?.error || "Gagal menandai refund selesai",
-      );
+      message.error(error.response?.data?.error || "Gagal memproses refund");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // --- DRAWER FOOTER ---
   const renderDrawerFooter = () => (
     <div className="flex items-center gap-3 w-full">
       <Button
         onClick={() => setDrawerOpen(false)}
-        className="flex-1 !h-11 !rounded-lg !border-gray-300 hover:!bg-gray-50 !text-slate-600 !font-semibold !text-sm">
+        className="flex-1 !h-11 !rounded-lg !border-gray-300 hover:!bg-gray-50 !text-slate-600 !font-semibold !text-sm cursor-pointer">
         Kembali
       </Button>
       {selectedOrder?.status === "REFUND_REQUESTED" && (
         <Button
-          onClick={() =>
-            selectedOrder && handleRefundComplete(selectedOrder.id)
-          }
-          className="flex-1 !h-11 !rounded-lg !text-white !font-bold !text-sm !shadow-none !border-none !bg-green-500 hover:!bg-green-600">
-          SELESAIKAN REFUND
+          onClick={handleProcessRefund}
+          loading={isSubmitting}
+          disabled={!refundStatus || !adminNote.trim()}
+          className="flex-1 !h-11 !rounded-lg !text-white !font-bold !text-sm !shadow-none !border-none !bg-primary hover:!bg-purple-700 disabled:!opacity-50 cursor-pointer">
+          SIMPAN KEPUTUSAN
         </Button>
       )}
     </div>
@@ -366,13 +454,11 @@ export default function AdminOrdersPage() {
       <div>
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            {/* Header diubah warna text-nya agar mirip dengan vendor */}
             <h1 className="text-2xl font-bold text-gray-800">Daftar Order</h1>
             <p className="mt-1 text-sm text-gray-500">
               Monitor semua transaksi pemesanan
             </p>
           </div>
-
           <Select
             value={filter}
             onChange={setFilter}
@@ -384,6 +470,7 @@ export default function AdminOrdersPage() {
               { value: "PAID", label: "Paid" },
               { value: "CANCELLED", label: "Cancelled" },
               { value: "REFUND_REQUESTED", label: "Refund Requested" },
+              { value: "REFUNDED", label: "Refunded" },
             ]}
           />
         </div>
