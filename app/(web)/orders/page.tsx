@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Tag, Button, message, Input } from "antd";
+import { Tag, Button, message, Input, Spin } from "antd";
 import { useAuthStore } from "@/lib/store/auth.store";
 import api from "@/lib/axios";
 import OrderRatingCard from "@/components/reusable/OrderRatingCard";
@@ -36,7 +36,8 @@ type OrderPreview = {
   }>;
 };
 
-export default function OrdersPage() {
+// 🔥 FUNGSI UTAMA KITA UBAH NAMANYA JADI OrdersContent
+function OrdersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isInitialized } = useAuthStore();
@@ -48,7 +49,7 @@ export default function OrdersPage() {
   const [refundReason, setRefundReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🔥 STATE UNTUK AUTO-CONFIRM MIDTRANS MOBILE
+  // STATE UNTUK AUTO-CONFIRM MIDTRANS MOBILE
   const transactionStatus = searchParams.get("transaction_status");
   const orderIdParam = searchParams.get("order_id");
   const [isVerifying, setIsVerifying] = useState(false);
@@ -65,7 +66,7 @@ export default function OrdersPage() {
     }
   }, []);
 
-  // 🔥 AUTO-CONFIRM DARI MIDTRANS E-WALLET (MOBILE)
+  // AUTO-CONFIRM DARI MIDTRANS E-WALLET (MOBILE)
   useEffect(() => {
     if (transactionStatus && orderIdParam && !isVerifying) {
       if (
@@ -86,11 +87,9 @@ export default function OrdersPage() {
               key: "verify",
             });
             fetchOrders(false);
-            router.replace("/orders"); // Bersihkan URL dari parameter
+            router.replace("/orders");
           })
           .catch((err) => {
-            // Jika backend sudah keduluan Webhook, API akan melempar error "already processed".
-            // Kita anggap sukses dan refresh halaman saja.
             message.success({
               content: "Pembayaran Anda telah Lunas!",
               key: "verify",
@@ -254,9 +253,7 @@ export default function OrdersPage() {
                       )}
                   </div>
 
-                  {/* 🔥 PERBAIKAN UI MOBILE & DESKTOP DI SINI 🔥 */}
                   <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-3">
-                    {/* Tanggal & Harga (Tampil di Mobile) */}
                     <div className="flex items-center justify-between w-full sm:w-auto">
                       <span className="text-sm text-slate-500">
                         {new Date(order.createdAt).toLocaleDateString("id-ID", {
@@ -270,7 +267,6 @@ export default function OrdersPage() {
                       </span>
                     </div>
 
-                    {/* Harga (Tampil di Desktop) & Tombol Aksi */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
                       <span className="hidden sm:block font-extrabold text-purple-700 text-lg">
                         Rp {order.totalAmount?.toLocaleString("id-ID")}
@@ -317,12 +313,12 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* MODAL REFUND DENGAN INPUT ALASAN */}
+      {/* MODAL REFUND */}
       <CustomModal
         open={!!refundOrderId}
         onClose={() => {
           setRefundOrderId(null);
-          setRefundReason(""); // Reset form pas ditutup
+          setRefundReason("");
         }}
         title="Konfirmasi Pembatalan"
         titleBorder={true}
@@ -368,5 +364,18 @@ export default function OrdersPage() {
         </div>
       </CustomModal>
     </div>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center py-20">
+          <Spin size="large" />
+        </div>
+      }>
+      <OrdersContent />
+    </Suspense>
   );
 }
