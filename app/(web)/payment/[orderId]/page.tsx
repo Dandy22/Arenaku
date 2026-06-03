@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { message, Select, Button, Spin } from "antd";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { message, Button, Spin } from "antd";
 import { useAuthStore } from "@/lib/store/auth.store";
 import api from "@/lib/axios";
 
@@ -15,12 +15,42 @@ declare global {
 export default function PaymentPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isInitialized } = useAuthStore();
-  const orderId = params.orderId as string;
+  const orderId = (params.orderId as string) || (params.id as string);
 
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+
+  // Tangkap param redirect dari Midtrans (khusus Mobile E-Wallet)
+  const transactionStatus = searchParams.get("transaction_status");
+
+  // 🔥 AUTO-CONFIRM JIKA REDIRECT DARI MOBILE E-WALLET
+  useEffect(() => {
+    if (transactionStatus === "settlement" || transactionStatus === "capture") {
+      setCreating(true);
+      message.loading({
+        content: "Memverifikasi pembayaran...",
+        key: "verify",
+      });
+
+      api
+        .patch(`/payments/${orderId}/confirm`)
+        .then(() => {
+          message.success({ content: "Pembayaran Berhasil!", key: "verify" });
+          router.push("/orders");
+        })
+        .catch((err) => {
+          // Jika gagal karena webhook sudah mendahului (Payment already processed), itu tidak masalah
+          message.success({
+            content: "Pembayaran telah terverifikasi!",
+            key: "verify",
+          });
+          router.push("/orders");
+        });
+    }
+  }, [transactionStatus, orderId, router]);
 
   // Load Midtrans Snap Script
   useEffect(() => {
@@ -40,7 +70,7 @@ export default function PaymentPage() {
   }, []);
 
   useEffect(() => {
-    if (!isInitialized) return; // Wait for auth initialization
+    if (!isInitialized) return;
 
     if (!user) {
       router.push("/login");
@@ -50,14 +80,14 @@ export default function PaymentPage() {
       .get(`/orders/${orderId}`)
       .then((res) => {
         setOrder(res.data);
-        // Jika sudah bayar, langsung tendang ke halaman sukses/orders
+        // Jika sudah bayar (mungkin webhook backend lebih cepat), langsung tendang ke orders
         if (res.data.status === "PAID") {
           router.push("/orders");
         }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [orderId, user, router]);
+  }, [orderId, user, router, isInitialized]);
 
   const handlePayNow = async () => {
     setCreating(true);
@@ -65,7 +95,7 @@ export default function PaymentPage() {
       // 1. Request Snap Token ke backend kita
       const res = await api.post("/payments", {
         orderId,
-        method: "QRIS",
+        method: "QRIS", // Akan terganti otomatis oleh pilihan user di Snap
       });
 
       const { snapToken } = res.data;
@@ -78,15 +108,19 @@ export default function PaymentPage() {
       window.snap.pay(snapToken, {
         onSuccess: async (result: any) => {
           try {
-            // Karena foldermu namanya 'confirm', panggil dengan akhiran /confirm
             await api.patch(`/payments/${orderId}/confirm`);
-
             message.success("Pembayaran Berhasil!");
             router.push("/orders");
           } catch (err: any) {
             console.error("Gagal update status di DB:", err);
             const errorMsg = err.response?.data?.error || err.message;
-            message.error(`Gagal DB: ${errorMsg}`);
+            // Jika error karena payment already processed, tetap lempar ke orders
+            if (errorMsg.includes("already processed")) {
+              message.success("Pembayaran Berhasil!");
+              router.push("/orders");
+            } else {
+              message.error(`Gagal DB: ${errorMsg}`);
+            }
           }
         },
         onPending: (result: any) => {
@@ -109,7 +143,7 @@ export default function PaymentPage() {
     }
   };
 
-  if (loading)
+  if (loading || transactionStatus === "settlement")
     return (
       <div className="flex justify-center py-20">
         <Spin size="large" />
@@ -132,7 +166,9 @@ export default function PaymentPage() {
         <div className="bg-gray-50 rounded-xl p-4 mb-6 inline-block text-left w-full max-w-md">
           <div className="flex justify-between mb-2">
             <span className="text-gray-500 text-sm">Order ID:</span>
-            <span className="font-mono text-sm">{order.id}</span>
+            <span className="font-mono text-sm">
+              #{order.id.slice(-6).toUpperCase()}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500 text-sm">Customer:</span>
@@ -153,8 +189,6 @@ export default function PaymentPage() {
         </Button>
       </div>
 
-      {/* Detail Pesanan tetap tampil di bawah */}
-      {/* Detail Pesanan tetap tampil di bawah */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-gray-800 mb-4">Detail Pesanan</h2>
 

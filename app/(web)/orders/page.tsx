@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Tag, Button, message, Input } from "antd";
 import { useAuthStore } from "@/lib/store/auth.store";
 import api from "@/lib/axios";
@@ -14,7 +14,7 @@ type OrderPreview = {
   createdAt: string;
   totalAmount: number;
   payment?: { status: string };
-  vendorRating?: any; // 🔥 Tambahkan field ini agar tau kalau udah direview
+  vendorRating?: any;
   items?: Array<{
     id: string;
     date: string;
@@ -38,19 +38,24 @@ type OrderPreview = {
 
 export default function OrdersPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isInitialized } = useAuthStore();
   const [orders, setOrders] = useState<OrderPreview[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 🔥 STATE REFUND
+  // STATE REFUND
   const [refundOrderId, setRefundOrderId] = useState<string | null>(null);
   const [refundReason, setRefundReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 🔥 STATE UNTUK AUTO-CONFIRM MIDTRANS MOBILE
+  const transactionStatus = searchParams.get("transaction_status");
+  const orderIdParam = searchParams.get("order_id");
+  const [isVerifying, setIsVerifying] = useState(false);
+
   const fetchOrders = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      // 🔥 Pastikan API /orders include vendorRating di backend
       const res = await api.get("/orders");
       setOrders(res.data);
     } catch (error) {
@@ -59,6 +64,43 @@ export default function OrdersPage() {
       if (showLoading) setLoading(false);
     }
   }, []);
+
+  // 🔥 AUTO-CONFIRM DARI MIDTRANS E-WALLET (MOBILE)
+  useEffect(() => {
+    if (transactionStatus && orderIdParam && !isVerifying) {
+      if (
+        transactionStatus === "settlement" ||
+        transactionStatus === "capture"
+      ) {
+        setIsVerifying(true);
+        message.loading({
+          content: "Memverifikasi pembayaran...",
+          key: "verify",
+        });
+
+        api
+          .patch(`/payments/${orderIdParam}/confirm`)
+          .then(() => {
+            message.success({
+              content: "Pembayaran Berhasil Diverifikasi!",
+              key: "verify",
+            });
+            fetchOrders(false);
+            router.replace("/orders"); // Bersihkan URL dari parameter
+          })
+          .catch((err) => {
+            // Jika backend sudah keduluan Webhook, API akan melempar error "already processed".
+            // Kita anggap sukses dan refresh halaman saja.
+            message.success({
+              content: "Pembayaran Anda telah Lunas!",
+              key: "verify",
+            });
+            fetchOrders(false);
+            router.replace("/orders");
+          });
+      }
+    }
+  }, [transactionStatus, orderIdParam, isVerifying, fetchOrders, router]);
 
   useEffect(() => {
     if (!isInitialized) return;
@@ -90,7 +132,7 @@ export default function OrdersPage() {
     try {
       await api.put(`/orders/${refundOrderId}`, {
         action: "request-refund",
-        cancelReason: refundReason, // 🔥 Kirim alasan ke backend
+        cancelReason: refundReason,
       });
 
       setOrders((prev) =>
@@ -103,7 +145,7 @@ export default function OrdersPage() {
         "Permintaan refund telah diajukan. Admin akan memproses dalam 1-2 hari kerja.",
       );
       setRefundOrderId(null);
-      setRefundReason(""); // Kosongkan form
+      setRefundReason("");
     } catch (error: any) {
       message.error(
         error?.response?.data?.error ||
@@ -143,14 +185,14 @@ export default function OrdersPage() {
       ) : (
         <div className="flex flex-col gap-6">
           {orders.map((order) => {
-            const hasRated = !!order.vendorRating; // Cek apakah sudah di-review
+            const hasRated = !!order.vendorRating;
 
             return (
               <div key={order.id} className="flex flex-col">
                 <div
                   className="cursor-pointer bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition"
                   onClick={() => router.push(`/orders/${order.id}`)}>
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-4">
                     <span className="text-sm font-mono text-slate-400">
                       #{order.id.slice(0, 8)}
                     </span>
@@ -169,15 +211,10 @@ export default function OrdersPage() {
                         }`}>
                         {statusLabel[order.status] || order.status}
                       </Tag>
-                      {order.status === "PENDING" && !order.payment && (
-                        <span className="text-sm text-yellow-500 font-medium">
-                          Belum bayar
-                        </span>
-                      )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="grid grid-cols-1 gap-3 text-sm">
                     {[
                       ...(order.items || []).map((item) => ({
                         kind: "field",
@@ -195,7 +232,7 @@ export default function OrdersPage() {
                             <p className="font-semibold text-slate-800">
                               {item.field?.name}
                             </p>
-                            <p className="text-sm text-slate-500">
+                            <p className="text-sm text-slate-500 mt-0.5">
                               {new Date(item.date).toLocaleDateString("id-ID", {
                                 day: "numeric",
                                 month: "short",
@@ -209,49 +246,59 @@ export default function OrdersPage() {
                             <p className="font-semibold text-slate-800">
                               {item.event?.title || "Tiket event"}
                             </p>
-                            <p className="text-sm text-slate-500">
+                            <p className="text-sm text-slate-500 mt-0.5">
                               {item.quantity} tiket
                             </p>
                           </div>
                         ),
                       )}
                   </div>
-                  <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center">
-                    <span className="text-sm text-slate-500">
-                      {new Date(order.createdAt).toLocaleDateString("id-ID", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}
-                    </span>
-                    <div className="flex items-center gap-3">
+
+                  {/* 🔥 PERBAIKAN UI MOBILE & DESKTOP DI SINI 🔥 */}
+                  <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-3">
+                    {/* Tanggal & Harga (Tampil di Mobile) */}
+                    <div className="flex items-center justify-between w-full sm:w-auto">
+                      <span className="text-sm text-slate-500">
+                        {new Date(order.createdAt).toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </span>
+                      <span className="sm:hidden font-extrabold text-purple-700 text-lg">
+                        Rp {order.totalAmount?.toLocaleString("id-ID")}
+                      </span>
+                    </div>
+
+                    {/* Harga (Tampil di Desktop) & Tombol Aksi */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+                      <span className="hidden sm:block font-extrabold text-purple-700 text-lg">
+                        Rp {order.totalAmount?.toLocaleString("id-ID")}
+                      </span>
+
                       {order.status === "PENDING" && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             router.push(`/payment/${order.id}`);
                           }}
-                          className="cursor-pointer px-3 py-1 text-sm bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition">
+                          className="w-full sm:w-auto px-5 py-2.5 text-sm font-bold bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition cursor-pointer text-center">
                           {order.payment?.status === "PENDING"
                             ? "Lanjutkan Pembayaran"
                             : "Bayar Sekarang"}
                         </button>
                       )}
 
-                      {/* 🔥 TOMBOL DIBUAT HILANG JIKA SUDAH DI-REVIEW */}
                       {order.status === "PAID" && !hasRated && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setRefundOrderId(order.id);
                           }}
-                          className="cursor-pointer px-3 py-1 text-sm bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition">
+                          className="w-full sm:w-auto px-4 py-2.5 text-sm font-bold bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition cursor-pointer text-center">
                           Ajukan Pembatalan
                         </button>
                       )}
-                      <span className="font-bold text-purple-700">
-                        Rp. {order.totalAmount?.toLocaleString("id-ID")}
-                      </span>
                     </div>
                   </div>
                 </div>
@@ -270,7 +317,7 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* 🔥 MODAL REFUND DENGAN INPUT ALASAN */}
+      {/* MODAL REFUND DENGAN INPUT ALASAN */}
       <CustomModal
         open={!!refundOrderId}
         onClose={() => {
@@ -293,7 +340,7 @@ export default function OrdersPage() {
               type="primary"
               danger
               loading={isSubmitting}
-              disabled={!refundReason.trim()} // 🔥 Disabled jika alasan kosong
+              disabled={!refundReason.trim()}
               onClick={handleConfirmRefund}
               className="cursor-pointer bg-red-500 hover:bg-red-600 disabled:opacity-50">
               Ya, Ajukan Pembatalan

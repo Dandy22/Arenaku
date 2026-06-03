@@ -20,7 +20,7 @@ export async function GET(
       );
     }
 
-    // 🔥 PERBAIKAN: Ambil juga jam operasional venue dari database
+    // Ambil juga jam operasional venue dari database
     const field = await prisma.field.findUnique({
       where: { id },
       select: {
@@ -37,9 +37,17 @@ export async function GET(
       return NextResponse.json({ error: "Field not found" }, { status: 404 });
     }
 
-    // Ambil jam operasional (jika tidak ada di DB, fallback ke 8 dan 22)
     const openHour = field.venue.openHour ?? 8;
     const closeHour = field.venue.closeHour ?? 22;
+
+    // 🔥 LOGIC ZONA WAKTU (WIB / Asia/Jakarta)
+    // Memaksa server membaca waktu saat ini di Indonesia, bukan di UTC
+    const nowStr = new Date().toLocaleString("en-US", {
+      timeZone: "Asia/Jakarta",
+    });
+    const nowWIB = new Date(nowStr);
+    const todayYMD = `${nowWIB.getFullYear()}-${String(nowWIB.getMonth() + 1).padStart(2, "0")}-${String(nowWIB.getDate()).padStart(2, "0")}`;
+    const currentHourWIB = nowWIB.getHours();
 
     // Mode mingguan: startDate → 7 hari
     if (startDateStr) {
@@ -49,6 +57,9 @@ export async function GET(
       for (let i = 0; i < 7; i++) {
         const currentDate = new Date(startDate);
         currentDate.setDate(startDate.getDate() + i);
+
+        // Format YYYY-MM-DD dari kalender looping
+        const loopYMD = currentDate.toISOString().split("T")[0];
 
         const bookedSlots = await prisma.orderItem.findMany({
           where: {
@@ -68,17 +79,14 @@ export async function GET(
         }
 
         const slots = [];
-        const now = new Date();
 
-        // 🔥 PERBAIKAN: Looping menggunakan openHour dan closeHour dari database
         for (let h = openHour; h < closeHour; h++) {
           const isBooked = bookedHours.has(h);
-          const isPast =
-            currentDate.toDateString() === now.toDateString()
-              ? h <= now.getHours()
-              : currentDate < new Date(now.toDateString());
 
-          // Perbaiki tampilan string jam jika jam tutupnya 24 (tampil jadi 00:00)
+          // 🔥 Cek isPast menggunakan tanggal dan jam versi WIB
+          const isPast =
+            loopYMD === todayYMD ? h <= currentHourWIB : loopYMD < todayYMD;
+
           const nextHourStr =
             h + 1 === 24 ? "00" : String(h + 1).padStart(2, "0");
 
@@ -92,7 +100,7 @@ export async function GET(
         }
 
         days.push({
-          date: currentDate.toISOString().split("T")[0],
+          date: loopYMD,
           dayName: currentDate.toLocaleDateString("id-ID", { weekday: "long" }),
           dayDate: currentDate.toLocaleDateString("id-ID", {
             day: "numeric",
@@ -113,6 +121,8 @@ export async function GET(
 
     // Mode harian: satu tanggal
     const date = new Date(dateStr!);
+    const loopYMD = date.toISOString().split("T")[0];
+
     const bookedSlots = await prisma.orderItem.findMany({
       where: {
         fieldId: id,
@@ -130,18 +140,15 @@ export async function GET(
       }
     }
 
-    const now = new Date();
     const slots = [];
 
-    // 🔥 PERBAIKAN: Looping menggunakan openHour dan closeHour dari database
     for (let h = openHour; h < closeHour; h++) {
       const isBooked = bookedHours.has(h);
-      const isPast =
-        date.toDateString() === now.toDateString()
-          ? h <= now.getHours()
-          : date < new Date(now.toDateString());
 
-      // Perbaiki tampilan string jam jika jam tutupnya 24 (tampil jadi 00:00)
+      // 🔥 Cek isPast menggunakan tanggal dan jam versi WIB
+      const isPast =
+        loopYMD === todayYMD ? h <= currentHourWIB : loopYMD < todayYMD;
+
       const nextHourStr = h + 1 === 24 ? "00" : String(h + 1).padStart(2, "0");
 
       slots.push({

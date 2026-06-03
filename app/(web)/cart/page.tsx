@@ -31,7 +31,7 @@ export default function CartPage() {
       return;
     }
     fetchCart();
-  }, [user, isInitialized]);
+  }, [user, isInitialized, fetchCart]); // Tambahkan dependensi yang benar
 
   const handleDelete = async (id: string) => {
     try {
@@ -237,14 +237,15 @@ export default function CartPage() {
             })}
           </div>
 
-          {/* Kotak Total & Tombol Checkout (Sudah digabung & tidak fixed) */}
+          {/* 🔥 PERBAIKAN UI TOTAL PEMBAYARAN 🔥 */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-10">
-            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-              <span className="font-semibold text-slate-800">
+            {/* Pakai flex-col di mobile biar numpuk, sm:flex-row biar sejajar di PC */}
+            <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mb-6 border-b border-slate-100 pb-4 gap-1 sm:gap-0">
+              <span className="font-semibold text-slate-800 text-base">
                 Total Pembayaran
               </span>
-              <span className="text-2xl font-bold text-primary">
-                Rp. {total.toLocaleString("id-ID")}
+              <span className="text-xl sm:text-2xl font-extrabold text-purple-700">
+                Rp {total.toLocaleString("id-ID")}
               </span>
             </div>
 

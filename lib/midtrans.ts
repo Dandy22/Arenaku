@@ -10,6 +10,8 @@
 
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+// 🔥 WAJIB IMPORT NOTIFICATION SERVICE
+import { notificationService } from "@/lib/services/notification.service";
 
 // Konfigurasi Midtrans dari environment
 const MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY || "";
@@ -23,6 +25,7 @@ const isProduction = false;
 const MIDTRANS_BASE_URL = isProduction
   ? "https://app.midtrans.com"
   : "https://app.sandbox.midtrans.com";
+
 // ============================================================
 // createMidtransTransaction
 // Membuat Snap Token via Midtrans API
@@ -115,8 +118,6 @@ export async function handleMidtransWebhook(payload: {
   });
 
   // Ambil payment berdasarkan order_id
-  // Di dalam fungsi handleMidtransWebhook, bagian query payment:
-
   const payment = await prisma.payment.findUnique({
     where: { orderId: order_id },
     include: {
@@ -153,7 +154,7 @@ export async function handleMidtransWebhook(payload: {
     newPaymentStatus = "SUCCESS";
     newOrderStatus = "PAID";
 
-    // PERBAIKAN: Bungkus proses payout dengan try-catch
+    // Bungkus proses payout dengan try-catch
     try {
       await processVendorPayout(payment, parseInt(gross_amount));
     } catch (err) {
@@ -204,36 +205,54 @@ export async function handleMidtransWebhook(payload: {
     }
   }
 
-  // Jika SUCCESS, konfirmasi event tickets
-  if (newPaymentStatus === "SUCCESS" && payment.order.eventTickets) {
-    // PERBAIKAN: Bungkus dengan try-catch agar webhook tidak crash
-    try {
-      for (const ticket of payment.order.eventTickets) {
-        await prisma.eventTicket.update({
-          where: { id: ticket.id },
-          data: {
-            status: "CONFIRMED",
-            confirmedAt: new Date(),
-          },
-        });
+  // Jika SUCCESS, konfirmasi event tickets & KIRIM NOTIF/EMAIL
+  if (newPaymentStatus === "SUCCESS") {
+    // 1. Tangani Event Tickets
+    if (payment.order.eventTickets) {
+      try {
+        for (const ticket of payment.order.eventTickets) {
+          await prisma.eventTicket.update({
+            where: { id: ticket.id },
+            data: {
+              status: "CONFIRMED",
+              confirmedAt: new Date(),
+            },
+          });
 
-        // Tambah ke participants
-        await prisma.eventParticipant.upsert({
-          where: {
-            eventId_userId: {
+          // Tambah ke participants
+          await prisma.eventParticipant.upsert({
+            where: {
+              eventId_userId: {
+                eventId: ticket.eventId,
+                userId: ticket.userId,
+              },
+            },
+            create: {
               eventId: ticket.eventId,
               userId: ticket.userId,
             },
-          },
-          create: {
-            eventId: ticket.eventId,
-            userId: ticket.userId,
-          },
-          update: {},
-        });
+            update: {},
+          });
+        }
+      } catch (err) {
+        console.error("Gagal mengkonfirmasi event tickets:", err);
+      }
+    }
+
+    // 2. 🔥 TRIGGER EMAIL INVOICE & NOTIFIKASI
+    try {
+      // Kita panggil fungsi notifikasi dari service
+      // yang di dalamnya otomatis memicu fungsi kirim Email
+      await notificationService.notifyPaymentSuccess(payment.order.id);
+
+      // Jika ada tiket event terjual, trigger notif khusus tiket terjual
+      if (payment.order.eventTickets && payment.order.eventTickets.length > 0) {
+        await notificationService.notifyTicketSold(
+          payment.order.eventTickets[0].eventId,
+        );
       }
     } catch (err) {
-      console.error("Gagal mengkonfirmasi event tickets:", err);
+      console.error("Gagal mengirim email / notifikasi pasca pembayaran:", err);
     }
   }
 
@@ -250,8 +269,6 @@ export async function handleMidtransWebhook(payload: {
 // processVendorPayout
 // Hitung & tambahkan saldo ke vendor (90% - 10%)
 // ============================================================
-// lib/midtrans.ts
-
 async function processVendorPayout(
   payment: {
     orderId: string;
@@ -279,7 +296,6 @@ async function processVendorPayout(
   });
 
   // Ambil vendorId dari relasi baru: order -> items -> field -> venue -> vendorId
-  // (Pastikan field venue.vendorId merujuk ke ID model Vendor)
   const vendorId = payment.order?.items?.[0]?.field?.venue?.vendorId;
 
   if (!vendorId) {
@@ -287,7 +303,7 @@ async function processVendorPayout(
     return;
   }
 
-  // UPDATE SALDO VENDOR (Ganti vendorProfile menjadi vendor)
+  // UPDATE SALDO VENDOR
   const updatedVendor = await prisma.vendor.update({
     where: { id: vendorId },
     data: {
