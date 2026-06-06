@@ -294,6 +294,7 @@ model CartItem {
   field      Field?           @relation(fields: [fieldId], references: [id], onDelete: Cascade)
   event      Event?           @relation(fields: [eventId], references: [id], onDelete: Cascade)
   ticketTier EventTicketTier? @relation(fields: [ticketTierId], references: [id], onDelete: Cascade)
+  @@unique([userId, fieldId, date, startHour, endHour])
 }
 
 model Order {
