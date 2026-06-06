@@ -180,7 +180,7 @@ export default function CartPage() {
                       <button
                         onClick={() => handleDelete(item.id)}
                         className="text-red-500 hover:text-red-600 cursor-pointer flex items-center gap-1 text-sm">
-                        <HiOutlineTrash size={16} /> Delete
+                        <HiOutlineTrash size={16} /> Hapus
                       </button>
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-sm">
