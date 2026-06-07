@@ -666,6 +666,11 @@ export default function VendorEventDynamicPage({
                       options={[
                         { label: "Futsal", value: "FUTSAL" },
                         { label: "Badminton", value: "BADMINTON" },
+                        { label: "Mini Soccer", value: "MINI_SOCCER" },
+                        { label: "Basket", value: "BASKETBALL" },
+                        { label: "Tenis", value: "TENNIS" },
+                        { label: "Bola Voli", value: "VOLLEYBALL" },
+                        { label: "Padel", value: "PADEL" },
                       ]}
                     />
                   </div>
