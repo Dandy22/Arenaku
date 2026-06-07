@@ -1,85 +1,72 @@
 // ============================================================
 // app/api/upload/route.ts
 // ------------------------------------------------------------
-// File upload endpoint - menyimpan file ke folder public/uploads
+// File upload endpoint - menyimpan file ke Cloudinary
 // ============================================================
 
 import { NextResponse } from "next/server";
 import { getUserFromToken } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
-import { existsSync } from "fs";
-import path from "path";
+import { v2 as cloudinary } from "cloudinary";
+
+// Konfigurasi Cloudinary (Pastikan variabel ini ada di .env dan Vercel)
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function POST(req: Request) {
   try {
-    // Verify user is authenticated
+    // 1. Verifikasi User (Token)
     await getUserFromToken(req);
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 
-    // Jika ada file yang diupload
-    if (file && file.size > 0) {
-      // Validasi tipe file
-      const allowedTypes = [
-        "image/jpeg",
-        "image/png",
-        "image/gif",
-        "image/webp",
-      ];
-      if (!allowedTypes.includes(file.type)) {
-        return NextResponse.json(
-          {
-            error:
-              "Tipe file tidak didukung. Gunakan JPEG, PNG, GIF, atau WebP",
-          },
-          { status: 400 },
-        );
-      }
-
-      // Validasi ukuran max 5MB
-      if (file.size > 5 * 1024 * 1024) {
-        return NextResponse.json(
-          { error: "Ukuran file maksimal 5 MB" },
-          { status: 400 },
-        );
-      }
-
-      // Ambil ekstensi file
-      const ext = file.name.split(".").pop() || "jpg";
-      const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-      const fileName = `${uniqueSuffix}.${ext}`;
-
-      // Buat direktori uploads jika belum ada
-      const uploadDir = path.join(process.cwd(), "public", "uploads");
-      if (!existsSync(uploadDir)) {
-        await mkdir(uploadDir, { recursive: true });
-      }
-
-      // Konversi file ke buffer
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-
-      // Simpan file
-      const filePath = path.join(uploadDir, fileName);
-      await writeFile(filePath, buffer);
-
-      // Return URL file yang disimpan
-      const imageUrl = `/uploads/${fileName}`;
-
-      return NextResponse.json({
-        success: true,
-        url: imageUrl,
-        message: "Foto berhasil diupload",
-        originalName: file.name,
-        size: file.size,
-      });
+    if (!file || file.size === 0) {
+      return NextResponse.json(
+        { error: "Tidak ada file yang diupload" },
+        { status: 400 },
+      );
     }
 
-    return NextResponse.json(
-      { error: "Tidak ada file yang diupload" },
-      { status: 400 },
-    );
+    // 2. Validasi tipe file
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json(
+        {
+          error: "Tipe file tidak didukung. Gunakan JPEG, PNG, GIF, atau WebP",
+        },
+        { status: 400 },
+      );
+    }
+
+    // 3. Validasi ukuran max 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: "Ukuran file maksimal 5 MB" },
+        { status: 400 },
+      );
+    }
+
+    // 4. Ubah file menjadi buffer lalu ke format Base64 (Syarat wajib Cloudinary)
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const base64Image = `data:${file.type};base64,${buffer.toString("base64")}`;
+
+    // 5. Upload langsung ke Cloudinary
+    const uploadResponse = await cloudinary.uploader.upload(base64Image, {
+      folder: "arenaku_uploads", // Nama folder yang akan otomatis terbuat di Cloudinary
+    });
+
+    // 6. Return URL Cloudinary untuk disimpan ke database Neon
+    return NextResponse.json({
+      success: true,
+      url: uploadResponse.secure_url,
+      message: "Foto berhasil diupload",
+      originalName: file.name,
+      size: file.size,
+    });
   } catch (error: any) {
     console.error("Upload error:", error);
 
