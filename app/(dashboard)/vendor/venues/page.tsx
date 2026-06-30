@@ -273,7 +273,6 @@ export default function VendorVenuesPage() {
 
   return (
     <div>
-      {/* 🔥 FIX: FLEX-COL DI MOBILE, FLEX-ROW DI DESKTOP */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Venue Saya</h1>

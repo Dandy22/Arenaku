@@ -1,12 +1,3 @@
-// ============================================================
-// lib/services/payment.service.ts
-// ------------------------------------------------------------
-// TIER 2 — Business Logic Layer: Payment Service
-//
-// Payment dibuat setelah user pilih metode bayar.
-// Menggunakan Midtrans SNAP (sandbox) sebagai payment gateway.
-// ============================================================
-
 import { paymentRepository } from "@/lib/repositories/payment.repository";
 import { orderRepository } from "@/lib/repositories/order.repository";
 import { createMidtransTransaction, getMidtransConfig } from "@/lib/midtrans";
@@ -38,6 +29,80 @@ export const paymentService = {
 
     const now = new Date();
     const currentPayment = order.payment;
+
+    // 🔥 FIX: Handle free orders (totalAmount = 0)
+    if (order.totalAmount === 0) {
+      // For free orders, auto-confirm payment
+      const expiredAt = new Date();
+      expiredAt.setMinutes(expiredAt.getMinutes() + PAYMENT_EXPIRY_MINUTES);
+
+      let payment;
+
+      if (currentPayment) {
+        // Payment record already exists, update it to SUCCESS
+        payment = await paymentRepository.update(currentPayment.id, {
+          method: data.method,
+          qrCode: "FREE_ORDER",
+          snapToken: "",
+          expiredAt,
+          status: "SUCCESS",
+          paidAt: new Date(),
+        });
+      } else {
+        // Create payment record with SUCCESS status immediately
+        try {
+          payment = await paymentRepository.create({
+            orderId: data.orderId,
+            amount: 0,
+            method: data.method,
+            qrCode: "FREE_ORDER",
+            snapToken: "",
+            expiredAt,
+          });
+
+          // Update payment status to SUCCESS
+          payment = await paymentRepository.updateStatus(payment.id, "SUCCESS");
+        } catch (createError: any) {
+          // If Unique constraint error, payment already exists (race condition)
+          // Load existing payment and update it
+          if (createError.code === "P2002") {
+            const existingPayment = await paymentRepository.findByOrderId(
+              data.orderId,
+            );
+            if (existingPayment) {
+              payment = await paymentRepository.update(existingPayment.id, {
+                method: data.method,
+                qrCode: "FREE_ORDER",
+                snapToken: "",
+                expiredAt,
+                status: "SUCCESS",
+                paidAt: new Date(),
+              });
+            } else {
+              throw createError;
+            }
+          } else {
+            throw createError;
+          }
+        }
+      }
+
+      // Confirm the payment (update order to PAID + other logistics)
+      // Only call if payment is not already SUCCESS (prevent double confirmation)
+      if (payment.status !== "SUCCESS") {
+        await this.confirmPayment(data.orderId);
+      } else if (order.status !== "PAID") {
+        // Payment SUCCESS but order not PAID yet, confirm it
+        await this.confirmPayment(data.orderId);
+      }
+
+      return {
+        ...payment,
+        snapToken: "",
+        redirectUrl: "",
+        midtransConfig: getMidtransConfig(),
+      };
+    }
 
     if (currentPayment) {
       const isStillPending =
@@ -228,14 +293,24 @@ export const paymentService = {
     });
 
     if (!order) throw new Error("Order not found");
-    if (order.status === "PAID") throw new Error("Payment already processed");
+
+    // 🔥 FIX: If order already PAID, just return success (idempotent)
+    if (order.status === "PAID") {
+      return { message: "Payment already confirmed and processed" };
+    }
 
     const payment = order.payment;
     if (!payment) throw new Error("Payment record not found");
 
-    // Ambil vendorId dari item pertama (asumsi satu order satu vendor)
+    //   FIX: Handle both field bookings and event-only orders
     const vendorId = order.items[0]?.field?.venue?.vendorId;
-    if (!vendorId) throw new Error("Vendor not found for this order");
+    const hasFieldBookings = order.items && order.items.length > 0;
+    const hasEventTickets = order.eventTickets && order.eventTickets.length > 0;
+
+    // Vendor is required only for field bookings
+    if (hasFieldBookings && !vendorId) {
+      throw new Error("Vendor not found for this order");
+    }
 
     // 2. Gunakan Transaction agar semua data terupdate dengan aman
     await prisma.$transaction(async (tx) => {
@@ -251,16 +326,18 @@ export const paymentService = {
         data: { status: "PAID" },
       });
 
-      // 🔥 KUNCI UTAMA: Tambahkan saldo ke vendor
-      await tx.vendor.update({
-        where: { id: vendorId },
-        data: {
-          balance: { increment: order.totalAmount },
-        },
-      });
+      //   KUNCI UTAMA: Tambahkan saldo ke vendor (hanya untuk field bookings)
+      if (hasFieldBookings && vendorId) {
+        await tx.vendor.update({
+          where: { id: vendorId },
+          data: {
+            balance: { increment: order.totalAmount },
+          },
+        });
+      }
 
       // Handle Event Tickets (jika ada)
-      if (order.eventTickets && order.eventTickets.length > 0) {
+      if (hasEventTickets) {
         for (const ticket of order.eventTickets) {
           await tx.eventTicket.update({
             where: { id: ticket.id },
@@ -285,7 +362,7 @@ export const paymentService = {
     await notificationService.notifyPaymentSuccess(orderId);
 
     // Notify jika ada event
-    if (order.eventTickets && order.eventTickets.length > 0) {
+    if (hasEventTickets) {
       await notificationService.notifyTicketSold(order.eventTickets[0].eventId);
     }
 

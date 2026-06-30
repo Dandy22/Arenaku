@@ -18,10 +18,10 @@ interface Order {
   customerPhone: string;
   customerEmail: string;
   notes: string;
-  cancelReason?: string; // 🔥 Field baru
+  cancelReason?: string; //   Field baru
   createdAt: string;
   expiresAt: string;
-  vendorRating?: any; // 🔥 Untuk cek apakah sudah di-review
+  vendorRating?: any; //   Untuk cek apakah sudah di-review
   items: Array<{
     id: string;
     date: string;
@@ -230,7 +230,6 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // 🔥 State untuk Refund
   const [refundModalOpen, setRefundModalOpen] = useState(false);
   const [refundReason, setRefundReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -268,7 +267,7 @@ export default function OrderDetailPage() {
     try {
       await api.put(`/orders/${orderId}`, {
         action: "request-refund",
-        cancelReason: refundReason, // 🔥 Kirim alasan ke backend
+        cancelReason: refundReason,
       });
       message.success(
         "Permintaan refund diajukan. Admin akan memproses dalam 1–2 hari kerja.",
@@ -469,7 +468,7 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Cancel button - 🔥 Disembunyikan kalau sudah ada vendorRating */}
+        {/* Cancel button -   Disembunyikan kalau sudah ada vendorRating */}
         {order.status === "PAID" && !hasRated && (
           <button
             onClick={() => setRefundModalOpen(true)}
@@ -521,7 +520,7 @@ export default function OrderDetailPage() {
             <Button
               type="primary"
               danger
-              disabled={!refundReason.trim()} // 🔥 Disabled jika alasan kosong
+              disabled={!refundReason.trim()}
               loading={isSubmitting}
               onClick={handleRequestRefund}
               className="cursor-pointer bg-red-500 hover:bg-red-600 disabled:opacity-50">

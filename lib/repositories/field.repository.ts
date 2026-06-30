@@ -1,11 +1,3 @@
-// ============================================================
-// lib/repositories/field.repository.ts
-// ------------------------------------------------------------
-// TIER 3 — Data Access Layer: Field (Lapangan) Repository
-//
-// Operasi database untuk tabel "Field".
-// Field adalah lapangan olahraga di dalam sebuah Venue.
-// ============================================================
 import { prisma } from "@/lib/prisma";
 
 export const fieldRepository = {
@@ -19,7 +11,7 @@ export const fieldRepository = {
     description: string;
     venueId: string;
     thumbnailUrl?: string;
-    // ✅ Tambahkan images di sini
+    //   Tambahkan images di sini
     images?: { url: string; title: string }[];
   }) =>
     prisma.field.create({
@@ -33,7 +25,7 @@ export const fieldRepository = {
         description: data.description,
         venueId: data.venueId,
         thumbnailUrl: data.thumbnailUrl,
-        // ✅ Buat relasi gambar sekaligus saat lapangan dibuat
+        //   Buat relasi gambar sekaligus saat lapangan dibuat
         images: {
           create:
             data.images?.map((img) => ({
@@ -56,7 +48,7 @@ export const fieldRepository = {
       price?: number;
       description?: string;
       thumbnailUrl?: string;
-      // ✅ Tambahkan images di sini
+      //   Tambahkan images di sini
       images?: { url: string; title: string }[];
     },
   ) =>
@@ -71,7 +63,7 @@ export const fieldRepository = {
         price: data.price,
         description: data.description,
         thumbnailUrl: data.thumbnailUrl,
-        // ✅ Hapus gambar lama, ganti dengan gambar baru dari form
+        //   Hapus gambar lama, ganti dengan gambar baru dari form
         ...(data.images && {
           images: {
             deleteMany: {},
@@ -116,7 +108,7 @@ export const fieldRepository = {
       data: {
         fieldId,
         url,
-        title, // ✅ Pastikan title masuk di sini
+        title, //   Pastikan title masuk di sini
       },
     }),
 

@@ -63,7 +63,7 @@ export default function FieldDetailPage() {
   const startDate = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
-    // ✅ PERBAIKAN: Tambahkan timestamp agar data selalu FRESH dari database (Bypass Cache)
+    //   PERBAIKAN: Tambahkan timestamp agar data selalu FRESH dari database (Bypass Cache)
     const timestamp = new Date().getTime();
 
     Promise.all([

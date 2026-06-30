@@ -26,7 +26,7 @@ export default function PaymentPage() {
   // Tangkap param redirect dari Midtrans (khusus Mobile E-Wallet)
   const transactionStatus = searchParams.get("transaction_status");
 
-  // 🔥 AUTO-CONFIRM JIKA REDIRECT DARI MOBILE E-WALLET
+  //   AUTO-CONFIRM JIKA REDIRECT DARI MOBILE E-WALLET
   useEffect(() => {
     if (transactionStatus === "settlement" || transactionStatus === "capture") {
       setCreating(true);

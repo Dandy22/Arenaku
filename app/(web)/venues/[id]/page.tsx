@@ -26,7 +26,7 @@ interface Field {
   price: number;
   thumbnailUrl?: string;
   images?: { url: string }[];
-  orderItems?: { startHour: number }[]; // 🔥 Tambahan field API
+  orderItems?: { startHour: number }[]; //   Tambahan field API
 }
 
 interface Rating {
@@ -74,7 +74,7 @@ function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
   );
 }
 
-// 🔥 UPDATE: FieldCard menangkap data bookedSlots dan membuang slot yang ada di dalamnya
+//   UPDATE: FieldCard menangkap data bookedSlots dan membuang slot yang ada di dalamnya
 function FieldCard({
   field,
   venue,
@@ -409,7 +409,7 @@ export default function VenueDetailPage() {
                   key={field.id}
                   field={field}
                   venue={venue}
-                  // 🔥 Oper data jam yang sudah dibooking ke FieldCard
+                  //   Oper data jam yang sudah dibooking ke FieldCard
                   bookedSlots={
                     field.orderItems?.map((oi: any) => oi.startHour) || []
                   }

@@ -1,16 +1,3 @@
-// ============================================================
-// lib/services/auth.service.ts
-// ------------------------------------------------------------
-//
-// Service layer bertugas menangani semua logika bisnis.
-// Untuk autentikasi, logika yang ditangani di sini:
-//   - Validasi input register (field wajib, format, dll)
-//   - Cek duplikat email
-//   - Hash password sebelum disimpan
-//   - Generate JWT token saat login
-//
-// ============================================================
-
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { userRepository } from "@/lib/repositories/user.repository";
@@ -141,6 +128,13 @@ export const authService = {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new Error("Invalid email or password");
+    }
+
+    // Step 4: Pastikan email sudah diverifikasi sebelum login
+    if (!user.isEmailVerified) {
+      throw new Error(
+        "Email belum diverifikasi. Silakan klik tautan verifikasi yang dikirim ke email Anda.",
+      );
     }
 
     // ============================================================

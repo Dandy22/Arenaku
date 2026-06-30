@@ -1,19 +1,9 @@
-// ============================================================
-// lib/repositories/payment.repository.ts
-// ------------------------------------------------------------
-// TIER 3 — Data Access Layer: Payment Repository
-//
-// Payment dibuat setelah user konfirmasi order dan pilih
-// metode pembayaran. QR code di-generate di service layer.
-// ============================================================
-
 import { prisma } from "@/lib/prisma";
 
 export const paymentRepository = {
   // ----------------------------------------------------------
   // create
   // Buat record payment baru untuk sebuah order.
-  // expiredAt diset 15 menit dari sekarang (bisa dikonfigurasi).
   // ----------------------------------------------------------
   create: (data: {
     orderId: string;

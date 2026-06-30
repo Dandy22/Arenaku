@@ -207,9 +207,9 @@ npx prisma db seed
 Jika seed berhasil, output akan seperti ini:
 
 ```
-✅ Customer created: customer@mail.com
-✅ Admin created: admin@mail.com
-✅ Vendor created: vendor@mail.com
+  Customer created: customer@mail.com
+  Admin created: admin@mail.com
+  Vendor created: vendor@mail.com
 🎉 Seeding completed successfully!
 ```
 
@@ -242,7 +242,7 @@ GET http://localhost:3000/api/venues
 GET http://localhost:3000/api/events
 ```
 
-Kalau keluar JSON → setup berhasil ✅
+Kalau keluar JSON → setup berhasil
 
 ---
 
@@ -293,19 +293,19 @@ booking-venue/
 
 | Endpoint                | Method | Auth | Akses    |
 | ----------------------- | ------ | ---- | -------- |
-| `/api/auth/register`    | POST   | ❌   | Publik   |
-| `/api/auth/login`       | POST   | ❌   | Publik   |
-| `/api/venues`           | GET    | ❌   | Publik   |
-| `/api/events`           | GET    | ❌   | Publik   |
-| `/api/fields?venueId=x` | GET    | ❌   | Publik   |
-| `/api/venues`           | POST   | ✅   | VENDOR   |
-| `/api/fields`           | POST   | ✅   | VENDOR   |
-| `/api/bookings`         | POST   | ✅   | CUSTOMER |
-| `/api/bookings`         | GET    | ✅   | CUSTOMER |
-| `/api/events`           | POST   | ✅   | Semua    |
-| `/api/events/join`      | POST   | ✅   | Semua    |
-| `/api/profile`          | GET    | ✅   | Semua    |
-| `/api/users`            | GET    | ✅   | ADMIN    |
+| `/api/auth/register`    | POST   |      | Publik   |
+| `/api/auth/login`       | POST   |      | Publik   |
+| `/api/venues`           | GET    |      | Publik   |
+| `/api/events`           | GET    |      | Publik   |
+| `/api/fields?venueId=x` | GET    |      | Publik   |
+| `/api/venues`           | POST   |      | VENDOR   |
+| `/api/fields`           | POST   |      | VENDOR   |
+| `/api/bookings`         | POST   |      | CUSTOMER |
+| `/api/bookings`         | GET    |      | CUSTOMER |
+| `/api/events`           | POST   |      | Semua    |
+| `/api/events/join`      | POST   |      | Semua    |
+| `/api/profile`          | GET    |      | Semua    |
+| `/api/users`            | GET    |      | ADMIN    |
 
 Untuk endpoint yang butuh auth, tambahkan header:
 

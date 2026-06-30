@@ -1,5 +1,4 @@
 import bcrypt from "bcrypt";
-import { userRepository } from "@/lib/repositories/user.repository";
 import { prisma } from "@/lib/prisma";
 
 const BCRYPT_SALT_ROUNDS = 10;
@@ -10,9 +9,10 @@ export const profileService = {
     data: {
       name?: string;
       phone?: string;
+      vendorName?: string;
       currentPassword?: string;
       newPassword?: string;
-    }
+    },
   ) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new Error("User not found");
@@ -35,10 +35,14 @@ export const profileService = {
         throw new Error("New password must be at least 6 characters");
       }
 
-      updateData.password = await bcrypt.hash(data.newPassword, BCRYPT_SALT_ROUNDS);
+      updateData.password = await bcrypt.hash(
+        data.newPassword,
+        BCRYPT_SALT_ROUNDS,
+      );
     }
 
-    const updated = await prisma.user.update({
+    // 1. UPDATE DATA USER BISA (Nama & Password)
+    const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: updateData,
       select: {
@@ -51,6 +55,26 @@ export const profileService = {
       },
     });
 
-    return updated;
+    // 2. UPDATE DATA VENDOR (Nama Bisnis) JIKA DIA OWNER
+    let updatedVendor = null;
+    if (data.vendorName) {
+      const vendorMember = await prisma.vendorMember.findFirst({
+        where: { userId },
+      });
+
+      // Pastikan yang nge-request emang OWNER
+      if (vendorMember && vendorMember.role === "OWNER") {
+        try {
+          updatedVendor = await prisma.vendor.update({
+            where: { id: vendorMember.vendorId },
+            data: { name: data.vendorName },
+          });
+        } catch (err) {
+          console.error("Failed to update vendor name:", err);
+        }
+      }
+    }
+
+    return { user: updatedUser, vendor: updatedVendor };
   },
 };

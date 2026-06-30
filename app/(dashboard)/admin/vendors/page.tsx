@@ -32,6 +32,8 @@ interface Vendor {
   venues: {
     id: string;
     name: string;
+    address?: string;
+    district?: string;
     fields?: { id: string }[];
   }[];
 }
@@ -89,11 +91,16 @@ export default function AdminVendorsPage() {
     const query = searchQuery.toLowerCase();
     return vendors.filter((v) => {
       const user = v.members?.[0]?.user;
+      const district = (
+        user?.district ||
+        v.venues?.[0]?.district ||
+        ""
+      ).toLowerCase();
       return (
         v.name?.toLowerCase().includes(query) ||
         user?.name?.toLowerCase().includes(query) ||
         user?.email?.toLowerCase().includes(query) ||
-        user?.district?.toLowerCase().includes(query) ||
+        district.includes(query) ||
         v.bankName?.toLowerCase().includes(query)
       );
     });
@@ -163,7 +170,9 @@ export default function AdminVendorsPage() {
       key: "district",
       render: (_, record) => (
         <span className="font-semibold text-slate-500 uppercase text-sm">
-          {record.members?.[0]?.user?.district || "-"}
+          {record.members?.[0]?.user?.district ||
+            record.venues?.[0]?.district ||
+            "-"}
         </span>
       ),
     },
@@ -202,7 +211,7 @@ export default function AdminVendorsPage() {
             onClick={() => setDeleteModal({ open: true, vendorId: record.id })}
             icon={<HiOutlineTrash className="text-[18px]" />}
             className="!h-9 !rounded-full !border-[#F1F5F9] !bg-white !shadow-none !text-red-500 hover:!bg-red-50 font-semibold">
-            Delete
+            Hapus
           </Button>
         </div>
       ),
@@ -213,6 +222,11 @@ export default function AdminVendorsPage() {
     if (!selectedVendor) return null;
 
     const vendorUser = selectedVendor.members?.[0]?.user;
+    const fallbackAddress =
+      vendorUser?.address || selectedVendor.venues?.[0]?.address || "-";
+    const fallbackDistrict =
+      vendorUser?.district || selectedVendor.venues?.[0]?.district || "-";
+
     const totalFields = selectedVendor.venues?.reduce(
       (total, venue) => total + (venue.fields?.length || 0),
       0,
@@ -269,7 +283,7 @@ export default function AdminVendorsPage() {
           </p>
           <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200">
             <p className="font-semibold text-sm text-slate-600">
-              {vendorUser?.address || "-"}
+              {fallbackAddress}
             </p>
           </div>
         </div>
@@ -278,7 +292,7 @@ export default function AdminVendorsPage() {
           <p className="text-sm font-semibold text-slate-500 mb-2">Kecamatan</p>
           <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200">
             <p className="font-semibold text-sm text-slate-600 uppercase">
-              {vendorUser?.district || "-"}
+              {fallbackDistrict}
             </p>
           </div>
         </div>
@@ -405,7 +419,7 @@ export default function AdminVendorsPage() {
             onClick={() =>
               setRejectModal({ open: true, vendorId: selectedVendor.id })
             }
-            className="flex-1 h-12 rounded-xl text-red-500 bg-red-50 border border-red-100 hover:bg-red-100 font-bold text-sm uppercase tracking-wide">
+            className="flex-1 cursor-pointer h-12 rounded-xl text-red-500 bg-red-50 border border-red-100 hover:bg-red-100 font-bold text-sm uppercase tracking-wide">
             Reject
           </button>
         </div>

@@ -1,9 +1,3 @@
-// ============================================================
-// lib/repositories/event.repository.ts
-// ------------------------------------------------------------
-// TIER 3 — Data Access Layer: Event Repository
-// ============================================================
-
 import { prisma } from "@/lib/prisma";
 
 export const eventRepository = {
@@ -90,10 +84,10 @@ export const eventRepository = {
     const limit = params.limit || 8;
     const skip = (page - 1) * limit;
 
-    // 🔥 PERBAIKAN: Gunakan Waktu Sekarang persis (Bukan 00:00) agar event yg berlangsung hari ini tidak terhapus duluan.
+    //   PERBAIKAN: Gunakan Waktu Sekarang persis (Bukan 00:00) agar event yg berlangsung hari ini tidak terhapus duluan.
     const now = new Date();
 
-    // 🔥 FILTER UTAMA: Status ACTIVE dan Belum Lewat Waktu
+    //   FILTER UTAMA: Status ACTIVE dan Belum Lewat Waktu
     const where: any = {
       status: "ACTIVE",
       endDate: {

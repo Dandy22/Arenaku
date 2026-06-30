@@ -26,7 +26,7 @@ export default function CustomerSettingsPage() {
     confirmPassword: "",
   });
 
-  // ✅ STATE BARU: Khusus untuk menampung pesan error inline pada form
+  //   STATE BARU: Khusus untuk menampung pesan error inline pada form
   const [formErrors, setFormErrors] = useState({
     currentPassword: "",
     newPassword: "",
@@ -64,7 +64,7 @@ export default function CustomerSettingsPage() {
 
   const handleProfileChange = (field: string, value: string) => {
     setProfileForm((prev) => ({ ...prev, [field]: value }));
-    // ✅ Hapus error inline saat user mulai mengetik ulang di kotak tersebut
+    //   Hapus error inline saat user mulai mengetik ulang di kotak tersebut
     if (formErrors[field as keyof typeof formErrors]) {
       setFormErrors((prev) => ({ ...prev, [field]: "" }));
     }
@@ -101,7 +101,7 @@ export default function CustomerSettingsPage() {
         confirmPassword: "",
       };
 
-      // ✅ VALIDASI LOKAL (UX Lebh baik, tampilkan error di bawah input)
+      //   VALIDASI LOKAL (UX Lebh baik, tampilkan error di bawah input)
       if (isPasswordFilled) {
         if (!profileForm.currentPassword) {
           newErrors.currentPassword = "Password saat ini wajib diisi";
@@ -162,7 +162,7 @@ export default function CustomerSettingsPage() {
     } catch (error: any) {
       const errorMsg = error.response?.data?.error || "Gagal menyimpan profil";
 
-      // ✅ TANGKAP ERROR BACKEND: Jika error terkait password lama yang salah, tampilkan inline
+      //   TANGKAP ERROR BACKEND: Jika error terkait password lama yang salah, tampilkan inline
       if (errorMsg.toLowerCase().includes("password")) {
         setFormErrors((prev) => ({ ...prev, currentPassword: errorMsg }));
       } else {
@@ -250,7 +250,7 @@ export default function CustomerSettingsPage() {
               Keamanan Akun
             </h2>
             <div className="space-y-5">
-              {/* ✅ KOTAK PASSWORD SAAT INI + ERROR INLINE */}
+              {/*   KOTAK PASSWORD SAAT INI + ERROR INLINE */}
               <div>
                 <label className="text-sm font-semibold text-gray-600 block mb-2">
                   Password Saat Ini
@@ -275,7 +275,7 @@ export default function CustomerSettingsPage() {
                 )}
               </div>
 
-              {/* ✅ KOTAK PASSWORD BARU + ERROR INLINE */}
+              {/*   KOTAK PASSWORD BARU + ERROR INLINE */}
               <div>
                 <label className="text-sm font-semibold text-gray-600 block mb-2">
                   Password Baru
@@ -300,7 +300,7 @@ export default function CustomerSettingsPage() {
                 )}
               </div>
 
-              {/* ✅ KOTAK KONFIRMASI PASSWORD + ERROR INLINE */}
+              {/*   KOTAK KONFIRMASI PASSWORD + ERROR INLINE */}
               <div>
                 <label className="text-sm font-semibold text-gray-600 block mb-2">
                   Konfirmasi Password Baru

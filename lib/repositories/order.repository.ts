@@ -1,12 +1,3 @@
-// ============================================================
-// lib/repositories/order.repository.ts
-// ------------------------------------------------------------
-// TIER 3 — Data Access Layer: Order Repository
-//
-// Order adalah transaksi final setelah user konfirmasi dari cart.
-// Satu order bisa berisi banyak lapangan (OrderItem).
-// ============================================================
-
 import { prisma } from "@/lib/prisma";
 
 export const orderRepository = {
@@ -84,7 +75,7 @@ export const orderRepository = {
           },
         },
         payment: true,
-        vendorRating: true, // 🔥 WAJIB TAMBAH INI
+        vendorRating: true, //   WAJIB TAMBAH INI
       },
     }),
 
@@ -104,7 +95,7 @@ export const orderRepository = {
           },
         },
         payment: true,
-        vendorRating: true, // 🔥 WAJIB TAMBAH INI
+        vendorRating: true, //   WAJIB TAMBAH INI
       },
     }),
 
@@ -129,7 +120,7 @@ export const orderRepository = {
           },
         },
         payment: true,
-        vendorRating: true, // 🔥 WAJIB TAMBAH INI
+        vendorRating: true, //   WAJIB TAMBAH INI
       },
     }),
 
@@ -148,7 +139,7 @@ export const orderRepository = {
           },
         },
         payment: true,
-        vendorRating: true, // 🔥 WAJIB TAMBAH INI
+        vendorRating: true, //   WAJIB TAMBAH INI
       },
       orderBy: { createdAt: "desc" },
     }),

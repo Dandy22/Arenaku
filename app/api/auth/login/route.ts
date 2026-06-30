@@ -29,7 +29,9 @@ export async function POST(req: Request) {
     // Tentukan HTTP status code berdasarkan jenis error
     const status =
       error.message === "User not found" ||
-      error.message === "Invalid email or password"
+      error.message === "Invalid email or password" ||
+      error.message ===
+        "Email belum diverifikasi. Silakan klik tautan verifikasi yang dikirim ke email Anda."
         ? 401
         : 400;
 

@@ -2,15 +2,13 @@ import { NextResponse } from "next/server";
 import { getAuth, getUserFromToken } from "@/lib/auth";
 import { userRepository } from "@/lib/repositories/user.repository";
 import { profileService } from "@/lib/services/profile.service";
-import { prisma } from "@/lib/prisma"; // 👉 Wajib di-import untuk query database
+import { prisma } from "@/lib/prisma";
 
-// 👉 Matikan cache bawaan Next.js agar role selalu update!
 export const dynamic = "force-dynamic";
 
 // GET /api/vendor/profile
 export async function GET(req: Request) {
   try {
-    // Pastikan fungsi getAuth atau getUserFromToken sesuai dengan yang ada di auth.ts kamu
     const auth = await getAuth(req);
     if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -35,7 +33,7 @@ export async function GET(req: Request) {
 
     // Get vendor data if user is VENDOR
     let vendor = null;
-    let vendorRole = null; // 👈 1. Buat variabel untuk menampung role
+    let vendorRole = null;
 
     if (user.role === "VENDOR") {
       const vendorMember = await prisma.vendorMember.findFirst({
@@ -60,11 +58,10 @@ export async function GET(req: Request) {
 
       if (vendorMember) {
         vendor = vendorMember.vendor;
-        vendorRole = vendorMember.role; // 👈 2. Ambil rolenya (OWNER / STAFF)
+        vendorRole = vendorMember.role;
       }
     }
 
-    // 👈 3. Kirimkan vendorRole ke frontend
     return NextResponse.json({ user, vendor, vendorRole }, { status: 200 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -72,10 +69,12 @@ export async function GET(req: Request) {
 }
 
 // PATCH /api/vendor/profile
-export async function PATCH(req: Request) {
+export async function PUT(req: Request) {
   try {
     const user = await getUserFromToken(req);
     const body = await req.json();
+
+    console.log("  PAYLOAD MASUK:", body);
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -84,12 +83,16 @@ export async function PATCH(req: Request) {
     const updated = await profileService.updateProfile(user.userId, {
       name: body.name,
       phone: body.phone,
+      vendorName: body.vendorName,
       currentPassword: body.currentPassword,
       newPassword: body.newPassword,
     });
 
+    console.log(" DATA SETELAH UPDATE DB:", updated);
+
     return NextResponse.json(updated);
   } catch (error: any) {
+    console.error("  ERROR API ROUTE:", error.message);
     if (error.message.includes("token")) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }

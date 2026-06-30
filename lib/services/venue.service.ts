@@ -85,7 +85,7 @@ export const venueService = {
     return venueRepository.findByVendorId(vendorOrg.id);
   },
 
-  // 🔥 UPDATE DI SINI: getVenueById mengambil data booking hari ini
+  //   UPDATE DI SINI: getVenueById mengambil data booking hari ini
   async getVenueById(id: string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Set ke awal hari ini

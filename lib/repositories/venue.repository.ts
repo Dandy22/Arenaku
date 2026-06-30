@@ -1,9 +1,3 @@
-// ============================================================
-// lib/repositories/venue.repository.ts
-// ------------------------------------------------------------
-// TIER 3 — Data Access Layer: Venue Repository
-// ============================================================
-
 import { prisma } from "@/lib/prisma";
 
 export const venueRepository = {
@@ -26,7 +20,7 @@ export const venueRepository = {
     longitude?: number;
     vendorId: string;
     thumbnailUrl?: string;
-    // ✅ TAMBAHKAN TYPE DI SINI
+    //   TAMBAHKAN TYPE DI SINI
     openHour?: number;
     closeHour?: number;
     isOpen?: boolean;
@@ -42,7 +36,7 @@ export const venueRepository = {
         longitude: data.longitude,
         vendorId: data.vendorId,
         thumbnailUrl: data.thumbnailUrl || "",
-        // ✅ PASTIKAN DIKIRIM KE PRISMA
+        //   PASTIKAN DIKIRIM KE PRISMA
         openHour: data.openHour,
         closeHour: data.closeHour,
         isOpen: data.isOpen ?? true,
@@ -63,7 +57,7 @@ export const venueRepository = {
       latitude?: number;
       longitude?: number;
       thumbnailUrl?: string;
-      // ✅ TAMBAHKAN TYPE DI SINI
+      //   TAMBAHKAN TYPE DI SINI
       openHour?: number;
       closeHour?: number;
       isOpen?: boolean;

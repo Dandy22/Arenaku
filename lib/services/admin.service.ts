@@ -1,13 +1,3 @@
-// ============================================================
-// lib/services/admin.service.ts
-// ------------------------------------------------------------
-// TIER 2 — Business Logic Layer: Admin Service
-//
-// Logika bisnis khusus admin:
-//   - Verifikasi / reject vendor
-//   - Monitor semua order
-// ============================================================
-
 import { adminRepository } from "@/lib/repositories/admin.repository";
 import { notificationService } from "@/lib/services/notification.service";
 

@@ -38,6 +38,7 @@ export async function PATCH(req: Request) {
     const updated = await profileService.updateProfile(user.userId, {
       name: body.name,
       phone: body.phone,
+      vendorName: body.vendorName,
       currentPassword: body.currentPassword,
       newPassword: body.newPassword,
     });

@@ -1,16 +1,6 @@
-// ============================================================
-// lib/midtrans.ts
-// ------------------------------------------------------------
-// Midtrans SNAP Integration Helper
-//
-// Fungsi helper untuk:
-// - Membuat transaksi ke Midtrans
-// - Memproses webhook dari Midtrans
-// ============================================================
-
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
-// 🔥 WAJIB IMPORT NOTIFICATION SERVICE
+//   WAJIB IMPORT NOTIFICATION SERVICE
 import { notificationService } from "@/lib/services/notification.service";
 
 // Konfigurasi Midtrans dari environment
@@ -79,7 +69,7 @@ export async function createMidtransTransaction(order: {
     const result = await response.json();
 
     if (!response.ok) {
-      console.error("❌ Midtrans API Error:", result);
+      console.error("  Midtrans API Error:", result);
       throw new Error(
         result.status_message || "Failed to create Midtrans transaction",
       );
@@ -92,7 +82,7 @@ export async function createMidtransTransaction(order: {
       orderId: order.id,
     };
   } catch (error) {
-    console.error("❌ createMidtransTransaction error:", error);
+    console.error("  createMidtransTransaction error:", error);
     throw error;
   }
 }
@@ -140,7 +130,7 @@ export async function handleMidtransWebhook(payload: {
   });
 
   if (!payment) {
-    console.error("❌ Payment not found for order:", order_id);
+    console.error("  Payment not found for order:", order_id);
     return { status: "error", message: "Payment not found" };
   }
 
@@ -170,7 +160,7 @@ export async function handleMidtransWebhook(payload: {
     newOrderStatus = "CANCELLED";
   } else {
     // Status lain (pending, challenge, dll) - tidak ubah status
-    console.log("ℹ️ Unhandled transaction_status:", transaction_status);
+    console.log(" Unhandled transaction_status:", transaction_status);
     return { status: "ok", message: "Status processed" };
   }
 
@@ -239,7 +229,7 @@ export async function handleMidtransWebhook(payload: {
       }
     }
 
-    // 2. 🔥 TRIGGER EMAIL INVOICE & NOTIFIKASI
+    // 2.   TRIGGER EMAIL INVOICE & NOTIFIKASI
     try {
       // Kita panggil fungsi notifikasi dari service
       // yang di dalamnya otomatis memicu fungsi kirim Email
@@ -256,7 +246,7 @@ export async function handleMidtransWebhook(payload: {
     }
   }
 
-  console.log("✅ Webhook processed:", {
+  console.log("Webhook processed:", {
     orderId: order_id,
     paymentStatus: newPaymentStatus,
     orderStatus: newOrderStatus,
@@ -288,7 +278,7 @@ async function processVendorPayout(
   const platformFee = Math.floor(total * 0.1);
   const vendorAmount = total - platformFee;
 
-  console.log("💰 Processing vendor payout:", {
+  console.log(" Processing vendor payout:", {
     orderId: payment.orderId,
     total,
     platformFee,
@@ -299,7 +289,7 @@ async function processVendorPayout(
   const vendorId = payment.order?.items?.[0]?.field?.venue?.vendorId;
 
   if (!vendorId) {
-    console.error("❌ Vendor ID not found for order:", payment.orderId);
+    console.error("  Vendor ID not found for order:", payment.orderId);
     return;
   }
 
@@ -313,7 +303,7 @@ async function processVendorPayout(
     },
   });
 
-  console.log("✅ Vendor payout completed:", {
+  console.log("Vendor payout completed:", {
     vendorId: vendorId,
     vendorName: updatedVendor.name,
     amountAdded: vendorAmount,

@@ -311,7 +311,6 @@ export default function DashboardLayout({
       fetchNotifications();
 
       if (parsedUser.role === "VENDOR") {
-        // 🔥 AUTO-KICK LOGIC: Fetch status real-time dari database
         api
           .get("/vendor/profile")
           .then((res) => {

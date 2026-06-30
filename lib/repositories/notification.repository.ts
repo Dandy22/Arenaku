@@ -1,9 +1,3 @@
-// ============================================================
-// lib/repositories/notification.repository.ts
-// ------------------------------------------------------------
-// TIER 3 — Data Access Layer: Notification Repository
-// ============================================================
-
 import { prisma } from "@/lib/prisma";
 
 export const notificationRepository = {

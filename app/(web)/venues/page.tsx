@@ -13,7 +13,6 @@ import { BEKASI_DISTRICTS, SPORT_TYPES } from "@/lib/constants";
 import { Select, DatePicker } from "antd";
 import dayjs from "dayjs";
 
-// Pastikan path ini sesuai dengan struktur folder Anda
 import VenueCard from "@/components/reusable/VenueCard";
 
 const formatDisplayType = (type: string) => {

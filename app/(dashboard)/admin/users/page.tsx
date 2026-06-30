@@ -166,7 +166,7 @@ export default function AdminUsersPage() {
       ),
     },
     {
-      title: "User Name",
+      title: "Nama Lengkap",
       key: "name",
       render: (_, r) => (
         <div className="flex flex-col">
@@ -240,7 +240,7 @@ export default function AdminUsersPage() {
             }
             icon={<HiOutlineTrash size={18} />}
             className="!h-9 !rounded-full !border-[#F1F5F9] !bg-white !shadow-none !text-red-500 hover:!bg-red-50 !font-semibold">
-            Delete
+            Hapus
           </Button>
         </div>
       ),
@@ -284,16 +284,6 @@ export default function AdminUsersPage() {
                 {selectedUser.phone || "-"}
               </p>
             </div>
-          </div>
-        </div>
-
-        <div>
-          <p className="text-sm font-semibold text-slate-500 mb-2">Wilayah</p>
-          <div className="!rounded-lg !p-3 bg-slate-50 border !border-gray-200">
-            <p className="font-semibold text-sm text-slate-600 uppercase">
-              {selectedUser.district || "-"},{" "}
-              {selectedUser.address || "Alamat belum diisi"}
-            </p>
           </div>
         </div>
 

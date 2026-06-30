@@ -1,15 +1,3 @@
-// ============================================================
-// lib/services/cart.service.ts
-// ------------------------------------------------------------
-// TIER 2 — Business Logic Layer: Cart Service
-//
-// Aturan bisnis untuk keranjang belanja:
-//   - Hanya CUSTOMER yang bisa punya cart
-//   - Tidak boleh tambah item yang jam-nya bentrok di lapangan sama
-//   - Tidak boleh tambah item dengan tanggal di masa lalu
-//   - User hanya bisa hapus item miliknya sendiri
-// ============================================================
-
 import { cartRepository } from "@/lib/repositories/cart.repository";
 
 export const cartService = {

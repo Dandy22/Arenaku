@@ -40,7 +40,7 @@ export async function GET(
     const openHour = field.venue.openHour ?? 8;
     const closeHour = field.venue.closeHour ?? 22;
 
-    // 🔥 LOGIC ZONA WAKTU (WIB / Asia/Jakarta)
+    //   LOGIC ZONA WAKTU (WIB / Asia/Jakarta)
     // Memaksa server membaca waktu saat ini di Indonesia, bukan di UTC
     const nowStr = new Date().toLocaleString("en-US", {
       timeZone: "Asia/Jakarta",
@@ -83,7 +83,7 @@ export async function GET(
         for (let h = openHour; h < closeHour; h++) {
           const isBooked = bookedHours.has(h);
 
-          // 🔥 Cek isPast menggunakan tanggal dan jam versi WIB
+          //   Cek isPast menggunakan tanggal dan jam versi WIB
           const isPast =
             loopYMD === todayYMD ? h <= currentHourWIB : loopYMD < todayYMD;
 
@@ -145,7 +145,7 @@ export async function GET(
     for (let h = openHour; h < closeHour; h++) {
       const isBooked = bookedHours.has(h);
 
-      // 🔥 Cek isPast menggunakan tanggal dan jam versi WIB
+      //   Cek isPast menggunakan tanggal dan jam versi WIB
       const isPast =
         loopYMD === todayYMD ? h <= currentHourWIB : loopYMD < todayYMD;
 

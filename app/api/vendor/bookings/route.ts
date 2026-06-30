@@ -1,14 +1,3 @@
-// ============================================================
-// app/api/vendor/bookings/route.ts
-// ------------------------------------------------------------
-// TIER 1 — Presentation Layer: Vendor Booking Monitor
-//
-//   GET /api/vendor/bookings  → semua order masuk ke venue vendor
-//
-// Vendor bisa lihat siapa yang booking lapangan mereka
-// beserta detail waktu dan status pembayaran.
-// ============================================================
-
 import { NextResponse } from "next/server";
 import { getUserFromToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -42,7 +31,6 @@ export async function GET(req: Request) {
     }
 
     // 2. Ambil semua OrderItem yang lapangannya milik vendor ini
-    // Relasi baru: OrderItem → Field → Venue → Vendor (id)
     const orderItems = await prisma.orderItem.findMany({
       where: {
         field: {

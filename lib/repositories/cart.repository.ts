@@ -1,8 +1,3 @@
-// ============================================================
-// lib/repositories/cart.repository.ts
-// ------------------------------------------------------------
-// TIER 3 — Data Access Layer: Cart Repository
-
 import { prisma } from "@/lib/prisma";
 
 export const cartRepository = {

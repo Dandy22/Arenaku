@@ -66,7 +66,7 @@ export default function VenueCard({
   // Ambil lapangan pertama untuk dijadikan preview
   const firstField = venue.fields?.[0];
 
-  // 🔥 LOGIKA SINKRONISASI JADWAL
+  //   LOGIKA SINKRONISASI JADWAL
   const currentHour = new Date().getHours();
   // Ambil data booked jika ada dari backend
   const bookedSlots =

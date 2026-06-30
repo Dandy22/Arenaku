@@ -129,7 +129,7 @@ export default function VendorVenueDetailPage() {
     }, 100);
   };
 
-  // ✅ UPLOAD HANDLER - HANYA UPDATE STATE
+  //   UPLOAD HANDLER - HANYA UPDATE STATE
   const handleUploadFieldThumbnail = async (options: any) => {
     const { file, onSuccess, onError } = options;
     const formData = new FormData();
@@ -144,30 +144,30 @@ export default function VendorVenueDetailPage() {
       const url = res.data.url;
       if (!url) throw new Error("URL tidak ditemukan di response");
 
-      // ✅ UPDATE STATE - INI YANG PENTING
+      //   UPDATE STATE - INI YANG PENTING
       setFieldThumbnailUrl(url);
-      // ✅ ALSO SET FORM VALUE (fallback jika dibutuhkan)
+      //   ALSO SET FORM VALUE (fallback jika dibutuhkan)
       fieldForm.setFieldValue("thumbnailUrl", url);
 
       onSuccess("Ok");
-      message.success("✅ Thumbnail lapangan berhasil diunggah");
+      message.success("  Thumbnail lapangan berhasil diunggah");
     } catch (err: any) {
       console.error("Upload error:", err);
       onError(err);
-      message.error("❌ Upload gagal");
+      message.error("  Upload gagal");
     } finally {
       setUploadingFieldThumb(false);
     }
   };
 
-  // ✅ SUBMIT HANDLER - VALIDASI MANUAL THUMBNAIL
+  //   SUBMIT HANDLER - VALIDASI MANUAL THUMBNAIL
   const handleFieldSubmit = async () => {
     try {
       const values = await fieldForm.validateFields();
 
-      // ✅ VALIDASI THUMBNAIL SECARA MANUAL
+      //   VALIDASI THUMBNAIL SECARA MANUAL
       if (!fieldThumbnailUrl) {
-        message.error("❌ Foto lapangan wajib diunggah!");
+        message.error("  Foto lapangan wajib diunggah!");
         return;
       }
 
@@ -181,7 +181,7 @@ export default function VendorVenueDetailPage() {
       if (editField) {
         // 1. Tembak API Patch
         await api.patch(`/fields/${editField.id}`, payload);
-        message.success("✅ Lapangan berhasil diperbarui");
+        message.success("  Lapangan berhasil diperbarui");
         setVenue((prev) => {
           if (!prev) return prev;
           return {
@@ -193,7 +193,7 @@ export default function VendorVenueDetailPage() {
         });
       } else {
         await api.post("/fields", { ...payload, venueId });
-        message.success("✅ Lapangan berhasil ditambahkan");
+        message.success("  Lapangan berhasil ditambahkan");
         await fetchVenue(); // 👈 Tambahin await di sini
       }
 
@@ -201,9 +201,9 @@ export default function VendorVenueDetailPage() {
       setFieldThumbnailUrl("");
       fieldForm.resetFields();
     } catch (err: any) {
-      console.error("❌ Submit error:", err);
+      console.error("  Submit error:", err);
       const errorMsg = err.response?.data?.error || "Gagal menyimpan data";
-      message.error(`❌ ${errorMsg}`);
+      message.error(`  ${errorMsg}`);
     } finally {
       setSubmitting(false);
     }
@@ -518,7 +518,7 @@ export default function VendorVenueDetailPage() {
           layout="vertical"
           requiredMark={false}
           className="space-y-4 mt-2">
-          {/* ✅ FIX: UPLOAD TANPA name, VALIDASI MANUAL */}
+          {/*   FIX: UPLOAD TANPA name, VALIDASI MANUAL */}
           <Form.Item
             label={
               <span className="text-sm font-semibold text-slate-500">
@@ -740,7 +740,7 @@ export default function VendorVenueDetailPage() {
                           Foto
                         </div>
 
-                        {/* ✅ 1. Form.Item disembunyikan agar hanya menyimpan teks URL */}
+                        {/*   1. Form.Item disembunyikan agar hanya menyimpan teks URL */}
                         <Form.Item
                           {...restField}
                           name={[name, "url"]}
@@ -749,7 +749,7 @@ export default function VendorVenueDetailPage() {
                           <Input />
                         </Form.Item>
 
-                        {/* ✅ 2. Upload ditaruh DI LUAR Form.Item agar tidak menimpa nilai form dengan Object */}
+                        {/*   2. Upload ditaruh DI LUAR Form.Item agar tidak menimpa nilai form dengan Object */}
                         <Upload
                           name="file"
                           showUploadList={false}
@@ -793,7 +793,7 @@ export default function VendorVenueDetailPage() {
                                   "url",
                                 ]);
 
-                                // ✅ 3. Pastikan yang dirender benar-benar string URL
+                                //   3. Pastikan yang dirender benar-benar string URL
                                 return imgUrl && typeof imgUrl === "string" ? (
                                   <>
                                     <img

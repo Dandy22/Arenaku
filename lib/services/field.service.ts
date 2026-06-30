@@ -1,14 +1,3 @@
-// ============================================================
-// lib/services/field.service.ts
-// ------------------------------------------------------------
-// TIER 2 — Business Logic Layer: Field (Lapangan) Service
-//
-// Logika bisnis untuk manajemen lapangan:
-//   - Hanya VENDOR yang bisa menambah lapangan
-//   - Vendor hanya bisa menambah lapangan ke VENUE MILIKNYA SENDIRI
-//     (bukan venue milik vendor lain) — ini adalah security rule penting!
-//   - Validasi harga tidak boleh negatif
-// ============================================================
 import { fieldRepository } from "@/lib/repositories/field.repository";
 import { venueRepository } from "@/lib/repositories/venue.repository";
 

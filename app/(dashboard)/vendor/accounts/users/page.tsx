@@ -10,12 +10,11 @@ import {
   HiOutlineUserPlus,
 } from "react-icons/hi2";
 
-// Reusable Components (Pastikan path import sesuai folder kamu)
 import DataTable from "@/components/reusable/DataTable";
 import CustomDrawer from "@/components/reusable/CustomDrawer";
 import DeleteModal from "@/components/reusable/DeleteModal";
 import api from "@/lib/axios";
-import { useAuthStore } from "@/lib/store/auth.store"; // 👉 Import auth store
+import { useAuthStore } from "@/lib/store/auth.store";
 
 interface User {
   id: string;
@@ -29,7 +28,6 @@ interface User {
 }
 
 export default function ManageUsersPage() {
-  // 👉 Ambil data user yang sedang login dari global state
   const { user } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
@@ -44,7 +42,6 @@ export default function ManageUsersPage() {
     ownerPassword: "",
   });
 
-  // 👉 Menentukan role spesifik user yang login (OWNER/STAFF) berdasarkan data list members
   const currentUserMemberInfo = users.find((u) => u.id === user?.id);
   const currentUserRole = currentUserMemberInfo?.role || "STAFF"; // Default ke STAFF jika belum terload
 
@@ -88,7 +85,7 @@ export default function ManageUsersPage() {
 
   const [deleteModal, setDeleteModal] = useState<{
     open: boolean;
-    memberId: string | null; // 🔥 Ganti userId jadi memberId
+    memberId: string | null; //   Ganti userId jadi memberId
     userName: string;
   }>({
     open: false,
@@ -112,7 +109,7 @@ export default function ManageUsersPage() {
 
       const formattedUsers: User[] = membersData.map((m: any) => ({
         id: m.user.id,
-        memberId: m.id, // 🔥 TAMBAHKAN INI
+        memberId: m.id, //   TAMBAHKAN INI
         name: m.user.name,
         email: m.user.email,
         phone: m.user.phone || "-",
@@ -226,7 +223,6 @@ export default function ManageUsersPage() {
       align: "left",
       width: 250,
       render: (_, r) => {
-        // 👉 Cek apakah baris ini adalah user yang sedang login
         const isSelf = r.id === user?.id;
 
         return (
@@ -248,7 +244,6 @@ export default function ManageUsersPage() {
               <Button
                 danger
                 onClick={() =>
-                  // 🔥 Gunakan memberId, bukan id
                   setDeleteModal({
                     open: true,
                     memberId: r.memberId,
@@ -334,9 +329,7 @@ export default function ManageUsersPage() {
   const renderDrawerFooter = () => {
     if (!selectedUser) return null;
 
-    // 👉 Cek apakah user yang dibuka adalah diri sendiri
     const isSelf = selectedUser.id === user?.id;
-    // 👉 Hanya bisa edit jika dia adalah OWNER DAN bukan mengedit dirinya sendiri
     const canEditRole = currentUserRole === "OWNER" && !isSelf;
 
     // Jika tidak ada izin edit, hanya tampilkan tombol "Tutup"
@@ -403,7 +396,6 @@ export default function ManageUsersPage() {
           </p>
         </div>
 
-        {/* 👉 Tombol undang juga disembunyikan untuk STAFF (opsional, tapi disarankan) */}
         {currentUserRole === "OWNER" && (
           <Button
             type="primary"
@@ -429,7 +421,6 @@ export default function ManageUsersPage() {
         dataName={deleteModal.userName}
         onCancel={() => setDeleteModal({ ...deleteModal, open: false })}
         onDelete={() => {
-          // 🔥 Panggil fungsi delete dengan memberId
           if (deleteModal.memberId) handleDeleteUser(deleteModal.memberId);
           setDeleteModal({ open: false, memberId: null, userName: "" });
         }}

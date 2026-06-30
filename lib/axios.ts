@@ -15,7 +15,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Auto redirect kalau 401, tapi lebih hati-hati
+// Auto redirect kalau 401
 api.interceptors.response.use(
   (response) => response,
   (error) => {

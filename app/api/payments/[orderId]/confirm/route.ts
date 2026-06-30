@@ -19,7 +19,7 @@ export async function PATCH(
     const result = await paymentService.confirmPayment(targetOrderId);
     return NextResponse.json(result);
   } catch (error: any) {
-    console.error("❌ ERROR CONFIRM:", error.message);
+    console.error("  ERROR CONFIRM:", error.message);
     if (error.message.includes("not found")) {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }

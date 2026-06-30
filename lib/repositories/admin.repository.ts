@@ -1,7 +1,3 @@
-// ============================================================
-// lib/repositories/admin.repository.ts
-// ============================================================
-
 import { prisma } from "@/lib/prisma";
 
 export const adminRepository = {

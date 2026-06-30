@@ -1,17 +1,3 @@
-// ============================================================
-// lib/auth.ts
-// ------------------------------------------------------------
-// TIER 2 SUPPORT — Helper autentikasi JWT
-//
-// File ini berisi dua fungsi utama:
-//   1. verifyToken  → memvalidasi token JWT yang diterima
-//   2. getUserFromToken → mengekstrak data user dari request header
-//
-// Dipakai oleh semua route yang butuh autentikasi (protected routes).
-// JWT Secret diambil dari environment variable agar tidak hardcoded
-// di source code (best practice keamanan).
-// ============================================================
-
 import jwt from "jsonwebtoken";
 
 // Ambil secret dari .env — JANGAN hardcode langsung di sini

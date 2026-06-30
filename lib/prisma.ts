@@ -1,8 +1,4 @@
 // ============================================================
-// lib/prisma.ts
-// ------------------------------------------------------------
-// TIER 3 SUPPORT — Inisialisasi koneksi database via Prisma ORM
-//
 // Menggunakan pola "singleton" agar tidak membuat koneksi baru
 // setiap kali ada request (terutama penting di Next.js development
 // yang menggunakan hot reload — tanpa ini koneksi bisa menumpuk).

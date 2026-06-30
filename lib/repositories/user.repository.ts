@@ -1,16 +1,3 @@
-// ============================================================
-// lib/repositories/user.repository.ts
-// ------------------------------------------------------------
-// TIER 3 — Data Access Layer: User Repository
-//
-// Repository bertugas HANYA untuk berkomunikasi dengan database.
-// Tidak ada logika bisnis di sini — hanya operasi CRUD murni.
-//
-// Semua query Prisma yang berkaitan dengan tabel "User" ada di sini.
-// Dengan memisahkan ini, jika suatu saat database diganti
-// (misal dari PostgreSQL ke MySQL), cukup ubah file ini saja.
-// ============================================================
-
 import { prisma } from "@/lib/prisma";
 
 export const userRepository = {

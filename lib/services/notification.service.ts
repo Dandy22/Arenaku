@@ -1,13 +1,6 @@
-// ============================================================
-// lib/services/notification.service.ts
-// ------------------------------------------------------------
-// TIER 2 — Business Logic: Notification Service
-// Contains all trigger handlers for notifications
-// ============================================================
-
 import { prisma } from "@/lib/prisma";
 import { notificationRepository } from "@/lib/repositories/notification.repository";
-// 🔥 IMPORT EMAIL SERVICE KAMU DI SINI
+//   IMPORT EMAIL SERVICE KAMU DI SINI
 import { sendBookingInvoice } from "@/lib/mail";
 
 // Helper: Get all admin user IDs
@@ -136,7 +129,7 @@ export async function notifyPaymentSuccess(orderId: string) {
           field: { include: { venue: { include: { vendor: true } } } },
         },
       },
-      // 🔥 Pastikan ini di-include agar data tiket event masuk ke Email Invoice
+      //   Pastikan ini di-include agar data tiket event masuk ke Email Invoice
       eventTickets: {
         include: { event: true },
       },
@@ -184,7 +177,7 @@ export async function notifyPaymentSuccess(orderId: string) {
       data: { orderId },
     });
 
-    // 🔥 LOGIC BARU: KIRIM EMAIL INVOICE KE CUSTOMER SAAT LUNAS
+    //   LOGIC BARU: KIRIM EMAIL INVOICE KE CUSTOMER SAAT LUNAS
     if (order.customerEmail) {
       try {
         await sendBookingInvoice(order.customerEmail, order);

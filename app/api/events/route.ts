@@ -145,7 +145,6 @@ export async function GET(req: Request) {
         );
       }
 
-      // Pagination untuk data vendor agar struktur response sama dengan publik
       const total = vendorEvents.length;
       const skip = (page - 1) * limit;
       const paginatedData = vendorEvents.slice(skip, skip + limit);

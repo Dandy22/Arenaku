@@ -1042,7 +1042,7 @@ export default function EventDynamicPage({
                         }
                         icon={<HiOutlineTrash className="text-[16px]" />}
                         className="!h-9 !rounded-full !border-[#F1F5F9] !bg-white !shadow-none !text-red-500 hover:!bg-red-50 hover:!border-red-200 [&_.ant-btn-icon]:!flex [&_.ant-btn-icon]:!items-center !font-semibold">
-                        Delete
+                        Hapus
                       </Button>
                     </Space>
                   ),

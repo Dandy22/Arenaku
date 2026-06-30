@@ -90,7 +90,6 @@ export default function VendorSettingsPage() {
   // Vendor data from API
   const [vendorData, setVendorData] = useState<VendorData | null>(null);
 
-  // 👉 STATE BARU: Simpan vendorRole
   const [vendorRole, setVendorRole] = useState<"OWNER" | "STAFF" | null>(null);
 
   // Proteksi: Hanya VENDOR role yang bisa akses
@@ -161,7 +160,7 @@ export default function VendorSettingsPage() {
 
         setVendorData(vendor);
         setBankForm(bankData);
-        setInitialBankForm(bankData); // ✅ simpan data awal
+        setInitialBankForm(bankData); //   simpan data awal
       }
     } catch (error: any) {
       message.error(error.response?.data?.error || "Failed to fetch profile");
@@ -392,7 +391,6 @@ export default function VendorSettingsPage() {
   const displayStatus = getDisplayStatus();
   const notificationMessage = getNotificationMessage();
 
-  // 👉 DEFINISI TABS YANG AKAN DITAMPILKAN
   const tabItems = [
     {
       key: "1",
@@ -521,7 +519,6 @@ export default function VendorSettingsPage() {
     },
   ];
 
-  // 👉 HANYA TAMBAHKAN TAB "DETAIL BANK" JIKA USER ADALAH "OWNER"
   if (vendorRole === "OWNER") {
     tabItems.push({
       key: "2",

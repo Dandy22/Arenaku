@@ -1,17 +1,3 @@
-// ============================================================
-// lib/services/order.service.ts
-// ------------------------------------------------------------
-// TIER 2 — Business Logic Layer: Order Service
-//
-// Order dibuat saat user klik "Konfirmasi Pesanan" di halaman checkout.
-// Proses:
-//   1. Ambil semua item dari cart user
-//   2. Validasi ulang semua slot (cek konflik lagi, bisa saja
-//      slot sudah dibooking orang lain sejak item masuk cart)
-//   3. Hitung total harga
-//   4. Buat Order + OrderItem
-//   5. Kosongkan cart user
-// ============================================================
 import { orderRepository } from "@/lib/repositories/order.repository";
 import { cartRepository } from "@/lib/repositories/cart.repository";
 import { prisma } from "@/lib/prisma";
@@ -228,7 +214,7 @@ export const orderService = {
     return updatedOrder;
   },
 
-  // 🔥 FUNGSI BARU UNTUK ADMIN MEMPROSES REFUND
+  //   FUNGSI BARU UNTUK ADMIN MEMPROSES REFUND
   async processRefundDecision(
     orderId: string,
     status: "ACCEPT" | "REJECT",

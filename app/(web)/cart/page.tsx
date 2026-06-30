@@ -237,9 +237,7 @@ export default function CartPage() {
             })}
           </div>
 
-          {/* 🔥 PERBAIKAN UI TOTAL PEMBAYARAN 🔥 */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-10">
-            {/* Pakai flex-col di mobile biar numpuk, sm:flex-row biar sejajar di PC */}
             <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mb-6 border-b border-slate-100 pb-4 gap-1 sm:gap-0">
               <span className="font-semibold text-slate-800 text-base">
                 Total Pembayaran
