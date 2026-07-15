@@ -11,8 +11,11 @@ export const orderRepository = {
       where: {
         fieldId,
         date,
-        order: { status: "PAID" },
         AND: [{ startHour: { lt: endHour } }, { endHour: { gt: startHour } }],
+        OR: [
+          { order: { status: "PAID" } },
+          { order: { status: "PENDING", expiresAt: { gt: new Date() } } },
+        ],
       },
     }),
 
@@ -39,7 +42,10 @@ export const orderRepository = {
         customerPhone: data.customerPhone,
         customerEmail: data.customerEmail,
         notes: data.notes,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 jam
+        expiresAt: new Date(
+          Date.now() +
+            parseInt(process.env.BOOKING_LOCK_MINUTES || "60", 10) * 60 * 1000,
+        ),
         items: {
           create: data.items.map((item) => ({
             fieldId: item.fieldId,
@@ -166,7 +172,10 @@ export const orderRepository = {
         customerPhone: data.customerPhone,
         customerEmail: data.customerEmail,
         notes: data.notes,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 jam
+        expiresAt: new Date(
+          Date.now() +
+            parseInt(process.env.BOOKING_LOCK_MINUTES || "60", 10) * 60 * 1000,
+        ),
         // Create event tickets linked to this order
         eventTickets: {
           create: data.eventTickets.map((ticket) => ({
@@ -217,7 +226,10 @@ export const orderRepository = {
         customerPhone: data.customerPhone,
         customerEmail: data.customerEmail,
         notes: data.notes,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 jam
+        expiresAt: new Date(
+          Date.now() +
+            parseInt(process.env.BOOKING_LOCK_MINUTES || "60", 10) * 60 * 1000,
+        ),
         items: {
           create: data.items.map((item) => ({
             fieldId: item.fieldId,

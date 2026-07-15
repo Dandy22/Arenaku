@@ -26,7 +26,6 @@ export async function POST(req: Request) {
       signature_key,
     } = body;
 
-    // Validasi required fields
     if (!order_id || !transaction_status) {
       return NextResponse.json(
         { error: "Missing required fields: order_id, transaction_status" },
@@ -34,7 +33,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Verifikasi signature (opsional - tapi sangat direkomendasikan)
     if (signature_key && gross_amount) {
       const isValid = verifyMidtransSignature(
         signature_key,
@@ -44,8 +42,7 @@ export async function POST(req: Request) {
       );
 
       if (!isValid) {
-        console.warn("⚠️ Invalid signature_key from Midtrans webhook");
-        // Untuk development, tetap lanjutkan (signature verification bisa di-disable)
+        console.warn(" Invalid signature_key from Midtrans webhook");
         if (process.env.NODE_ENV === "production") {
           return NextResponse.json(
             { error: "Invalid signature" },

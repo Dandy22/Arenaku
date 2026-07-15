@@ -56,7 +56,6 @@ export const userRepository = {
         role: data.role ?? "CUSTOMER",
         address: data.address,
         district: data.district,
-        // GANTI vendorProfile jadi vendorMemberships
         vendorMemberships:
           data.role === "VENDOR"
             ? {

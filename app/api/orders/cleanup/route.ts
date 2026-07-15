@@ -88,6 +88,23 @@ export async function POST(req: Request) {
         console.error("[Cleanup] Gagal mengirim notifikasi:", notifErr);
       }
 
+      // Broadcast unlock events for each field item so clients update in real-time
+      try {
+        const { broadcastUnlock } = await import("@/lib/socket");
+        if (order.items && order.items.length > 0) {
+          for (const it of order.items) {
+            broadcastUnlock({
+              fieldId: it.fieldId,
+              date: it.date,
+              startHour: it.startHour,
+              endHour: it.endHour,
+            });
+          }
+        }
+      } catch (e) {
+        // ignore websocket errors during cleanup
+      }
+
       cleaned++;
       console.log(`[Cleanup] Cancelled expired order: ${order.id}`);
     }

@@ -35,7 +35,6 @@ export async function POST(req: Request) {
     });
 
     if (!user) {
-      // Don't reveal that email doesn't exist
       return NextResponse.json(
         { message: "If the email exists, a reset link will be sent" },
         { status: 200 },
@@ -50,11 +49,9 @@ export async function POST(req: Request) {
     );
 
     // Store reset token in database (you might want to add a ResetToken model)
-    // For now, we'll return the token directly (in production, send via email)
     return NextResponse.json(
       {
         message: "If the email exists, a reset link will be sent",
-        // DEV ONLY: Remove this in production
         devToken: resetToken,
       },
       { status: 200 },

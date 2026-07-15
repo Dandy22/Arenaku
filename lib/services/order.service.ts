@@ -144,6 +144,24 @@ export const orderService = {
     // Trigger notifikasi Booking Baru
     if (order) {
       await notificationService.notifyBookingNew(order.id);
+
+      // Broadcast lock events for field items so clients update in real-time
+      try {
+        const { broadcastLock } = await import("@/lib/socket");
+        if (order.items && order.items.length > 0) {
+          for (const it of order.items) {
+            broadcastLock({
+              fieldId: it.fieldId,
+              date: it.date,
+              startHour: it.startHour,
+              endHour: it.endHour,
+              expiresAt: order.expiresAt,
+            });
+          }
+        }
+      } catch (e) {
+        // ignore websocket errors — do not block checkout
+      }
     }
 
     return order;
@@ -265,5 +283,85 @@ export const orderService = {
 
   async getUserOrders(userId: string) {
     return orderRepository.findByUserId(userId);
+  },
+  async createOrderFromSlots(
+    userId: string,
+    userRole: string,
+    data: {
+      customerName: string;
+      customerPhone: string;
+      customerEmail: string;
+      notes?: string;
+      items: {
+        fieldId: string;
+        date: Date;
+        startHour: number;
+        endHour: number;
+        price: number;
+      }[];
+    },
+  ) {
+    if (userRole !== "CUSTOMER") {
+      throw new Error("Only customers can create orders");
+    }
+
+    // Validate conflicts
+    for (const item of data.items) {
+      const conflict = await orderRepository.findConflict(
+        item.fieldId,
+        item.date,
+        item.startHour,
+        item.endHour,
+      );
+      if (conflict) {
+        throw new Error(
+          `Slot untuk ${item.fieldId} pada ${item.date} ${item.startHour}:00 - ${item.endHour}:00 sudah dibooking`,
+        );
+      }
+    }
+
+    const totalAmount = data.items.reduce(
+      (a, it) => a + (it.price || 0) * (it.endHour - it.startHour),
+      0,
+    );
+
+    const order = await orderRepository.create({
+      userId,
+      totalAmount,
+      customerName: data.customerName,
+      customerPhone: data.customerPhone,
+      customerEmail: data.customerEmail,
+      notes: data.notes || "",
+      items: data.items.map((it) => ({
+        fieldId: it.fieldId,
+        date: it.date,
+        startHour: it.startHour,
+        endHour: it.endHour,
+        price: it.price,
+      })),
+    });
+
+    // Notify & broadcast
+    if (order) {
+      await notificationService.notifyBookingNew(order.id);
+      try {
+        const { broadcastLock } = await import("@/lib/socket");
+        if (order.items && order.items.length > 0) {
+          for (const it of order.items) {
+            broadcastLock({
+              fieldId: it.fieldId,
+              date: it.date,
+              startHour: it.startHour,
+              endHour: it.endHour,
+              expiresAt: order.expiresAt,
+            });
+          }
+        }
+      } catch (e) {
+        // ignore ws errors
+      }
+    }
+
+    return order;
   },
 };

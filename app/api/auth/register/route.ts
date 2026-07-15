@@ -8,7 +8,6 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // FIX: Pastikan address dan district ikut diambil dari body!
     const {
       name,
       vendorName,

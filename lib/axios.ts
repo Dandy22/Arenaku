@@ -21,8 +21,6 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
-        // Jangan langsung clear auth, beri kesempatan untuk retry
-        // atau cek apakah ini memang invalid token
         const token = localStorage.getItem("token");
         if (token) {
           // Coba validasi token sekali lagi sebelum logout

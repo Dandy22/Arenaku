@@ -20,7 +20,6 @@ export const venueRepository = {
     longitude?: number;
     vendorId: string;
     thumbnailUrl?: string;
-    //   TAMBAHKAN TYPE DI SINI
     openHour?: number;
     closeHour?: number;
     isOpen?: boolean;
@@ -36,7 +35,6 @@ export const venueRepository = {
         longitude: data.longitude,
         vendorId: data.vendorId,
         thumbnailUrl: data.thumbnailUrl || "",
-        //   PASTIKAN DIKIRIM KE PRISMA
         openHour: data.openHour,
         closeHour: data.closeHour,
         isOpen: data.isOpen ?? true,
@@ -57,7 +55,6 @@ export const venueRepository = {
       latitude?: number;
       longitude?: number;
       thumbnailUrl?: string;
-      //   TAMBAHKAN TYPE DI SINI
       openHour?: number;
       closeHour?: number;
       isOpen?: boolean;

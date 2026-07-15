@@ -82,6 +82,93 @@ export default function FieldDetailPage() {
       .finally(() => setLoading(false));
   }, [fieldId, venueId, startDate]);
 
+  // WebSocket client with reconnection (no visual indicator)
+  useEffect(() => {
+    const wsUrl =
+      (process.env.NEXT_PUBLIC_WS_URL as string) || "ws://localhost:3001";
+    let ws: WebSocket | null = null;
+    let shouldStop = false;
+    let retry = 0;
+
+    const connect = () => {
+      try {
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          retry = 0;
+        };
+
+        ws.onmessage = (ev) => {
+          try {
+            const msg = JSON.parse(ev.data as string);
+            if (!msg || !msg.type) return;
+            if (msg.type === "lock") {
+              const p = msg.payload;
+              setSchedule((prev) =>
+                prev.map((day) => {
+                  if (day.date !== new Date(p.date).toISOString().split("T")[0])
+                    return day;
+                  return {
+                    ...day,
+                    slots: day.slots.map((s) =>
+                      s.startHour === p.startHour && s.endHour === p.endHour
+                        ? { ...s, status: "BOOKED" }
+                        : s,
+                    ),
+                  };
+                }),
+              );
+            } else if (msg.type === "unlock") {
+              const p = msg.payload;
+              setSchedule((prev) =>
+                prev.map((day) => {
+                  if (day.date !== new Date(p.date).toISOString().split("T")[0])
+                    return day;
+                  return {
+                    ...day,
+                    slots: day.slots.map((s) =>
+                      s.startHour === p.startHour && s.endHour === p.endHour
+                        ? { ...s, status: "AVAILABLE" }
+                        : s,
+                    ),
+                  };
+                }),
+              );
+            }
+          } catch (e) {
+            // ignore
+          }
+        };
+
+        ws.onclose = () => {
+          if (shouldStop) return;
+          // reconnect with backoff
+          retry += 1;
+          const timeout = Math.min(30000, 500 * 2 ** retry);
+          setTimeout(() => connect(), timeout);
+        };
+
+        ws.onerror = () => {
+          // error will trigger close eventually
+        };
+      } catch (e) {
+        if (shouldStop) return;
+        retry += 1;
+        const timeout = Math.min(30000, 500 * 2 ** retry);
+        setTimeout(() => connect(), timeout);
+      }
+    };
+
+    connect();
+
+    return () => {
+      shouldStop = true;
+      try {
+        ws?.close();
+      } catch (e) {}
+    };
+  }, []);
+
   const toggleSlot = (date: string, slot: Slot) => {
     if (slot.status !== "AVAILABLE") return;
     const exists = selectedSlots.find(
@@ -129,6 +216,7 @@ export default function FieldDetailPage() {
     setConfirmModal(false);
     setAddingToCart(true);
     try {
+      // Add selected slots to cart (no locking yet)
       await Promise.all(
         selectedSlots.map((slot: SelectedSlot) =>
           api.post("/cart", {

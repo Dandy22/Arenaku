@@ -145,7 +145,7 @@ export const paymentService = {
           });
         } catch (error: any) {
           console.warn(
-            "⚠️ Midtrans unavailable, using simulation:",
+            " Midtrans unavailable, using simulation:",
             error.message,
           );
         }
@@ -187,7 +187,7 @@ export const paymentService = {
           qrCode = redirectUrl;
         } catch (error: any) {
           console.warn(
-            "⚠️ Midtrans unavailable, using simulation:",
+            " Midtrans unavailable, using simulation:",
             error.message,
           );
           qrCode = generateQRCode(data.orderId, order.totalAmount, data.method);
@@ -240,7 +240,7 @@ export const paymentService = {
       redirectUrl = midtransResult.redirectUrl;
       qrCode = redirectUrl;
     } catch (error: any) {
-      console.warn("⚠️ Midtrans unavailable, using simulation:", error.message);
+      console.warn(" Midtrans unavailable, using simulation:", error.message);
       qrCode = generateQRCode(data.orderId, order.totalAmount, data.method);
     }
 
@@ -294,7 +294,6 @@ export const paymentService = {
 
     if (!order) throw new Error("Order not found");
 
-    // 🔥 FIX: If order already PAID, just return success (idempotent)
     if (order.status === "PAID") {
       return { message: "Payment already confirmed and processed" };
     }
